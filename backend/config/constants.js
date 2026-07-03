@@ -6,13 +6,29 @@ const ROLES = {
   CANDIDATE: 'candidate',
 };
 
+// Allowed status transitions for the workflow engine
+const ALLOWED_TRANSITIONS = {
+  draft:        ['submitted'],
+  submitted:    ['under_review', 'draft'],
+  under_review: ['eligible', 'ineligible'],
+  eligible:     ['shortlisted', 'under_review'],
+  ineligible:   ['under_review'],
+  shortlisted:  ['finalist', 'eligible'],
+  finalist:     ['winner', 'runner_up', 'shortlisted'],
+  winner:       [],
+  runner_up:    [],
+};
+
 const APPLICATION_STATUS = {
-  DRAFT: 'draft',
-  SUBMITTED: 'submitted',
+  DRAFT:        'draft',
+  SUBMITTED:    'submitted',
   UNDER_REVIEW: 'under_review',
-  SHORTLISTED: 'shortlisted',
-  REJECTED: 'rejected',
-  WINNER: 'winner',
+  ELIGIBLE:     'eligible',
+  INELIGIBLE:   'ineligible',
+  SHORTLISTED:  'shortlisted',
+  FINALIST:     'finalist',
+  WINNER:       'winner',
+  RUNNER_UP:    'runner_up',
 };
 
 const PAGINATION = {
@@ -29,7 +45,7 @@ const FILE_UPLOAD = {
 
 const JWT = {
   EXPIRES_IN: process.env.JWT_EXPIRES_IN || '7d',
-  COOKIE_MAX_AGE: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+  COOKIE_MAX_AGE: 7 * 24 * 60 * 60 * 1000,
 };
 
 const AWARD_CATEGORIES = [
@@ -48,8 +64,10 @@ const AWARD_CATEGORIES = [
 module.exports = {
   ROLES,
   APPLICATION_STATUS,
+  ALLOWED_TRANSITIONS,
   PAGINATION,
   FILE_UPLOAD,
   JWT,
   AWARD_CATEGORIES,
 };
+

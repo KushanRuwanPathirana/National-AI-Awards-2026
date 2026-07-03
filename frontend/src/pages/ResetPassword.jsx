@@ -35,7 +35,12 @@ const ResetPassword = () => {
       setSuccessMsg(res.data.message || 'Password reset successful! Redirecting to login...');
       setTimeout(() => navigate('/login'), 2000);
     } catch (err) {
-      setServerError(err.response?.data?.message || 'Failed to reset password. The link may have expired.');
+      if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+        const errorList = err.response.data.errors.map(e => e.msg).join(', ');
+        setServerError(`Validation failed: ${errorList}`);
+      } else {
+        setServerError(err.response?.data?.message || 'Failed to reset password. The link may have expired.');
+      }
     }
   };
 

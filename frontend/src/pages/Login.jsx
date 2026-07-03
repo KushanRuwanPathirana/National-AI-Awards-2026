@@ -34,7 +34,12 @@ const Login = () => {
       else if (user.role === 'judge') navigate('/judge-dashboard');
       else navigate('/dashboard');
     } catch (err) {
-      setServerError(err.response?.data?.message || 'Something went wrong. Please try again.');
+      if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+        const errorList = err.response.data.errors.map(e => e.msg).join(', ');
+        setServerError(`Validation failed: ${errorList}`);
+      } else {
+        setServerError(err.response?.data?.message || 'Something went wrong. Please try again.');
+      }
     }
   };
 

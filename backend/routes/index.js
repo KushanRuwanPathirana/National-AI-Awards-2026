@@ -1,12 +1,22 @@
 const express = require('express');
 const router = express.Router();
 
-const authRoutes = require('./auth.routes');
-const contactRoutes = require('./contact.routes');
+const authRoutes         = require('./auth.routes');
+const contactRoutes      = require('./contact.routes');
+const applicationRoutes  = require('./application.routes');
+const categoryRoutes     = require('./category.routes');
+const evaluationRoutes   = require('./evaluation.routes');
+const notificationRoutes = require('./notification.routes');
+const adminRoutes        = require('./admin.routes');
 
 // Mount routes
-router.use('/auth', authRoutes);
-router.use('/contact', contactRoutes);
+router.use('/auth',          authRoutes);
+router.use('/contact',       contactRoutes);
+router.use('/applications',  applicationRoutes);
+router.use('/categories',    categoryRoutes);
+router.use('/evaluations',   evaluationRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/admin',         adminRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

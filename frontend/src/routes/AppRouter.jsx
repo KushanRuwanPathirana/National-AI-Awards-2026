@@ -15,9 +15,12 @@ import VerifyOTP   from '../pages/VerifyOTP';
 import ForgotPassword from '../pages/ForgotPassword';
 import ResetPassword  from '../pages/ResetPassword';
 
-// Dashboards
+// Dashboards & Wizards
 import CandidateDashboard from '../pages/candidate/CandidateDashboard';
+import NewApplication     from '../pages/candidate/NewApplication';
+import ApplicationDetail  from '../pages/candidate/ApplicationDetail';
 import JudgeDashboard     from '../pages/judge/JudgeDashboard';
+import EvaluationForm     from '../pages/judge/EvaluationForm';
 import AdminDashboard     from '../pages/admin/AdminDashboard';
 
 // Protected route wrapper
@@ -65,7 +68,7 @@ const AppRouter = () => (
       {/* Verification OTP screen */}
       <Route path="verify-otp" element={<VerifyOTP />} />
 
-      {/* Protected dashboard routes */}
+      {/* Protected candidate routes */}
       <Route
         path="dashboard"
         element={
@@ -75,6 +78,24 @@ const AppRouter = () => (
         }
       />
       <Route
+        path="dashboard/apply"
+        element={
+          <ProtectedRoute allowedRoles={['candidate']}>
+            <NewApplication />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="dashboard/applications/:id"
+        element={
+          <ProtectedRoute allowedRoles={['candidate', 'admin']}>
+            <ApplicationDetail />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Protected judge routes */}
+      <Route
         path="judge-dashboard"
         element={
           <ProtectedRoute allowedRoles={['judge']}>
@@ -82,6 +103,16 @@ const AppRouter = () => (
           </ProtectedRoute>
         }
       />
+      <Route
+        path="judge-dashboard/evaluate/:id"
+        element={
+          <ProtectedRoute allowedRoles={['judge']}>
+            <EvaluationForm />
+          </ProtectedRoute>
+        }
+      />
+
+      {/* Protected admin routes */}
       <Route
         path="admin"
         element={

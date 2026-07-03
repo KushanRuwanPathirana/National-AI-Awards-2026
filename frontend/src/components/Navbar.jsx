@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { HiMenuAlt3, HiX, HiChevronDown } from 'react-icons/hi';
 import { RiAwardLine } from 'react-icons/ri';
 import { useAuth } from '../context/AuthContext';
+import NotificationBell from './shared/NotificationBell';
 
 const navLinks = [
   { label: 'Home',             path: '/' },
@@ -87,6 +88,7 @@ const Navbar = () => {
           <div className="hidden lg:flex items-center gap-3">
             {isAuthenticated ? (
               <>
+                <NotificationBell />
                 <button
                   onClick={() => navigate(getDashboardPath())}
                   className="btn-ghost text-sm px-4 py-2"

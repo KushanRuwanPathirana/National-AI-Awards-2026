@@ -19,7 +19,12 @@ const ForgotPassword = () => {
       setSuccessMsg(res.data.message || 'If an account matches, a reset link has been sent.');
       reset();
     } catch (err) {
-      setServerError(err.response?.data?.message || 'Something went wrong. Please try again.');
+      if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+        const errorList = err.response.data.errors.map(e => e.msg).join(', ');
+        setServerError(`Validation failed: ${errorList}`);
+      } else {
+        setServerError(err.response?.data?.message || 'Something went wrong. Please try again.');
+      }
     }
   };
 

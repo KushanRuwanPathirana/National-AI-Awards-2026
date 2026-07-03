@@ -64,6 +64,10 @@ const register = async (req, res, next) => {
     }
 
     const token = generateToken(user._id);
+    console.log('\n┌────────────────────────────────────────┐');
+    console.log(`│  OTP CODE FOR: ${user.email.toUpperCase().padEnd(23)} │`);
+    console.log(`│  CODE: ${otp.padEnd(31)} │`);
+    console.log('└────────────────────────────────────────┘\n');
     logger.info(`New user registered: ${user.email} (${user.role}) - OTP generated: ${otp}`);
 
     return successResponse(res, {
@@ -171,6 +175,10 @@ const resendOTP = async (req, res, next) => {
 
     try {
       await sendOTPEmail(user, otp);
+      console.log('\n┌────────────────────────────────────────┐');
+      console.log(`│  OTP CODE RESENT FOR: ${userEmail.toUpperCase().padEnd(16)} │`);
+      console.log(`│  CODE: ${otp.padEnd(31)} │`);
+      console.log('└────────────────────────────────────────┘\n');
       logger.info(`Verification OTP resent to: ${userEmail} - OTP: ${otp}`);
     } catch (mailErr) {
       logger.error(`Error sending email to ${userEmail}: ${mailErr.message}`);
