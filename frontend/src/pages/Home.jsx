@@ -124,17 +124,6 @@ const Home = () => {
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full border border-accent-500/5" />
         </motion.div>
 
-        {/* Floating trophy icon */}
-        <motion.div
-          className="absolute right-10 top-1/3 hidden xl:block"
-          animate={{ y: [0, -16, 0] }}
-          transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-        >
-          <div className="w-40 h-40 rounded-3xl bg-gradient-accent/20 border border-accent-500/30 backdrop-blur-sm flex items-center justify-center shadow-glow">
-            <RiAwardLine className="text-accent-300 text-7xl" />
-          </div>
-        </motion.div>
-
         <motion.div
           style={{ opacity: heroOpacity }}
           className="section-container relative z-10 pt-32 pb-20 text-center"

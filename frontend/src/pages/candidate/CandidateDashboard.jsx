@@ -248,9 +248,6 @@ const CandidateDashboard = () => {
     }
   };
 
-  const drafts = applications.filter(a => a.status === 'draft');
-  const submitted = applications.filter(a => a.status !== 'draft');
-
   const markAllRead = async () => {
     try {
       await notificationService.markAllAsRead();
