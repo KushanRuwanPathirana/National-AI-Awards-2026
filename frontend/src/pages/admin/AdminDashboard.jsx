@@ -152,6 +152,8 @@ const AdminDashboard = () => {
     navigate('/');
   };
 
+  const judgesList = users.filter((userItem) => userItem.role === 'judge');
+
   // Change Password submit
   const onChangePasswordSubmit = async (data) => {
     try {
@@ -417,8 +419,6 @@ const AdminDashboard = () => {
     );
   };
 
-  const judgesList = users.filter(u => u.role === 'judge');
-
   const toggleReportSelection = (appId) => {
     setSelectedReportIds((prev) => prev.includes(appId) ? prev.filter((id) => id !== appId) : [...prev, appId]);
   };
@@ -599,6 +599,39 @@ const AdminDashboard = () => {
                         <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Completed Evaluations</span>
                         <p className="text-white text-3xl font-black mt-2 font-display text-emerald-400">{stats.stats.completedEvaluations}</p>
                       </div>
+                    </div>
+
+                    <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
+                      <div className="flex items-center justify-between mb-4">
+                        <h4 className="text-white text-xs font-bold uppercase tracking-wider">Judges</h4>
+                        <span className="text-[11px] text-slate-400">{judgesList.length} available</span>
+                      </div>
+                      {judgesList.length > 0 ? (
+                        <div className="grid gap-3 md:grid-cols-2">
+                          {judgesList.map((judge) => (
+                            <div key={judge._id} className="rounded-xl border border-white/10 bg-white/5 p-4">
+                              <div className="flex items-center justify-between gap-3">
+                                <div>
+                                  <div className="text-sm font-semibold text-white">{judge.firstName} {judge.lastName}</div>
+                                  <div className="text-[11px] text-slate-400">{judge.email}</div>
+                                </div>
+                                <span className="rounded-full bg-accent-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-accent-300">
+                                  Judge
+                                </span>
+                              </div>
+                              {(judge.organization || judge.designation) && (
+                                <div className="mt-2 text-[11px] text-slate-500">
+                                  {judge.organization}{judge.organization && judge.designation ? ' • ' : ''}{judge.designation}
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="rounded-xl border border-dashed border-white/10 px-4 py-3 text-sm text-slate-400">
+                          No judges have been added yet.
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
