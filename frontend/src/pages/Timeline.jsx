@@ -7,54 +7,51 @@ import Button from '../components/shared/Button';
 const phases = [
   {
     phase: 'Phase 1',
-    title: 'Applications Open',
-    dateRange: '1 January – 31 March 2026',
+    title: 'Winner & Finalist Recognition',
+    dateRange: 'Weeks 1–4 Post-Event',
     status: 'completed',
     color: 'emerald',
     milestones: [
-      { date: '01 Jan 2026', event: 'Application portal goes live', status: 'completed' },
-      { date: '15 Jan 2026', event: 'Informational webinar for applicants', status: 'completed' },
-      { date: '28 Feb 2026', event: 'Early-bird submission deadline', status: 'completed' },
-      { date: '31 Mar 2026', event: 'Final submission deadline', status: 'completed' },
+      { date: 'Week 1', event: 'Publish winner case studies on ICTA, SLASSCOM & FITIS', status: 'completed' },
+      { date: 'Week 2', event: 'Issue National AI Trustmark badge to all winners', status: 'completed' },
+      { date: 'Week 3', event: 'Distribute press release & media kit to national press', status: 'completed' },
+      { date: 'Week 4', event: 'Launch winner spotlight series — #NationalAIAwardsSL', status: 'completed' },
     ],
   },
   {
     phase: 'Phase 2',
-    title: 'Review & Shortlisting',
-    dateRange: '1 April – 30 April 2026',
-    status: 'active',
+    title: 'Knowledge Sharing & Ecosystem Building',
+    dateRange: 'Months 1–3 Post-Event',
+    status: 'completed',
     color: 'accent',
     milestones: [
-      { date: '01 Apr 2026', event: 'Technical review panel convenes', status: 'active' },
-      { date: '10 Apr 2026', event: 'Expert judge panels assigned', status: 'active' },
-      { date: '20 Apr 2026', event: 'Shortlist committee review', status: 'upcoming' },
-      { date: '30 Apr 2026', event: 'Shortlist announcement', status: 'upcoming' },
+      { date: 'Month 1', event: "Host Winners' Showcase webinar for industry & academia", status: 'completed' },
+      { date: 'Month 2', event: 'Release anonymised judge feedback to future applicants', status: 'completed' },
+      { date: 'Month 3', event: 'Compile annual "State of AI in Sri Lanka" insights report', status: 'completed' },
     ],
   },
   {
     phase: 'Phase 3',
-    title: 'Judging & Presentations',
-    dateRange: '1 May – 14 June 2026',
-    status: 'upcoming',
+    title: 'Alumni Network & Continuity',
+    dateRange: 'Ongoing',
+    status: 'ongoing',
     color: 'purple',
     milestones: [
-      { date: '01 May 2026', event: 'Judge briefing sessions', status: 'upcoming' },
-      { date: '15 May 2026', event: 'Finalist presentations begin', status: 'upcoming' },
-      { date: '31 May 2026', event: 'On-site demonstrations', status: 'upcoming' },
-      { date: '14 Jun 2026', event: 'Final scoring complete', status: 'upcoming' },
+      { date: 'Ongoing', event: "Launch Winners' Alumni Network for mentoring & community", status: 'ongoing' },
+      { date: 'Ongoing', event: 'Invite past winners as screeners in future award cycles', status: 'ongoing' },
+      { date: 'Ongoing', event: 'Publish yearly impact metrics from winning solutions', status: 'ongoing' },
     ],
   },
   {
     phase: 'Phase 4',
-    title: 'Awards Ceremony',
-    dateRange: '15 June – 25 July 2026',
+    title: 'Program Evaluation & Improvement',
+    dateRange: 'Months 2–4 Post-Event',
     status: 'upcoming',
     color: 'gold',
     milestones: [
-      { date: '15 Jun 2026', event: 'Finalists officially announced', status: 'upcoming' },
-      { date: '01 Jul 2026', event: 'Media & press briefing', status: 'upcoming' },
-      { date: '20 Jul 2026', event: 'Pre-ceremony gala dinner', status: 'upcoming' },
-      { date: '25 Jul 2026', event: '🏆 Grand Awards Ceremony', status: 'upcoming' },
+      { date: 'Month 2', event: "Survey all judges, finalists & applicants' post-event", status: 'upcoming' },
+      { date: 'Month 3', event: 'Review categories & criteria based on Year 1 learnings', status: 'upcoming' },
+      { date: 'Month 4', event: 'Benchmark against GLOMO & IMDA · Prepare for 2027 cycle', status: 'upcoming' },
     ],
   },
 ];
@@ -66,7 +63,7 @@ const colorMap = {
   gold:    { dot: 'bg-gold-500',    bar: 'from-gold-500/60',    badge: 'text-gold-400 bg-gold-500/15 border-gold-500/30',         line: 'bg-gold-500/40' },
 };
 
-const statusLabel = { completed: 'Completed', active: 'In Progress', upcoming: 'Upcoming' };
+const statusLabel = { completed: 'Completed', active: 'In Progress', ongoing: 'Ongoing', upcoming: 'Upcoming' };
 
 const Timeline = () => (
   <div className="overflow-x-hidden">
@@ -75,7 +72,7 @@ const Timeline = () => (
       <div className="absolute inset-0 dot-pattern opacity-30 pointer-events-none" />
       <div className="section-container relative z-10 text-center">
         <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="badge-accent mb-6 inline-flex">
-          Programme Schedule
+          Post-Awards Roadmap
         </motion.span>
         <motion.h1
           initial={{ opacity: 0, y: 32 }}
@@ -83,7 +80,7 @@ const Timeline = () => (
           transition={{ duration: 0.6 }}
           className="font-display font-black text-5xl sm:text-6xl lg:text-7xl text-white mb-6"
         >
-          Awards <span className="gradient-text">Timeline</span>
+          Ecosystem & <span className="gradient-text">Roadmap</span>
         </motion.h1>
         <motion.p
           initial={{ opacity: 0, y: 20 }}
@@ -91,7 +88,7 @@ const Timeline = () => (
           transition={{ delay: 0.2 }}
           className="text-slate-300 text-lg max-w-xl mx-auto"
         >
-          From opening applications to the grand ceremony — plan your journey with our detailed programme schedule.
+          Explore our roadmap for winner recognition, knowledge sharing, alumni community building, and program evaluation.
         </motion.p>
       </div>
     </section>
@@ -104,8 +101,8 @@ const Timeline = () => (
             const c = colorMap[phase.color];
             return (
               <div key={phase.phase} className="flex-1 flex flex-col items-center gap-2">
-                <div className={`w-full h-2 rounded-full ${phase.status === 'upcoming' ? 'bg-surface-100' : phase.status === 'active' ? c.line : c.line} relative overflow-hidden`}>
-                  {phase.status === 'active' && (
+                <div className={`w-full h-2 rounded-full ${phase.status === 'upcoming' ? 'bg-surface-100' : (phase.status === 'active' || phase.status === 'ongoing') ? c.line : c.line} relative overflow-hidden`}>
+                  {(phase.status === 'active' || phase.status === 'ongoing') && (
                     <motion.div
                       animate={{ x: ['0%', '100%', '0%'] }}
                       transition={{ duration: 2, repeat: Infinity }}
@@ -113,7 +110,7 @@ const Timeline = () => (
                     />
                   )}
                 </div>
-                <p className={`text-xs font-medium ${phase.status === 'upcoming' ? 'text-slate-600' : phase.status === 'active' ? 'text-accent-400' : 'text-emerald-400'}`}>
+                <p className={`text-xs font-medium ${phase.status === 'upcoming' ? 'text-slate-600' : (phase.status === 'active' || phase.status === 'ongoing') ? 'text-accent-400' : 'text-emerald-400'}`}>
                   {phase.phase}
                 </p>
               </div>
@@ -168,7 +165,7 @@ const Timeline = () => (
                       {/* Dot */}
                       <div className={`absolute left-0 top-1 w-4 h-4 rounded-full border-2 z-10 ${
                         m.status === 'completed' ? `${c.dot} border-white/30` :
-                        m.status === 'active'    ? `${c.dot} border-white/50 shadow-glow` :
+                        (m.status === 'active' || m.status === 'ongoing') ? `${c.dot} border-white/50 shadow-glow` :
                                                    'bg-surface-100 border-slate-700'
                       }`} />
 
@@ -196,13 +193,13 @@ const Timeline = () => (
     <section className="section-py bg-surface-200/50">
       <div className="section-container text-center">
         <SectionHeader
-          badge="Applications Close 31 Mar 2026"
-          title="Don't Miss the"
-          highlight="Deadline"
-          subtitle="Submit your application before 31 March 2026 to be part of Sri Lanka's most prestigious AI Awards."
+          badge="Prepare for the Next Cycle"
+          title="Looking Ahead to the"
+          highlight="2027 Program"
+          subtitle="Keep up with updates, review the evaluation results, and get ready for the next edition of the National AI Awards."
         />
-        <Link to="/apply">
-          <Button variant="gold" size="lg">Apply Before Deadline <RiArrowRightLine /></Button>
+        <Link to="/contact">
+          <Button variant="gold" size="lg">Get in Touch <RiArrowRightLine /></Button>
         </Link>
       </div>
     </section>

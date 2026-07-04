@@ -49,16 +49,14 @@ const JWT = {
 };
 
 const AWARD_CATEGORIES = [
-  'AI in Healthcare',
-  'AI in Finance & FinTech',
+  'Core National Awards',
+  'Women in AI Leadership Award',
+  'Innovation & Future-Focused Awards',
   'AI in Agriculture',
+  'AI in Banking, Finance & Insurance',
+  'AI in Healthcare & Life Sciences',
+  'AI in Export Development',
   'AI in Education',
-  'AI in Manufacturing & Industry',
-  'AI in Smart Cities & Infrastructure',
-  'AI in Cybersecurity',
-  'AI Innovation by SMEs',
-  'AI Research Excellence',
-  'AI Startup of the Year',
 ];
 
 module.exports = {

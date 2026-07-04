@@ -147,9 +147,10 @@ const FAQItem = ({ faq, isOpen, onToggle }) => (
    MAIN COMPONENT
    ═══════════════════════════════════════════════════════════════════════════ */
 const CandidateDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserLocal } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [imageUploading, setImageUploading] = useState(false);
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [notifications, setNotifications] = useState([]);
@@ -226,12 +227,29 @@ const CandidateDashboard = () => {
     }
   };
 
-  const markRead = async (id) => {
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('profileImage', file);
+
     try {
-      await notificationService.markAsRead(id);
-      setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
-    } catch { /* ignore */ }
+      setImageUploading(true);
+      const { data } = await api.post('/auth/profile-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      updateUserLocal(data.data.user);
+      toast.success('Profile picture updated successfully!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to upload profile picture.');
+    } finally {
+      setImageUploading(false);
+    }
   };
+
+  const drafts = applications.filter(a => a.status === 'draft');
+  const submitted = applications.filter(a => a.status !== 'draft');
 
   const markAllRead = async () => {
     try {
@@ -335,11 +353,18 @@ const CandidateDashboard = () => {
         <div className={`lg:col-span-1 space-y-4 lg:block ${sidebarOpen ? 'block' : 'hidden'} lg:sticky lg:top-24`}>
           {/* Avatar card */}
           <div className="glass-card p-6 text-center !hover:transform-none">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-accent-500/30 to-gold-500/20 border border-accent-500/30 flex items-center justify-center mx-auto mb-4 font-display font-black text-accent-300 text-2xl">
-              {user?.firstName?.charAt(0) || 'C'}
-            </div>
-            <h2 className="font-display font-bold text-white text-base leading-tight">{user?.fullName}</h2>
-            <p className="text-slate-500 text-xs mt-1 truncate">{user?.email}</p>
+            {user?.profileImage ? (
+              <img
+                src={`http://localhost:5000/${user.profileImage}`}
+                alt={user.fullName}
+                className="w-16 h-16 rounded-full object-cover border border-white/20 shadow-glow mx-auto mb-4"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-accent-500/15 border border-accent-500/30 flex items-center justify-center mx-auto mb-4 font-display font-bold text-accent-300 text-2xl">
+                {user?.firstName?.charAt(0) || 'C'}
+              </div>
+            )}
+            <h2 className="font-display font-bold text-white text-lg">{user?.fullName}</h2>
             <span className="badge-accent mt-2 text-[10px] uppercase font-mono">{user?.role}</span>
           </div>
 
@@ -710,76 +735,70 @@ const CandidateDashboard = () => {
             {/* ══ 7. TIMELINE ═══════════════════════════════════════════════ */}
             {activeTab === 'timeline' && (
               <div>
-                <div className="mb-6">
-                  <h3 className="font-display font-bold text-white text-xl">Awards Timeline</h3>
-                  <p className="text-slate-400 text-xs mt-1">Programme schedule and key milestones for the 2026 awards.</p>
-                </div>
-
-                {/* Phase progress bar */}
-                <div className="flex items-center gap-2 mb-8">
-                  {timelinePhases.map((phase) => {
-                    const c = colorMap[phase.color];
-                    return (
-                      <div key={phase.phase} className="flex-1 flex flex-col items-center gap-1.5">
-                        <div className={`w-full h-1.5 rounded-full ${phase.status === 'upcoming' ? 'bg-white/8' : c.line}`} />
-                        <p className={`text-[10px] font-medium hidden sm:block ${
-                          phase.status === 'active' ? 'text-accent-400' :
-                          phase.status === 'completed' ? 'text-emerald-400' : 'text-slate-600'
-                        }`}>{phase.phase}</p>
+                <h3 className="font-display font-bold text-white text-xl mb-6">Profile Details</h3>
+                
+                {/* Profile Picture Section */}
+                <div className="flex flex-col sm:flex-row items-center gap-6 p-5 rounded-2xl bg-white/5 border border-white/5 mb-6">
+                  <div className="relative">
+                    {user?.profileImage ? (
+                      <img
+                        src={`http://localhost:5000/${user.profileImage}`}
+                        alt={user.fullName}
+                        className="w-24 h-24 rounded-full object-cover border border-white/10 shadow-glow"
+                      />
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-accent-500/15 border border-accent-500/30 flex items-center justify-center text-3xl font-display font-bold text-accent-300">
+                        {user?.firstName?.charAt(0) || 'C'}
                       </div>
-                    );
-                  })}
+                    )}
+                    {imageUploading && (
+                      <div className="absolute inset-0 bg-navy-950/70 rounded-full flex items-center justify-center">
+                        <div className="w-6 h-6 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-center sm:text-left">
+                    <h4 className="text-white text-sm font-bold">Profile Picture</h4>
+                    <p className="text-slate-500 text-xs mt-1">Supports JPEG, PNG or WebP. Max 5MB.</p>
+                    <label className="mt-3 inline-flex items-center gap-2 btn-ghost text-xs !py-2 !px-3 cursor-pointer">
+                      <RiUserLine className="text-sm" />
+                      Choose Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={imageUploading}
+                      />
+                    </label>
+                  </div>
                 </div>
 
-                <div className="space-y-6">
-                  {timelinePhases.map((phase, phaseIdx) => {
-                    const c = colorMap[phase.color];
-                    return (
-                      <motion.div
-                        key={phase.phase}
-                        initial={{ opacity: 0, y: 16 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.4, delay: phaseIdx * 0.08 }}
-                        className="rounded-2xl overflow-hidden border border-white/8 bg-white/3"
-                      >
-                        <div className="p-4 border-b border-white/8 flex items-center justify-between flex-wrap gap-3">
-                          <div className="flex items-center gap-3">
-                            <span className={`badge border text-xs ${c.badge}`}>{phase.phase}</span>
-                            <span className={`badge border text-xs ${c.badge}`}>{statusLabel[phase.status]}</span>
-                            <h4 className="font-display font-bold text-white text-base">{phase.title}</h4>
-                          </div>
-                          <div className="flex items-center gap-2 text-xs text-slate-400">
-                            <RiCalendarLine className="text-accent-400" />
-                            {phase.dateRange}
-                          </div>
-                        </div>
-                        <div className="p-4 space-y-4">
-                          {phase.milestones.map((m, mi) => (
-                            <div key={m.date} className="flex items-start gap-4">
-                              <div className={`mt-0.5 w-3.5 h-3.5 rounded-full border-2 shrink-0 ${
-                                m.status === 'completed' ? `${c.dot} border-white/30` :
-                                m.status === 'active'    ? `${c.dot} border-white/50` :
-                                'bg-surface-100 border-slate-700'
-                              }`} />
-                              <div className="flex-1 flex items-start justify-between gap-4 flex-wrap">
-                                <p className={`text-sm font-medium ${m.status === 'upcoming' ? 'text-slate-500' : 'text-white'}`}>
-                                  {m.event}
-                                  {m.status === 'completed' && <RiCheckLine className="inline ml-1.5 text-emerald-400" size={12} />}
-                                </p>
-                                <span className="text-slate-600 text-xs font-mono shrink-0">{m.date}</span>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </motion.div>
-                    );
-                  })}
-                </div>
-
-                <div className="mt-6 text-center">
-                  <Link to="/timeline" className="text-accent-400 hover:text-accent-300 text-xs font-semibold inline-flex items-center gap-1">
-                    View full public timeline <RiExternalLinkLine size={12} />
-                  </Link>
+                <div className="grid sm:grid-cols-2 gap-6">
+                  <div>
+                    <span className="block text-xs text-slate-500 mb-1">First Name</span>
+                    <p className="text-white text-sm font-medium bg-white/5 p-3 rounded-xl border border-white/5">{user?.firstName}</p>
+                  </div>
+                  <div>
+                    <span className="block text-xs text-slate-500 mb-1">Last Name</span>
+                    <p className="text-white text-sm font-medium bg-white/5 p-3 rounded-xl border border-white/5">{user?.lastName}</p>
+                  </div>
+                  <div>
+                    <span className="block text-xs text-slate-500 mb-1">Email Address</span>
+                    <p className="text-white text-sm font-medium bg-white/5 p-3 rounded-xl border border-white/5">{user?.email}</p>
+                  </div>
+                  <div>
+                    <span className="block text-xs text-slate-500 mb-1">Phone Number</span>
+                    <p className="text-white text-sm font-medium bg-white/5 p-3 rounded-xl border border-white/5">{user?.phone || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <span className="block text-xs text-slate-500 mb-1">Organisation / Institution</span>
+                    <p className="text-white text-sm font-medium bg-white/5 p-3 rounded-xl border border-white/5">{user?.organization || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <span className="block text-xs text-slate-500 mb-1">Designation</span>
+                    <p className="text-white text-sm font-medium bg-white/5 p-3 rounded-xl border border-white/5">{user?.designation || 'Not provided'}</p>
+                  </div>
                 </div>
               </div>
             )}

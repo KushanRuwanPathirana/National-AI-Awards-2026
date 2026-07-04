@@ -133,4 +133,55 @@ const getEvaluationsByApplication = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { getAssignedApplications, getOrCreateEvaluation, saveEvaluation, getEvaluationsByApplication };
+// ── Judge: Dashboard Stats ─────────────────────────────────────────────────────
+const getJudgeDashboardStats = async (req, res, next) => {
+  try {
+    const judgeId = req.user._id;
+
+    // Fetch all assigned applications
+    const applications = await Application.find({ assignedJudges: judgeId })
+      .populate('category', 'name')
+      .sort({ updatedAt: -1 })
+      .select('projectTitle category status updatedAt submittedAt');
+
+    // Fetch all evaluations by this judge
+    const evaluations = await Evaluation.find({ judge: judgeId })
+      .populate('application', 'projectTitle')
+      .sort({ updatedAt: -1 });
+
+    const total = applications.length;
+    const completed = evaluations.filter(e => e.isSubmitted).length;
+    const drafted = evaluations.filter(e => e.isDraft && !e.isSubmitted).length;
+    const pending = total - completed;
+
+    const submittedEvals = evaluations.filter(e => e.isSubmitted && e.weightedScore > 0);
+    const avgScore =
+      submittedEvals.length > 0
+        ? submittedEvals.reduce((s, e) => s + (e.weightedScore || 0), 0) / submittedEvals.length
+        : 0;
+
+    // Recent activity: last 5 touched evaluations
+    const recentActivity = evaluations.slice(0, 5).map(e => ({
+      applicationId: e.application?._id,
+      projectTitle: e.application?.projectTitle,
+      status: e.isSubmitted ? 'submitted' : e.isDraft ? 'draft' : 'not_started',
+      score: e.weightedScore,
+      updatedAt: e.updatedAt,
+    }));
+
+    // Assigned categories (unique)
+    const categories = [...new Map(
+      applications.map(a => [a.category?._id?.toString(), a.category?.name])
+    ).entries()].map(([, name]) => name).filter(Boolean);
+
+    return successResponse(res, {
+      data: {
+        stats: { total, completed, pending, drafted, avgScore },
+        recentActivity,
+        categories,
+      },
+    });
+  } catch (error) { next(error); }
+};
+
+module.exports = { getAssignedApplications, getOrCreateEvaluation, saveEvaluation, getEvaluationsByApplication, getJudgeDashboardStats };

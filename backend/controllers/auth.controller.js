@@ -376,11 +376,57 @@ const getMe = async (req, res) => {
   });
 };
 
-// @desc    Logout
+// @desc    Logout user / clear cookie
 // @route   POST /api/auth/logout
 // @access  Private
-const logout = (req, res) => {
-  return successResponse(res, { message: 'Logged out successfully.' });
+const logout = async (req, res, next) => {
+  try {
+    res.cookie('token', 'none', {
+      expires: new Date(Date.now() + 10 * 1000),
+      httpOnly: true,
+    });
+
+    if (req.user) {
+      logger.info(`User logged out: ${req.user.email}`);
+    }
+
+    return successResponse(res, {
+      statusCode: 200,
+      message: 'Logged out successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
-module.exports = { register, login, getMe, logout, verifyOTP, resendOTP, forgotPassword, resetPassword, changePassword };
+// @desc    Update profile image
+// @route   POST /api/auth/profile-image
+// @access  Private
+const updateProfileImage = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return errorResponse(res, { statusCode: 400, message: 'Please upload an image file (JPEG, PNG, WebP).' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return errorResponse(res, { statusCode: 404, message: 'User not found.' });
+    }
+
+    // Save relative path: e.g. uploads/profiles/filename.png
+    const relativePath = `uploads/profiles/${req.file.filename}`;
+    user.profileImage = relativePath;
+    await user.save({ validateBeforeSave: false });
+
+    logger.info(`Profile image updated for: ${user.email}`);
+
+    return successResponse(res, {
+      message: 'Profile image updated successfully.',
+      data: { user },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, getMe, logout, verifyOTP, resendOTP, forgotPassword, resetPassword, changePassword, updateProfileImage };
