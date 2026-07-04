@@ -521,6 +521,8 @@ const AdminDashboard = () => {
               { id: 'applications', label: 'Manage Nominations', icon: RiFileList3Line },
               { id: 'monitoring', label: 'Application Monitoring', icon: RiFileChartLine },
               { id: 'users', label: 'User Directory', icon: RiTeamLine },
+              { id: 'candidates', label: 'Candidates', icon: RiUserLine },
+              { id: 'judges', label: 'Judges', icon: RiTeamLine },
               { id: 'categories', label: 'Categories & Criteria', icon: RiFolderShield2Line },
               { id: 'content', label: 'Website Content', icon: RiSettings4Line },
               { id: 'broadcast', label: 'Broadcast Alerts', icon: RiMailSendLine },
@@ -705,7 +707,95 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
-                {/* 2. APPLICATIONS TAB */}
+                {/* 2. CANDIDATES TAB */}
+                {activeTab === 'candidates' && (
+                  <div>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                      <div>
+                        <h3 className="font-display font-bold text-white text-xl">Registered Candidates</h3>
+                        <p className="text-slate-400 text-xs mt-1">View all candidates currently registered in the system.</p>
+                      </div>
+                      <div className="text-sm text-slate-400">{users.filter((userItem) => userItem.role === 'candidate').length} candidate{users.filter((userItem) => userItem.role === 'candidate').length === 1 ? '' : 's'}</div>
+                    </div>
+
+                    {users.filter((userItem) => userItem.role === 'candidate').length > 0 ? (
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {users.filter((userItem) => userItem.role === 'candidate').map((candidate) => (
+                          <div key={candidate._id} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-white font-semibold">{candidate.firstName} {candidate.lastName}</div>
+                                <div className="text-[11px] text-slate-400 mt-1">{candidate.email}</div>
+                              </div>
+                              <span className="rounded-full bg-accent-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-accent-300">
+                                Candidate
+                              </span>
+                            </div>
+                            {(candidate.organization || candidate.designation) && (
+                              <div className="mt-3 text-sm text-slate-400">
+                                {candidate.organization}{candidate.organization && candidate.designation ? ' • ' : ''}{candidate.designation}
+                              </div>
+                            )}
+                            <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                              <span className="rounded-full bg-white/5 px-2.5 py-1">Phone: {candidate.phone || 'Not provided'}</span>
+                              <span className="rounded-full bg-white/5 px-2.5 py-1">Role: {candidate.role}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-slate-400">
+                        No candidates have been registered yet.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 3. JUDGES TAB */}
+                {activeTab === 'judges' && (
+                  <div>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                      <div>
+                        <h3 className="font-display font-bold text-white text-xl">Registered Judges</h3>
+                        <p className="text-slate-400 text-xs mt-1">View all judges currently registered in the system.</p>
+                      </div>
+                      <div className="text-sm text-slate-400">{judgesList.length} judge{judgesList.length === 1 ? '' : 's'}</div>
+                    </div>
+
+                    {judgesList.length > 0 ? (
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {judgesList.map((judge) => (
+                          <div key={judge._id} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-white font-semibold">{judge.firstName} {judge.lastName}</div>
+                                <div className="text-[11px] text-slate-400 mt-1">{judge.email}</div>
+                              </div>
+                              <span className="rounded-full bg-accent-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-accent-300">
+                                Judge
+                              </span>
+                            </div>
+                            {(judge.organization || judge.designation) && (
+                              <div className="mt-3 text-sm text-slate-400">
+                                {judge.organization}{judge.organization && judge.designation ? ' • ' : ''}{judge.designation}
+                              </div>
+                            )}
+                            <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                              <span className="rounded-full bg-white/5 px-2.5 py-1">Phone: {judge.phone || 'Not provided'}</span>
+                              <span className="rounded-full bg-white/5 px-2.5 py-1">Role: {judge.role}</span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-slate-400">
+                        No judges have been registered yet.
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* 3. APPLICATIONS TAB */}
                 {activeTab === 'applications' && (
                   <div>
                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
