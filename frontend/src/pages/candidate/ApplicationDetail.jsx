@@ -7,7 +7,7 @@ import {
   RiTimeLine, RiTeamLine, RiGlobalLine, RiSurveyLine,
 } from 'react-icons/ri';
 import applicationService from '../../services/application.service';
-import { API_ORIGIN } from '../../services/api';
+import { buildAssetUrl } from '../../services/api';
 
 const statusWorkflow = [
   'draft',
@@ -168,7 +168,7 @@ const ApplicationDetail = () => {
                   {app.documents?.map(doc => (
                     <a
                       key={doc._id}
-                      href={`${API_ORIGIN}/${doc.filePath}`}
+                      href={buildAssetUrl(doc.filePath)}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/5 hover:border-accent-500/30 hover:bg-white/10 transition-all group"

@@ -30,6 +30,8 @@ pids/
 # Uploads
 backend/uploads/*
 !backend/uploads/.gitkeep
+!backend/uploads/documents/
+!backend/uploads/documents/.gitkeep
 
 # OS files
 .DS_Store

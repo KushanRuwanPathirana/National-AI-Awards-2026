@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 const { authenticate } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
 const {
@@ -12,13 +13,16 @@ const {
 } = require('../controllers/application.controller');
 
 // ── Multer Config ──────────────────────────────────────────────────────────────
+const documentsUploadDir = path.join(__dirname, '../uploads/documents');
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, path.join(__dirname, '../uploads/documents'));
+    fs.mkdirSync(documentsUploadDir, { recursive: true });
+    cb(null, documentsUploadDir);
   },
   filename: (req, file, cb) => {
     const unique = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
-    cb(null, `${unique}-${file.originalname}`);
+    cb(null, `${unique}-${path.basename(file.originalname)}`);
   },
 });
 
@@ -29,7 +33,11 @@ const upload = multer({
     const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'application/msword',
       'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
     if (allowed.includes(file.mimetype)) cb(null, true);
-    else cb(new Error('Invalid file type. Only PDF, images, and Word documents are allowed.'));
+    else {
+      const error = new Error('Invalid file type. Only PDF, images, and Word documents are allowed.');
+      error.statusCode = 400;
+      cb(error);
+    }
   },
 });
 

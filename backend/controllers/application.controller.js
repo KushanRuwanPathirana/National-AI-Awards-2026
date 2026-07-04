@@ -10,6 +10,14 @@ const path = require('path');
 const fs = require('fs');
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
+const getPublicUploadPath = (file) => path.posix.join('uploads', 'documents', file.filename);
+
+const resolveStoredFilePath = (filePath) => {
+  if (!filePath) return null;
+  const normalized = filePath.replace(/\\/g, '/');
+  if (path.isAbsolute(normalized)) return normalized;
+  return path.join(__dirname, '..', normalized);
+};
 
 const createNotification = async ({ recipient, type, title, message, link, relatedApplication }) => {
   try {
@@ -309,7 +317,7 @@ const uploadDocuments = async (req, res, next) => {
     const newDocs = req.files.map(f => ({
       fieldName: f.fieldname,
       originalName: f.originalname,
-      filePath: f.path.replace(/\\/g, '/'),
+      filePath: getPublicUploadPath(f),
       mimeType: f.mimetype,
       size: f.size,
     }));
@@ -334,8 +342,9 @@ const deleteDocument = async (req, res, next) => {
 
     const doc = application.documents[docIndex];
     // Remove file from disk
-    if (doc.filePath && fs.existsSync(doc.filePath)) {
-      fs.unlinkSync(doc.filePath);
+    const diskPath = resolveStoredFilePath(doc.filePath);
+    if (diskPath && fs.existsSync(diskPath)) {
+      fs.unlinkSync(diskPath);
     }
 
     application.documents.splice(docIndex, 1);

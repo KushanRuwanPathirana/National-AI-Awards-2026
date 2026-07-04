@@ -7,7 +7,7 @@ import {
   RiStarLine, RiFileTextLine, RiFileWordLine,
 } from 'react-icons/ri';
 import evaluationService from '../../services/evaluation.service';
-import { API_ORIGIN } from '../../services/api';
+import { buildAssetUrl } from '../../services/api';
 
 const EvaluationForm = () => {
   const { id } = useParams(); // applicationId
@@ -127,7 +127,7 @@ const EvaluationForm = () => {
                 {app.documents.map(doc => (
                   <a
                     key={doc._id}
-                    href={`${API_ORIGIN}/${doc.filePath}`}
+                    href={buildAssetUrl(doc.filePath)}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/5 border border-white/5 hover:border-accent-500/30 hover:bg-white/10 transition-all text-xs"

@@ -89,6 +89,7 @@ const saveEvaluation = async (req, res, next) => {
       evaluation.isSubmitted = true;
       evaluation.isDraft = false;
       evaluation.submittedAt = new Date();
+      await evaluation.save();
 
       // Update application's average score
       const allEvals = await Evaluation.find({ application: applicationId, isSubmitted: true });
@@ -98,19 +99,23 @@ const saveEvaluation = async (req, res, next) => {
       await application.save({ validateBeforeSave: false });
 
       // Notify admin
-      await Notification.create({
-        recipient: application.candidate,
-        type: 'evaluation_submitted',
-        title: 'Your application has been evaluated',
-        message: `A judge has submitted their evaluation for "${application.projectTitle}".`,
-        link: `/dashboard/applications/${application._id}`,
-        relatedApplication: application._id,
-      });
+      try {
+        await Notification.create({
+          recipient: application.candidate,
+          type: 'evaluation_submitted',
+          title: 'Your application has been evaluated',
+          message: `A judge has submitted their evaluation for "${application.projectTitle}".`,
+          link: `/dashboard/applications/${application._id}`,
+          relatedApplication: application._id,
+        });
+      } catch (notificationError) {
+        logger.error(`Evaluation notification failed: ${notificationError.message}`);
+      }
     } else {
       evaluation.isDraft = true;
+      await evaluation.save();
     }
 
-    await evaluation.save();
     return successResponse(res, { message: submit ? 'Evaluation submitted!' : 'Evaluation saved as draft.', data: { evaluation } });
   } catch (error) { next(error); }
 };

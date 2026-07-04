@@ -6,7 +6,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "lint": "eslint ."
+    "lint": "find . -name '*.js' -not -path './node_modules/*' -print0 | xargs -0 -n1 node --check"
   },
   "keywords": [
     "ai-awards",

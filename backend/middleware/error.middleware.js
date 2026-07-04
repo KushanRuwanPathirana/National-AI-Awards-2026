@@ -31,6 +31,18 @@ const errorHandler = (err, req, res, next) => {
     statusCode = 400;
   }
 
+  // Multer upload errors
+  if (err.name === 'MulterError') {
+    statusCode = 400;
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      message = 'Uploaded file is too large. Maximum allowed size is 10MB.';
+    } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      message = 'Unexpected upload field. Please upload documents using the documents field.';
+    } else {
+      message = err.message || 'File upload failed.';
+    }
+  }
+
   // JWT errors
   if (err.name === 'JsonWebTokenError') {
     message = 'Invalid token.';
@@ -44,7 +56,9 @@ const errorHandler = (err, req, res, next) => {
 
   // Log server errors
   if (statusCode >= 500) {
-    logger.error(`${err.stack || err.message}`);
+    logger.error(`${req.method} ${req.originalUrl} -> ${statusCode}: ${err.stack || err.message}`);
+  } else {
+    logger.warn(`${req.method} ${req.originalUrl} -> ${statusCode}: ${message}`);
   }
 
   res.status(statusCode).json({

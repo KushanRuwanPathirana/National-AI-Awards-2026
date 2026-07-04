@@ -2,6 +2,15 @@ import axios from 'axios';
 
 export const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5001/api';
 export const API_ORIGIN = BASE_URL.replace(/\/api\/?$/, '');
+export const buildAssetUrl = (filePath = '') => {
+  const normalizedPath = String(filePath).replace(/\\/g, '/');
+  const uploadIndex = normalizedPath.indexOf('/uploads/');
+  const publicPath = uploadIndex >= 0
+    ? normalizedPath.slice(uploadIndex + 1)
+    : normalizedPath.replace(/^\/+/, '');
+
+  return `${API_ORIGIN}/${publicPath}`;
+};
 
 const api = axios.create({
   baseURL: BASE_URL,
