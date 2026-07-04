@@ -8,9 +8,9 @@ import {
   LineChart, Line, PieChart, Pie, Cell
 } from 'recharts';
 import {
-  RiUserLine, RiAwardLine, RiLockPasswordLine, RiLogoutBoxLine,
+  RiAwardLine, RiLockPasswordLine, RiLogoutBoxLine,
   RiCheckDoubleLine, RiFileList3Line, RiSettings4Line, RiTeamLine,
-  RiDashboardLine, RiFileChartLine, RiShieldUserLine, RiMailSendLine,
+  RiDashboardLine, RiFileChartLine, RiMailSendLine,
   RiArrowRightLine, RiFolderShield2Line, RiRefreshLine, RiPulseLine,
 } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
@@ -18,7 +18,6 @@ import api from '../../services/api';
 import adminService from '../../services/admin.service';
 import applicationService from '../../services/application.service';
 import categoryService from '../../services/category.service';
-import evaluationCriteriaService from '../../services/evaluationCriteria.service';
 import contentService from '../../services/content.service';
 
 const COLORS = ['#0072ff', '#00ff87', '#ffc658', '#ff7300', '#d0ed57', '#a4de6c'];
@@ -32,8 +31,8 @@ const AdminDashboard = () => {
   const [stats, setStats] = useState(null);
   const [applications, setApplications] = useState([]);
   const [users, setUsers] = useState([]);
+  const [admins, setAdmins] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [criteria, setCriteria] = useState([]);
   const [contentBlocks, setContentBlocks] = useState([]);
   const [monitoring, setMonitoring] = useState(null);
   const [judgeProgress, setJudgeProgress] = useState([]);
@@ -58,11 +57,8 @@ const AdminDashboard = () => {
   const [eligibilityReview, setEligibilityReview] = useState({ appId: null, isEligible: true, note: '' });
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '', shortDescription: '', order: 0, maxApplications: '', isActive: true });
   const [editingCategoryId, setEditingCategoryId] = useState(null);
-  const [criteriaForm, setCriteriaForm] = useState({ name: '', description: '', weight: 10, maxScore: 10, category: '', order: 0, isActive: true });
-  const [editingCriteriaId, setEditingCriteriaId] = useState(null);
   const [contentForm, setContentForm] = useState({ page: 'home', key: '', title: '', type: 'text', value: '', order: 0, isActive: true });
   const [editingContentId, setEditingContentId] = useState(null);
-  const [userForm, setUserForm] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'candidate', phone: '', organization: '', designation: '' });
   const { register: regPassword, handleSubmit: handlePassword, formState: { errors: passErrors, isSubmitting: passSubmitting }, watch, reset: resetPassword } = useForm();
   const newPassword = watch('newPassword');
 
@@ -96,6 +92,13 @@ const AdminDashboard = () => {
     } catch { toast.error('Failed to load users.'); }
   };
 
+  const fetchAdmins = async () => {
+    try {
+      const { data } = await adminService.getUsers({ role: 'admin', limit: 100 });
+      setAdmins(data.data.users);
+    } catch { toast.error('Failed to load admins.'); }
+  };
+
   const fetchCategories = async () => {
     try {
       const { data } = await categoryService.getCategories();
@@ -123,13 +126,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchCriteria = async () => {
-    try {
-      const { data } = await evaluationCriteriaService.getAllCriteria();
-      setCriteria(data.data.criteria || []);
-    } catch { toast.error('Failed to load evaluation criteria.'); }
-  };
-
   const fetchContentBlocks = async () => {
     try {
       const { data } = await contentService.getContent();
@@ -139,7 +135,7 @@ const AdminDashboard = () => {
 
   const loadAll = async () => {
     setLoading(true);
-    await Promise.all([fetchStats(), fetchApps(), fetchUsers(), fetchCategories(), fetchCriteria(), fetchContentBlocks(), fetchAuditLogs(), fetchMonitoring()]);
+    await Promise.all([fetchStats(), fetchApps(), fetchUsers(), fetchAdmins(), fetchCategories(), fetchContentBlocks(), fetchAuditLogs(), fetchMonitoring()]);
     setLoading(false);
   };
 
@@ -190,6 +186,7 @@ const AdminDashboard = () => {
       await adminService.toggleUserStatus(userId);
       toast.success('User status updated.');
       fetchUsers();
+      fetchAdmins();
     } catch {
       toast.error('Failed to toggle user status.');
     }
@@ -202,20 +199,9 @@ const AdminDashboard = () => {
       await adminService.deleteUser(userId);
       toast.success('User deleted.');
       fetchUsers();
+      fetchAdmins();
     } catch {
       toast.error('Failed to delete user.');
-    }
-  };
-
-  const handleCreateUser = async (e) => {
-    e.preventDefault();
-    try {
-      await adminService.createUser(userForm);
-      toast.success('User created.');
-      setUserForm({ firstName: '', lastName: '', email: '', password: '', role: 'candidate', phone: '', organization: '', designation: '' });
-      fetchUsers();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to create user.');
     }
   };
 
@@ -262,54 +248,6 @@ const AdminDashboard = () => {
       fetchCategories();
     } catch {
       toast.error('Failed to delete category.');
-    }
-  };
-
-  const handleSubmitCriteria = async (e) => {
-    e.preventDefault();
-    try {
-      const payload = {
-        ...criteriaForm,
-        weight: Number(criteriaForm.weight || 10),
-        maxScore: Number(criteriaForm.maxScore || 10),
-        order: Number(criteriaForm.order || 0),
-      };
-      if (editingCriteriaId) {
-        await evaluationCriteriaService.updateCriteria(editingCriteriaId, payload);
-        toast.success('Evaluation criterion updated.');
-      } else {
-        await evaluationCriteriaService.createCriteria(payload);
-        toast.success('Evaluation criterion created.');
-      }
-      setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, category: '', order: 0, isActive: true });
-      setEditingCriteriaId(null);
-      fetchCriteria();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save evaluation criterion.');
-    }
-  };
-
-  const handleEditCriteria = (item) => {
-    setEditingCriteriaId(item._id);
-    setCriteriaForm({
-      name: item.name || '',
-      description: item.description || '',
-      weight: item.weight || 10,
-      maxScore: item.maxScore || 10,
-      category: item.category?._id || '',
-      order: item.order || 0,
-      isActive: item.isActive !== false,
-    });
-  };
-
-  const handleDeleteCriteria = async (id) => {
-    if (!window.confirm('Delete this evaluation criterion?')) return;
-    try {
-      await evaluationCriteriaService.deleteCriteria(id);
-      toast.success('Evaluation criterion deleted.');
-      fetchCriteria();
-    } catch {
-      toast.error('Failed to delete evaluation criterion.');
     }
   };
 
@@ -521,9 +459,7 @@ const AdminDashboard = () => {
               { id: 'applications', label: 'Manage Nominations', icon: RiFileList3Line },
               { id: 'monitoring', label: 'Application Monitoring', icon: RiFileChartLine },
               { id: 'users', label: 'User Directory', icon: RiTeamLine },
-              { id: 'candidates', label: 'Candidates', icon: RiUserLine },
-              { id: 'judges', label: 'Judges', icon: RiTeamLine },
-              { id: 'categories', label: 'Categories & Criteria', icon: RiFolderShield2Line },
+              { id: 'categories', label: 'Categories', icon: RiFolderShield2Line },
               { id: 'content', label: 'Website Content', icon: RiSettings4Line },
               { id: 'broadcast', label: 'Broadcast Alerts', icon: RiMailSendLine },
               { id: 'reports', label: 'Reports & Export', icon: RiFileChartLine },
@@ -704,6 +640,53 @@ const AdminDashboard = () => {
                         </div>
                       </div>
                     </div>
+                  </div>
+                )}
+
+                {/* 2. ADMINS TAB */}
+                {activeTab === 'admins' && (
+                  <div>
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                      <div>
+                        <h3 className="font-display font-bold text-white text-xl">Registered Admins</h3>
+                        <p className="text-slate-400 text-xs mt-1">View all administrators currently registered in the system.</p>
+                      </div>
+                      <div className="text-sm text-slate-400">{admins.length} admin{admins.length === 1 ? '' : 's'}</div>
+                    </div>
+
+                    {admins.length > 0 ? (
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {admins.map((admin) => (
+                          <div key={admin._id} className="rounded-2xl border border-white/10 bg-white/5 p-5">
+                            <div className="flex items-start justify-between gap-3">
+                              <div>
+                                <div className="text-white font-semibold">{admin.firstName} {admin.lastName}</div>
+                                <div className="text-[11px] text-slate-400 mt-1">{admin.email}</div>
+                              </div>
+                              <span className="rounded-full bg-accent-500/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-accent-300">
+                                Admin
+                              </span>
+                            </div>
+                            {(admin.organization || admin.designation) && (
+                              <div className="mt-3 text-sm text-slate-400">
+                                {admin.organization}{admin.organization && admin.designation ? ' • ' : ''}{admin.designation}
+                              </div>
+                            )}
+                            <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                              <span className="rounded-full bg-white/5 px-2.5 py-1">Phone: {admin.phone || 'Not provided'}</span>
+                              <span className="rounded-full bg-white/5 px-2.5 py-1">Role: {admin.role}</span>
+                              <span className={`rounded-full px-2.5 py-1 ${admin.isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'}`}>
+                                {admin.isActive ? 'Active' : 'Suspended'}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-white/10 px-4 py-8 text-center text-sm text-slate-400">
+                        No admins have been registered yet.
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -989,27 +972,6 @@ const AdminDashboard = () => {
                       </select>
                     </div>
 
-                    <div className="p-5 rounded-2xl bg-white/5 border border-white/5">
-                      <h4 className="font-display font-bold text-white text-base mb-4">Create New User</h4>
-                      <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        <input className="input-field" placeholder="First name" value={userForm.firstName} onChange={(e) => setUserForm({ ...userForm, firstName: e.target.value })} required />
-                        <input className="input-field" placeholder="Last name" value={userForm.lastName} onChange={(e) => setUserForm({ ...userForm, lastName: e.target.value })} required />
-                        <input className="input-field" type="email" placeholder="Email" value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} required />
-                        <input className="input-field" type="password" placeholder="Temporary password" value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} required />
-                        <input className="input-field" placeholder="Phone" value={userForm.phone} onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })} />
-                        <input className="input-field" placeholder="Organization" value={userForm.organization} onChange={(e) => setUserForm({ ...userForm, organization: e.target.value })} />
-                        <input className="input-field" placeholder="Designation" value={userForm.designation} onChange={(e) => setUserForm({ ...userForm, designation: e.target.value })} />
-                        <select className="input-field" value={userForm.role} onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}>
-                          <option value="candidate">Candidate</option>
-                          <option value="judge">Judge</option>
-                          <option value="admin">Admin</option>
-                        </select>
-                        <div className="md:col-span-2">
-                          <button type="submit" className="btn-primary text-xs">Create User</button>
-                        </div>
-                      </form>
-                    </div>
-
                     <div className="overflow-x-auto">
                       <table className="w-full text-xs text-left text-slate-300">
                         <thead className="bg-white/5 text-[10px] uppercase font-bold text-slate-400">
@@ -1048,13 +1010,13 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
-                {/* 4. CATEGORIES & CRITERIA TAB */}
+                {/* 4. CATEGORIES TAB */}
                 {activeTab === 'categories' && (
                   <div className="space-y-8">
                     <div className="flex justify-between items-center">
                       <div>
-                        <h3 className="font-display font-bold text-white text-xl">Award Categories & Evaluation Criteria</h3>
-                        <p className="text-slate-400 text-xs mt-1">Manage award categories and the scoring rubric used by judges.</p>
+                        <h3 className="font-display font-bold text-white text-xl">Award Categories</h3>
+                        <p className="text-slate-400 text-xs mt-1">Manage award categories available for nominations.</p>
                       </div>
                       <button onClick={handleSeedCategories} className="btn-primary text-xs">
                         Seed Default Categories
@@ -1096,53 +1058,6 @@ const AdminDashboard = () => {
                                 <div className="flex gap-2">
                                   <button onClick={() => handleEditCategory(c)} className="text-accent-400 text-xs">Edit</button>
                                   <button onClick={() => handleDeleteCategory(c._id)} className="text-red-400 text-xs">Delete</button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
-                        <h4 className="font-display font-bold text-white text-base">{editingCriteriaId ? 'Edit Criterion' : 'Create Evaluation Criterion'}</h4>
-                        <form onSubmit={handleSubmitCriteria} className="space-y-3">
-                          <input className="input-field" placeholder="Criterion name" value={criteriaForm.name} onChange={(e) => setCriteriaForm({ ...criteriaForm, name: e.target.value })} required />
-                          <textarea className="input-field h-20" placeholder="Description" value={criteriaForm.description} onChange={(e) => setCriteriaForm({ ...criteriaForm, description: e.target.value })} />
-                          <div className="grid grid-cols-3 gap-3">
-                            <input type="number" className="input-field" placeholder="Weight" value={criteriaForm.weight} onChange={(e) => setCriteriaForm({ ...criteriaForm, weight: e.target.value })} />
-                            <input type="number" className="input-field" placeholder="Max score" value={criteriaForm.maxScore} onChange={(e) => setCriteriaForm({ ...criteriaForm, maxScore: e.target.value })} />
-                            <input type="number" className="input-field" placeholder="Order" value={criteriaForm.order} onChange={(e) => setCriteriaForm({ ...criteriaForm, order: e.target.value })} />
-                          </div>
-                          <select className="input-field" value={criteriaForm.category} onChange={(e) => setCriteriaForm({ ...criteriaForm, category: e.target.value })}>
-                            <option value="">All categories</option>
-                            {categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
-                          </select>
-                          <label className="flex items-center gap-2 text-sm text-slate-300">
-                            <input type="checkbox" checked={criteriaForm.isActive} onChange={(e) => setCriteriaForm({ ...criteriaForm, isActive: e.target.checked })} />
-                            Active
-                          </label>
-                          <div className="flex gap-3">
-                            <button type="submit" className="btn-primary text-xs">{editingCriteriaId ? 'Save Criterion' : 'Create Criterion'}</button>
-                            {editingCriteriaId && <button type="button" onClick={() => { setEditingCriteriaId(null); setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, category: '', order: 0, isActive: true }); }} className="btn-ghost text-xs">Cancel</button>}
-                          </div>
-                        </form>
-                      </div>
-
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
-                        <h4 className="font-display font-bold text-white text-base">Current Criteria</h4>
-                        <div className="space-y-3 max-h-[420px] overflow-y-auto">
-                          {criteria.map(item => (
-                            <div key={item._id} className="p-3 rounded-xl bg-white/5 border border-white/10">
-                              <div className="flex justify-between items-start gap-3">
-                                <div>
-                                  <h5 className="font-semibold text-white text-sm">{item.name}</h5>
-                                  <p className="text-slate-400 text-[11px] mt-1">Weight {item.weight} · Max {item.maxScore}</p>
-                                </div>
-                                <div className="flex gap-2">
-                                  <button onClick={() => handleEditCriteria(item)} className="text-accent-400 text-xs">Edit</button>
-                                  <button onClick={() => handleDeleteCriteria(item._id)} className="text-red-400 text-xs">Delete</button>
                                 </div>
                               </div>
                             </div>
