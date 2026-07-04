@@ -15,8 +15,15 @@ const applicationService = {
 
   // Admin
   getAllApplications: (params) => api.get('/applications', { params }),
+  getMonitoringOverview: () => api.get('/applications/monitoring'),
+  getJudgeProgress: () => api.get('/applications/judge-progress'),
+  exportApplications: (format = 'csv') => api.get('/applications/export', { params: { format }, responseType: 'blob' }),
+  publishFinalists: (ids) => api.post('/applications/publish-finalists', { ids }),
+  publishWinners: (ids) => api.post('/applications/publish-winners', { ids }),
+  generateCertificates: (ids) => api.post('/applications/generate-certificates', { ids }),
   changeStatus: (id, data) => api.patch(`/applications/${id}/status`, data),
   assignJudges: (id, judgeIds) => api.patch(`/applications/${id}/assign-judges`, { judgeIds }),
+  reviewEligibility: (id, data) => api.patch(`/applications/${id}/review-eligibility`, data),
 };
 
 export default applicationService;

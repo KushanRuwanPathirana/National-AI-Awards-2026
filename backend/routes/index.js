@@ -6,6 +6,8 @@ const contactRoutes      = require('./contact.routes');
 const applicationRoutes  = require('./application.routes');
 const categoryRoutes     = require('./category.routes');
 const evaluationRoutes   = require('./evaluation.routes');
+const evaluationCriteriaRoutes = require('./evaluationCriteria.routes');
+const contentRoutes      = require('./content.routes');
 const notificationRoutes = require('./notification.routes');
 const adminRoutes        = require('./admin.routes');
 
@@ -15,6 +17,8 @@ router.use('/contact',       contactRoutes);
 router.use('/applications',  applicationRoutes);
 router.use('/categories',    categoryRoutes);
 router.use('/evaluations',   evaluationRoutes);
+router.use('/evaluation-criteria', evaluationCriteriaRoutes);
+router.use('/content',       contentRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/admin',         adminRoutes);
 

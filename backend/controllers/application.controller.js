@@ -1,11 +1,13 @@
 const Application = require('../models/Application.model');
 const Category = require('../models/Category.model');
+const Evaluation = require('../models/Evaluation.model');
 const Notification = require('../models/Notification.model');
 const AuditLog = require('../models/AuditLog.model');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
 const { APPLICATION_STATUS, ALLOWED_TRANSITIONS } = require('../config/constants');
 const { sendApplicationStatusUpdate } = require('../services/email.service');
 const logger = require('../utils/logger');
+const { buildApplicationsCsv, buildSimplePdf } = require('../utils/reportExporter');
 const path = require('path');
 const fs = require('fs');
 
@@ -355,6 +357,125 @@ const deleteDocument = async (req, res, next) => {
 };
 
 // ── Delete Application (Draft Only) ──────────────────────────────────────────
+const reviewEligibility = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { isEligible, note } = req.body;
+
+    const application = await Application.findById(id);
+    if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+
+    application.isEligible = isEligible;
+    application.adminNotes = note || application.adminNotes || '';
+    application.statusHistory.push({ status: application.status, changedBy: req.user._id, note: `Eligibility screened: ${isEligible ? 'eligible' : 'ineligible'}` });
+    await application.save();
+
+    await createAuditLog({ action: 'eligibility_reviewed', performedBy: req.user._id, targetId: application._id, description: `Eligibility reviewed: ${isEligible ? 'eligible' : 'ineligible'}`, req });
+
+    return successResponse(res, { message: 'Eligibility reviewed.', data: { application } });
+  } catch (error) { next(error); }
+};
+
+const getMonitoringOverview = async (req, res, next) => {
+  try {
+    const [total, pending, screened, assigned, completedEvaluation, pendingEvaluation] = await Promise.all([
+      Application.countDocuments(),
+      Application.countDocuments({ status: 'submitted' }),
+      Application.countDocuments({ isEligible: { $ne: null } }),
+      Application.countDocuments({ assignedJudges: { $exists: true, $ne: [] } }),
+      Evaluation.countDocuments({ isSubmitted: true }),
+      Evaluation.countDocuments({ isSubmitted: false }),
+    ]);
+
+    return successResponse(res, { data: { overview: { total, pending, screened, assigned, completedEvaluation, pendingEvaluation } } });
+  } catch (error) { next(error); }
+};
+
+const getJudgeProgress = async (req, res, next) => {
+  try {
+    const progress = await Evaluation.aggregate([
+      { $group: { _id: '$judge', submitted: { $sum: { $cond: ['$isSubmitted', 1, 0] } }, pending: { $sum: { $cond: ['$isSubmitted', 0, 1] } }, avgScore: { $avg: '$weightedScore' } } },
+      { $lookup: { from: 'users', localField: '_id', foreignField: '_id', as: 'judge' } },
+      { $unwind: '$judge' },
+      { $project: { _id: 0, judgeId: '$_id', judgeName: { $concat: ['$judge.firstName', ' ', '$judge.lastName'] }, email: '$judge.email', submitted: 1, pending: 1, avgScore: { $round: ['$avgScore', 2] } } },
+      { $sort: { submitted: -1, pending: 1 } },
+    ]);
+
+    return successResponse(res, { data: { progress } });
+  } catch (error) { next(error); }
+};
+
+const exportApplications = async (req, res, next) => {
+  try {
+    const { format = 'csv' } = req.query;
+    const applications = await Application.find({})
+      .populate('candidate', 'firstName lastName organization')
+      .populate('category', 'name')
+      .sort({ createdAt: -1 });
+
+    if (format === 'pdf') {
+      const lines = applications.map((app) => `${app.referenceNumber || 'N/A'} | ${app.projectTitle} | ${app.status} | ${app.averageScore?.toFixed(1) || '0'}`);
+      const pdfBuffer = Buffer.from(buildSimplePdf('AI Awards Report', lines), 'utf8');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', 'attachment; filename="ai-awards-report.pdf"');
+      return res.send(pdfBuffer);
+    }
+
+    const csv = buildApplicationsCsv(applications);
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="ai-awards-report.csv"');
+    return res.send(csv);
+  } catch (error) { next(error); }
+};
+
+const publishFinalists = async (req, res, next) => {
+  try {
+    const { ids = [] } = req.body;
+    const applications = await Application.find({ _id: { $in: ids } });
+    await Promise.all(applications.map(async (app) => {
+      app.publishedAsFinalist = true;
+      app.publishedAsWinner = false;
+      app.awardCitation = app.awardCitation || `${app.projectTitle} has been recognized as a finalist.`;
+      await app.save();
+    }));
+
+    return successResponse(res, { message: 'Finalists published.', data: { count: applications.length } });
+  } catch (error) { next(error); }
+};
+
+const publishWinners = async (req, res, next) => {
+  try {
+    const { ids = [] } = req.body;
+    const applications = await Application.find({ _id: { $in: ids } });
+    await Promise.all(applications.map(async (app, index) => {
+      app.publishedAsWinner = true;
+      app.publishedAsFinalist = true;
+      app.certificateNumber = app.certificateNumber || `CERT-${String(Date.now()).slice(-6)}-${String(index + 1).padStart(2, '0')}`;
+      app.certificateIssuedAt = new Date();
+      app.awardCitation = app.awardCitation || `${app.projectTitle} has been recognized as a winner.`;
+      await app.save();
+    }));
+
+    return successResponse(res, { message: 'Winners published.', data: { count: applications.length } });
+  } catch (error) { next(error); }
+};
+
+const generateCertificates = async (req, res, next) => {
+  try {
+    const { ids = [] } = req.body;
+    const applications = await Application.find({ _id: { $in: ids } }).populate('candidate', 'firstName lastName organization');
+    const generated = applications.map((app) => {
+      app.certificateNumber = app.certificateNumber || `CERT-${String(Date.now()).slice(-6)}-${String(applications.indexOf(app) + 1).padStart(2, '0')}`;
+      app.certificateIssuedAt = new Date();
+      app.awardCitation = app.awardCitation || `${app.projectTitle} has been recognized for excellence.`;
+      return app;
+    });
+
+    await Promise.all(generated.map((app) => app.save()));
+    return successResponse(res, { message: 'Certificates generated.', data: { count: generated.length, certificates: generated.map((app) => ({ id: app._id, certificateNumber: app.certificateNumber, awardCitation: app.awardCitation })) } });
+  } catch (error) { next(error); }
+};
+
 const deleteApplication = async (req, res, next) => {
   try {
     const { id } = req.params;
@@ -396,6 +517,8 @@ const deleteApplication = async (req, res, next) => {
 module.exports = {
   createApplication, updateApplication, submitApplication,
   getMyApplications, getApplicationById, getAllApplications,
-  changeApplicationStatus, assignJudges,
+  changeApplicationStatus, assignJudges, reviewEligibility,
+  getMonitoringOverview, getJudgeProgress, exportApplications,
+  publishFinalists, publishWinners, generateCertificates,
   uploadDocuments, deleteDocument, deleteApplication,
 };

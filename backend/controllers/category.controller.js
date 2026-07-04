@@ -36,8 +36,12 @@ const createCategory = async (req, res, next) => {
 // ── Admin: Update Category ──────────────────────────────────────────────────────
 const updateCategory = async (req, res, next) => {
   try {
-    const category = await Category.findByIdAndUpdate(req.params.id, req.body, { new: true, runValidators: true });
+    const category = await Category.findById(req.params.id);
     if (!category) return errorResponse(res, { statusCode: 404, message: 'Category not found.' });
+
+    Object.assign(category, req.body);
+    await category.save();
+
     return successResponse(res, { message: 'Category updated.', data: { category } });
   } catch (error) { next(error); }
 };

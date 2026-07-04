@@ -18,6 +18,8 @@ import api from '../../services/api';
 import adminService from '../../services/admin.service';
 import applicationService from '../../services/application.service';
 import categoryService from '../../services/category.service';
+import evaluationCriteriaService from '../../services/evaluationCriteria.service';
+import contentService from '../../services/content.service';
 
 const COLORS = ['#0072ff', '#00ff87', '#ffc658', '#ff7300', '#d0ed57', '#a4de6c'];
 
@@ -31,6 +33,10 @@ const AdminDashboard = () => {
   const [applications, setApplications] = useState([]);
   const [users, setUsers] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [criteria, setCriteria] = useState([]);
+  const [contentBlocks, setContentBlocks] = useState([]);
+  const [monitoring, setMonitoring] = useState(null);
+  const [judgeProgress, setJudgeProgress] = useState([]);
   const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -43,10 +49,20 @@ const AdminDashboard = () => {
   const [selectedApp, setSelectedApp] = useState(null);
   const [selectedJudges, setSelectedJudges] = useState([]);
   const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [selectedReportIds, setSelectedReportIds] = useState([]);
+  const [reportActionBusy, setReportActionBusy] = useState(false);
 
   // Change Password form
   const [changeSuccess, setChangeSuccess] = useState('');
   const [changeError,   setChangeError]   = useState('');
+  const [eligibilityReview, setEligibilityReview] = useState({ appId: null, isEligible: true, note: '' });
+  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', shortDescription: '', order: 0, maxApplications: '', isActive: true });
+  const [editingCategoryId, setEditingCategoryId] = useState(null);
+  const [criteriaForm, setCriteriaForm] = useState({ name: '', description: '', weight: 10, maxScore: 10, category: '', order: 0, isActive: true });
+  const [editingCriteriaId, setEditingCriteriaId] = useState(null);
+  const [contentForm, setContentForm] = useState({ page: 'home', key: '', title: '', type: 'text', value: '', order: 0, isActive: true });
+  const [editingContentId, setEditingContentId] = useState(null);
+  const [userForm, setUserForm] = useState({ firstName: '', lastName: '', email: '', password: '', role: 'candidate', phone: '', organization: '', designation: '' });
   const { register: regPassword, handleSubmit: handlePassword, formState: { errors: passErrors, isSubmitting: passSubmitting }, watch, reset: resetPassword } = useForm();
   const newPassword = watch('newPassword');
 
@@ -94,9 +110,36 @@ const AdminDashboard = () => {
     } catch { /* silent */ }
   };
 
+  const fetchMonitoring = async () => {
+    try {
+      const [{ data: monitoringData }, { data: judgeProgressData }] = await Promise.all([
+        applicationService.getMonitoringOverview(),
+        applicationService.getJudgeProgress(),
+      ]);
+      setMonitoring(monitoringData.data.overview);
+      setJudgeProgress(judgeProgressData.data.progress || []);
+    } catch {
+      toast.error('Failed to load monitoring metrics.');
+    }
+  };
+
+  const fetchCriteria = async () => {
+    try {
+      const { data } = await evaluationCriteriaService.getAllCriteria();
+      setCriteria(data.data.criteria || []);
+    } catch { toast.error('Failed to load evaluation criteria.'); }
+  };
+
+  const fetchContentBlocks = async () => {
+    try {
+      const { data } = await contentService.getContent();
+      setContentBlocks(data.data.content || []);
+    } catch { toast.error('Failed to load website content.'); }
+  };
+
   const loadAll = async () => {
     setLoading(true);
-    await Promise.all([fetchStats(), fetchApps(), fetchUsers(), fetchCategories(), fetchAuditLogs()]);
+    await Promise.all([fetchStats(), fetchApps(), fetchUsers(), fetchCategories(), fetchCriteria(), fetchContentBlocks(), fetchAuditLogs(), fetchMonitoring()]);
     setLoading(false);
   };
 
@@ -162,6 +205,155 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleCreateUser = async (e) => {
+    e.preventDefault();
+    try {
+      await adminService.createUser(userForm);
+      toast.success('User created.');
+      setUserForm({ firstName: '', lastName: '', email: '', password: '', role: 'candidate', phone: '', organization: '', designation: '' });
+      fetchUsers();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create user.');
+    }
+  };
+
+  const handleSubmitCategory = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...categoryForm,
+        order: Number(categoryForm.order || 0),
+        maxApplications: categoryForm.maxApplications === '' ? null : Number(categoryForm.maxApplications),
+      };
+      if (editingCategoryId) {
+        await categoryService.updateCategory(editingCategoryId, payload);
+        toast.success('Category updated.');
+      } else {
+        await categoryService.createCategory(payload);
+        toast.success('Category created.');
+      }
+      setCategoryForm({ name: '', description: '', shortDescription: '', order: 0, maxApplications: '', isActive: true });
+      setEditingCategoryId(null);
+      fetchCategories();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save category.');
+    }
+  };
+
+  const handleEditCategory = (category) => {
+    setEditingCategoryId(category._id);
+    setCategoryForm({
+      name: category.name || '',
+      description: category.description || '',
+      shortDescription: category.shortDescription || '',
+      order: category.order || 0,
+      maxApplications: category.maxApplications ?? '',
+      isActive: category.isActive !== false,
+    });
+  };
+
+  const handleDeleteCategory = async (id) => {
+    if (!window.confirm('Delete this category?')) return;
+    try {
+      await categoryService.deleteCategory(id);
+      toast.success('Category deleted.');
+      fetchCategories();
+    } catch {
+      toast.error('Failed to delete category.');
+    }
+  };
+
+  const handleSubmitCriteria = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...criteriaForm,
+        weight: Number(criteriaForm.weight || 10),
+        maxScore: Number(criteriaForm.maxScore || 10),
+        order: Number(criteriaForm.order || 0),
+      };
+      if (editingCriteriaId) {
+        await evaluationCriteriaService.updateCriteria(editingCriteriaId, payload);
+        toast.success('Evaluation criterion updated.');
+      } else {
+        await evaluationCriteriaService.createCriteria(payload);
+        toast.success('Evaluation criterion created.');
+      }
+      setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, category: '', order: 0, isActive: true });
+      setEditingCriteriaId(null);
+      fetchCriteria();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save evaluation criterion.');
+    }
+  };
+
+  const handleEditCriteria = (item) => {
+    setEditingCriteriaId(item._id);
+    setCriteriaForm({
+      name: item.name || '',
+      description: item.description || '',
+      weight: item.weight || 10,
+      maxScore: item.maxScore || 10,
+      category: item.category?._id || '',
+      order: item.order || 0,
+      isActive: item.isActive !== false,
+    });
+  };
+
+  const handleDeleteCriteria = async (id) => {
+    if (!window.confirm('Delete this evaluation criterion?')) return;
+    try {
+      await evaluationCriteriaService.deleteCriteria(id);
+      toast.success('Evaluation criterion deleted.');
+      fetchCriteria();
+    } catch {
+      toast.error('Failed to delete evaluation criterion.');
+    }
+  };
+
+  const handleSubmitContent = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = { ...contentForm, order: Number(contentForm.order || 0) };
+      if (editingContentId) {
+        await contentService.updateContent(editingContentId, payload);
+        toast.success('Content block updated.');
+      } else {
+        await contentService.createContent(payload);
+        toast.success('Content block created.');
+      }
+      setContentForm({ page: 'home', key: '', title: '', type: 'text', value: '', order: 0, isActive: true });
+      setEditingContentId(null);
+      fetchContentBlocks();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save content.');
+    }
+  };
+
+  const handleEditContent = (item) => {
+    setEditingContentId(item._id);
+    setContentForm({
+      page: item.page || 'home',
+      key: item.key || '',
+      title: item.title || '',
+      type: item.type || 'text',
+      value: item.value || '',
+      order: item.order || 0,
+      isActive: item.isActive !== false,
+    });
+  };
+
+  const handleDeleteContent = async (id) => {
+    if (!window.confirm('Delete this content block?')) return;
+    try {
+      await contentService.deleteContent(id);
+      toast.success('Content block deleted.');
+      fetchContentBlocks();
+    } catch {
+      toast.error('Failed to delete content.');
+    }
+  };
+
   // Seed default categories
   const handleSeedCategories = async () => {
     try {
@@ -197,8 +389,25 @@ const AdminDashboard = () => {
       toast.success('Judges assigned successfully.');
       setAssignModalOpen(false);
       fetchApps();
+      fetchMonitoring();
     } catch {
       toast.error('Failed to assign judges.');
+    }
+  };
+
+  const handleEligibilityReview = async (e) => {
+    e.preventDefault();
+    try {
+      await applicationService.reviewEligibility(eligibilityReview.appId, {
+        isEligible: eligibilityReview.isEligible,
+        note: eligibilityReview.note,
+      });
+      toast.success('Eligibility review saved.');
+      setEligibilityReview({ appId: null, isEligible: true, note: '' });
+      fetchApps();
+      fetchMonitoring();
+    } catch {
+      toast.error('Failed to save eligibility review.');
     }
   };
 
@@ -209,6 +418,87 @@ const AdminDashboard = () => {
   };
 
   const judgesList = users.filter(u => u.role === 'judge');
+
+  const toggleReportSelection = (appId) => {
+    setSelectedReportIds((prev) => prev.includes(appId) ? prev.filter((id) => id !== appId) : [...prev, appId]);
+  };
+
+  const handleExportReport = async (format = 'csv') => {
+    try {
+      const { data } = await applicationService.exportApplications(format);
+      const fileName = `ai-awards-report.${format}`;
+      const blob = new Blob([data], { type: format === 'pdf' ? 'application/pdf' : 'text/csv;charset=utf-8;' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = fileName;
+      link.click();
+      window.URL.revokeObjectURL(url);
+      toast.success(`Exported ${fileName}.`);
+    } catch {
+      toast.error('Report export failed.');
+    }
+  };
+
+  const handlePublishFinalists = async () => {
+    if (!selectedReportIds.length) {
+      toast.error('Select at least one application first.');
+      return;
+    }
+
+    setReportActionBusy(true);
+    try {
+      await applicationService.publishFinalists(selectedReportIds);
+      toast.success('Finalists published.');
+      setSelectedReportIds([]);
+      fetchApps();
+      fetchMonitoring();
+    } catch {
+      toast.error('Failed to publish finalists.');
+    } finally {
+      setReportActionBusy(false);
+    }
+  };
+
+  const handlePublishWinners = async () => {
+    if (!selectedReportIds.length) {
+      toast.error('Select at least one application first.');
+      return;
+    }
+
+    setReportActionBusy(true);
+    try {
+      await applicationService.publishWinners(selectedReportIds);
+      toast.success('Winners published.');
+      setSelectedReportIds([]);
+      fetchApps();
+      fetchMonitoring();
+    } catch {
+      toast.error('Failed to publish winners.');
+    } finally {
+      setReportActionBusy(false);
+    }
+  };
+
+  const handleGenerateCertificates = async () => {
+    if (!selectedReportIds.length) {
+      toast.error('Select at least one application first.');
+      return;
+    }
+
+    setReportActionBusy(true);
+    try {
+      await applicationService.generateCertificates(selectedReportIds);
+      toast.success('Certificates generated.');
+      setSelectedReportIds([]);
+      fetchApps();
+      fetchMonitoring();
+    } catch {
+      toast.error('Failed to generate certificates.');
+    } finally {
+      setReportActionBusy(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-navy-950 flex flex-col pt-20">
@@ -229,8 +519,10 @@ const AdminDashboard = () => {
             {[
               { id: 'overview', label: 'Dashboard Overview', icon: RiDashboardLine },
               { id: 'applications', label: 'Manage Nominations', icon: RiFileList3Line },
+              { id: 'monitoring', label: 'Application Monitoring', icon: RiFileChartLine },
               { id: 'users', label: 'User Directory', icon: RiTeamLine },
-              { id: 'categories', label: 'Categories CRUD', icon: RiFolderShield2Line },
+              { id: 'categories', label: 'Categories & Criteria', icon: RiFolderShield2Line },
+              { id: 'content', label: 'Website Content', icon: RiSettings4Line },
               { id: 'broadcast', label: 'Broadcast Alerts', icon: RiMailSendLine },
               { id: 'reports', label: 'Reports & Export', icon: RiFileChartLine },
               { id: 'password', label: 'Change Password', icon: RiLockPasswordLine },
@@ -299,6 +591,14 @@ const AdminDashboard = () => {
                         <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Judges</span>
                         <p className="text-white text-3xl font-black mt-2 font-display">{stats.stats.totalJudges}</p>
                       </div>
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
+                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Pending Evaluations</span>
+                        <p className="text-white text-3xl font-black mt-2 font-display text-amber-400">{stats.stats.pendingEvaluations}</p>
+                      </div>
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
+                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Completed Evaluations</span>
+                        <p className="text-white text-3xl font-black mt-2 font-display text-emerald-400">{stats.stats.completedEvaluations}</p>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -333,19 +633,40 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
-                    {/* Recent audit activity */}
-                    <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
-                      <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4">Recent Audit Actions</h4>
-                      <div className="space-y-3">
-                        {auditLogs.slice(0, 5).map(log => (
-                          <div key={log._id} className="flex justify-between items-center text-xs border-b border-white/5 pb-2.5 last:border-0 last:pb-0 text-slate-300">
-                            <div>
-                              <strong className="text-white">{log.performedBy?.firstName} {log.performedBy?.lastName}</strong> performed{' '}
-                              <span className="text-accent-400 font-mono text-[10px]">{log.action.replace('_', ' ')}</span>
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
+                        <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4">Recent Activities</h4>
+                        <div className="space-y-3">
+                          {(stats.recentActivities || auditLogs).slice(0, 5).map((log) => (
+                            <div key={log._id} className="flex justify-between items-center text-xs border-b border-white/5 pb-2.5 last:border-0 last:pb-0 text-slate-300">
+                              <div>
+                                <strong className="text-white">{log.performedBy?.firstName || 'System'} {log.performedBy?.lastName || ''}</strong>{' '}
+                                {log.description || `performed ${log.action?.replace('_', ' ')}`}
+                              </div>
+                              <span className="text-slate-500 font-mono text-[10px]">{new Date(log.createdAt).toLocaleTimeString()}</span>
                             </div>
-                            <span className="text-slate-500 font-mono text-[10px]">{new Date(log.createdAt).toLocaleTimeString()}</span>
-                          </div>
-                        ))}
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
+                        <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-1.5"><RiMailSendLine className="text-accent-400" /> Notifications</h4>
+                        <div className="space-y-3">
+                          {(stats.notifications || []).slice(0, 5).map((notification) => (
+                            <div key={notification._id} className="border-b border-white/5 pb-2.5 last:border-0 last:pb-0 text-slate-300">
+                              <div className="flex justify-between items-start gap-3">
+                                <div>
+                                  <div className="text-white text-xs font-semibold">{notification.title}</div>
+                                  <div className="text-[11px] text-slate-400 mt-1">{notification.message}</div>
+                                </div>
+                                <span className="text-[10px] text-slate-500 font-mono whitespace-nowrap">{new Date(notification.createdAt).toLocaleTimeString()}</span>
+                              </div>
+                            </div>
+                          ))}
+                          {(!stats.notifications || stats.notifications.length === 0) && (
+                            <div className="text-sm text-slate-500">No notifications yet.</div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -449,10 +770,86 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
-                {/* 3. USER DIRECTORY TAB */}
+                {/* 3. APPLICATION MONITORING TAB */}
+                {activeTab === 'monitoring' && (
+                  <div className="space-y-8">
+                    <div>
+                      <h3 className="font-display font-bold text-white text-xl">Application Monitoring</h3>
+                      <p className="text-slate-400 text-xs mt-1">Review submissions, screen eligibility, manage judge assignment, and track evaluation progress.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      {monitoring && [
+                        { label: 'Total Applications', value: monitoring.total },
+                        { label: 'Pending Review', value: monitoring.pending },
+                        { label: 'Screened', value: monitoring.screened },
+                        { label: 'Assigned to Judges', value: monitoring.assigned },
+                        { label: 'Completed Evaluations', value: monitoring.completedEvaluation },
+                        { label: 'Pending Evaluations', value: monitoring.pendingEvaluation },
+                      ].map((item) => (
+                        <div key={item.label} className="p-4 rounded-2xl bg-white/5 border border-white/5">
+                          <div className="text-slate-400 text-[10px] uppercase tracking-wider">{item.label}</div>
+                          <div className="text-white text-2xl font-black mt-2 font-display">{item.value}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5">
+                        <h4 className="font-display font-bold text-white text-base mb-4">Eligibility Screening</h4>
+                        <div className="space-y-3 max-h-[320px] overflow-y-auto">
+                          {applications.filter((app) => app.status === 'submitted' || app.status === 'under_review').map((app) => (
+                            <div key={app._id} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                              <div className="flex justify-between items-start gap-3">
+                                <div>
+                                  <div className="text-white text-sm font-semibold">{app.projectTitle}</div>
+                                  <div className="text-[11px] text-slate-400">{app.candidate?.firstName} {app.candidate?.lastName}</div>
+                                </div>
+                                <button onClick={() => setEligibilityReview({ appId: app._id, isEligible: app.isEligible ?? true, note: app.adminNotes || '' })} className="text-accent-400 text-xs">Review</button>
+                              </div>
+                              {eligibilityReview.appId === app._id && (
+                                <form onSubmit={handleEligibilityReview} className="mt-3 space-y-2">
+                                  <textarea className="input-field h-20" placeholder="Review note" value={eligibilityReview.note} onChange={(e) => setEligibilityReview({ ...eligibilityReview, note: e.target.value })} />
+                                  <div className="flex items-center gap-3">
+                                    <label className="text-xs text-slate-300 flex items-center gap-2"><input type="radio" checked={eligibilityReview.isEligible} onChange={() => setEligibilityReview({ ...eligibilityReview, isEligible: true })} /> Eligible</label>
+                                    <label className="text-xs text-slate-300 flex items-center gap-2"><input type="radio" checked={!eligibilityReview.isEligible} onChange={() => setEligibilityReview({ ...eligibilityReview, isEligible: false })} /> Ineligible</label>
+                                  </div>
+                                  <button type="submit" className="btn-primary text-xs">Save Review</button>
+                                </form>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5">
+                        <h4 className="font-display font-bold text-white text-base mb-4">Judge Evaluation Progress</h4>
+                        <div className="space-y-3 max-h-[320px] overflow-y-auto">
+                          {judgeProgress.map((entry) => (
+                            <div key={entry.judgeId} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                              <div className="flex justify-between items-start gap-3">
+                                <div>
+                                  <div className="text-white text-sm font-semibold">{entry.judgeName}</div>
+                                  <div className="text-[11px] text-slate-400">{entry.email}</div>
+                                </div>
+                                <div className="text-right text-[11px] text-slate-400">
+                                  <div>Submitted: {entry.submitted}</div>
+                                  <div>Pending: {entry.pending}</div>
+                                </div>
+                              </div>
+                              <div className="mt-2 text-[11px] text-accent-400">Average score: {entry.avgScore ?? '—'}</div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 4. USER DIRECTORY TAB */}
                 {activeTab === 'users' && (
-                  <div>
-                    <div className="flex justify-between items-center mb-6">
+                  <div className="space-y-8">
+                    <div className="flex justify-between items-center">
                       <div>
                         <h3 className="font-display font-bold text-white text-xl">User Directory</h3>
                         <p className="text-slate-400 text-xs mt-1">Manage system accounts and access credentials.</p>
@@ -467,6 +864,27 @@ const AdminDashboard = () => {
                         <option value="judge">Judge</option>
                         <option value="admin">Admin</option>
                       </select>
+                    </div>
+
+                    <div className="p-5 rounded-2xl bg-white/5 border border-white/5">
+                      <h4 className="font-display font-bold text-white text-base mb-4">Create New User</h4>
+                      <form onSubmit={handleCreateUser} className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input className="input-field" placeholder="First name" value={userForm.firstName} onChange={(e) => setUserForm({ ...userForm, firstName: e.target.value })} required />
+                        <input className="input-field" placeholder="Last name" value={userForm.lastName} onChange={(e) => setUserForm({ ...userForm, lastName: e.target.value })} required />
+                        <input className="input-field" type="email" placeholder="Email" value={userForm.email} onChange={(e) => setUserForm({ ...userForm, email: e.target.value })} required />
+                        <input className="input-field" type="password" placeholder="Temporary password" value={userForm.password} onChange={(e) => setUserForm({ ...userForm, password: e.target.value })} required />
+                        <input className="input-field" placeholder="Phone" value={userForm.phone} onChange={(e) => setUserForm({ ...userForm, phone: e.target.value })} />
+                        <input className="input-field" placeholder="Organization" value={userForm.organization} onChange={(e) => setUserForm({ ...userForm, organization: e.target.value })} />
+                        <input className="input-field" placeholder="Designation" value={userForm.designation} onChange={(e) => setUserForm({ ...userForm, designation: e.target.value })} />
+                        <select className="input-field" value={userForm.role} onChange={(e) => setUserForm({ ...userForm, role: e.target.value })}>
+                          <option value="candidate">Candidate</option>
+                          <option value="judge">Judge</option>
+                          <option value="admin">Admin</option>
+                        </select>
+                        <div className="md:col-span-2">
+                          <button type="submit" className="btn-primary text-xs">Create User</button>
+                        </div>
+                      </form>
                     </div>
 
                     <div className="overflow-x-auto">
@@ -507,33 +925,171 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
-                {/* 4. CATEGORIES TAB */}
+                {/* 4. CATEGORIES & CRITERIA TAB */}
                 {activeTab === 'categories' && (
-                  <div className="space-y-6">
+                  <div className="space-y-8">
                     <div className="flex justify-between items-center">
                       <div>
-                        <h3 className="font-display font-bold text-white text-xl">Award Categories</h3>
-                        <p className="text-slate-400 text-xs mt-1">Categories configuration panel.</p>
+                        <h3 className="font-display font-bold text-white text-xl">Award Categories & Evaluation Criteria</h3>
+                        <p className="text-slate-400 text-xs mt-1">Manage award categories and the scoring rubric used by judges.</p>
                       </div>
                       <button onClick={handleSeedCategories} className="btn-primary text-xs">
                         Seed Default Categories
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {categories.map(c => (
-                        <div key={c._id} className="p-5 rounded-2xl bg-white/5 border border-white/5 flex justify-between items-start gap-4">
-                          <div>
-                            <h4 className="font-display font-bold text-white text-base">{c.name}</h4>
-                            <p className="text-slate-400 text-xs mt-1 line-clamp-2">{c.description}</p>
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
+                        <h4 className="font-display font-bold text-white text-base">{editingCategoryId ? 'Edit Category' : 'Create Category'}</h4>
+                        <form onSubmit={handleSubmitCategory} className="space-y-3">
+                          <input className="input-field" placeholder="Category name" value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} required />
+                          <textarea className="input-field h-24" placeholder="Description" value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} required />
+                          <input className="input-field" placeholder="Short description" value={categoryForm.shortDescription} onChange={(e) => setCategoryForm({ ...categoryForm, shortDescription: e.target.value })} />
+                          <div className="grid grid-cols-2 gap-3">
+                            <input type="number" className="input-field" placeholder="Order" value={categoryForm.order} onChange={(e) => setCategoryForm({ ...categoryForm, order: e.target.value })} />
+                            <input type="number" className="input-field" placeholder="Max applications" value={categoryForm.maxApplications} onChange={(e) => setCategoryForm({ ...categoryForm, maxApplications: e.target.value })} />
                           </div>
+                          <label className="flex items-center gap-2 text-sm text-slate-300">
+                            <input type="checkbox" checked={categoryForm.isActive} onChange={(e) => setCategoryForm({ ...categoryForm, isActive: e.target.checked })} />
+                            Active
+                          </label>
+                          <div className="flex gap-3">
+                            <button type="submit" className="btn-primary text-xs">{editingCategoryId ? 'Save Category' : 'Create Category'}</button>
+                            {editingCategoryId && <button type="button" onClick={() => { setEditingCategoryId(null); setCategoryForm({ name: '', description: '', shortDescription: '', order: 0, maxApplications: '', isActive: true }); }} className="btn-ghost text-xs">Cancel</button>}
+                          </div>
+                        </form>
+                      </div>
+
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
+                        <h4 className="font-display font-bold text-white text-base">Existing Categories</h4>
+                        <div className="space-y-3 max-h-[420px] overflow-y-auto">
+                          {categories.map(c => (
+                            <div key={c._id} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                              <div className="flex justify-between items-start gap-3">
+                                <div>
+                                  <h5 className="font-semibold text-white text-sm">{c.name}</h5>
+                                  <p className="text-slate-400 text-[11px] mt-1">{c.description}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button onClick={() => handleEditCategory(c)} className="text-accent-400 text-xs">Edit</button>
+                                  <button onClick={() => handleDeleteCategory(c._id)} className="text-red-400 text-xs">Delete</button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
                         </div>
-                      ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
+                        <h4 className="font-display font-bold text-white text-base">{editingCriteriaId ? 'Edit Criterion' : 'Create Evaluation Criterion'}</h4>
+                        <form onSubmit={handleSubmitCriteria} className="space-y-3">
+                          <input className="input-field" placeholder="Criterion name" value={criteriaForm.name} onChange={(e) => setCriteriaForm({ ...criteriaForm, name: e.target.value })} required />
+                          <textarea className="input-field h-20" placeholder="Description" value={criteriaForm.description} onChange={(e) => setCriteriaForm({ ...criteriaForm, description: e.target.value })} />
+                          <div className="grid grid-cols-3 gap-3">
+                            <input type="number" className="input-field" placeholder="Weight" value={criteriaForm.weight} onChange={(e) => setCriteriaForm({ ...criteriaForm, weight: e.target.value })} />
+                            <input type="number" className="input-field" placeholder="Max score" value={criteriaForm.maxScore} onChange={(e) => setCriteriaForm({ ...criteriaForm, maxScore: e.target.value })} />
+                            <input type="number" className="input-field" placeholder="Order" value={criteriaForm.order} onChange={(e) => setCriteriaForm({ ...criteriaForm, order: e.target.value })} />
+                          </div>
+                          <select className="input-field" value={criteriaForm.category} onChange={(e) => setCriteriaForm({ ...criteriaForm, category: e.target.value })}>
+                            <option value="">All categories</option>
+                            {categories.map((c) => <option key={c._id} value={c._id}>{c.name}</option>)}
+                          </select>
+                          <label className="flex items-center gap-2 text-sm text-slate-300">
+                            <input type="checkbox" checked={criteriaForm.isActive} onChange={(e) => setCriteriaForm({ ...criteriaForm, isActive: e.target.checked })} />
+                            Active
+                          </label>
+                          <div className="flex gap-3">
+                            <button type="submit" className="btn-primary text-xs">{editingCriteriaId ? 'Save Criterion' : 'Create Criterion'}</button>
+                            {editingCriteriaId && <button type="button" onClick={() => { setEditingCriteriaId(null); setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, category: '', order: 0, isActive: true }); }} className="btn-ghost text-xs">Cancel</button>}
+                          </div>
+                        </form>
+                      </div>
+
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
+                        <h4 className="font-display font-bold text-white text-base">Current Criteria</h4>
+                        <div className="space-y-3 max-h-[420px] overflow-y-auto">
+                          {criteria.map(item => (
+                            <div key={item._id} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                              <div className="flex justify-between items-start gap-3">
+                                <div>
+                                  <h5 className="font-semibold text-white text-sm">{item.name}</h5>
+                                  <p className="text-slate-400 text-[11px] mt-1">Weight {item.weight} · Max {item.maxScore}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button onClick={() => handleEditCriteria(item)} className="text-accent-400 text-xs">Edit</button>
+                                  <button onClick={() => handleDeleteCriteria(item._id)} className="text-red-400 text-xs">Delete</button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 )}
 
-                {/* 5. BROADCAST TAB */}
+                {/* 5. WEBSITE CONTENT TAB */}
+                {activeTab === 'content' && (
+                  <div className="space-y-8">
+                    <div>
+                      <h3 className="font-display font-bold text-white text-xl">Website Content Management</h3>
+                      <p className="text-slate-400 text-xs mt-1">Manage reusable website content blocks for public pages.</p>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
+                        <h4 className="font-display font-bold text-white text-base">{editingContentId ? 'Edit Content Block' : 'Create Content Block'}</h4>
+                        <form onSubmit={handleSubmitContent} className="space-y-3">
+                          <input className="input-field" placeholder="Page slug (home, about, etc.)" value={contentForm.page} onChange={(e) => setContentForm({ ...contentForm, page: e.target.value })} required />
+                          <input className="input-field" placeholder="Content key" value={contentForm.key} onChange={(e) => setContentForm({ ...contentForm, key: e.target.value })} required />
+                          <input className="input-field" placeholder="Title" value={contentForm.title} onChange={(e) => setContentForm({ ...contentForm, title: e.target.value })} required />
+                          <select className="input-field" value={contentForm.type} onChange={(e) => setContentForm({ ...contentForm, type: e.target.value })}>
+                            <option value="text">Text</option>
+                            <option value="richtext">Rich Text</option>
+                            <option value="json">JSON</option>
+                            <option value="list">List</option>
+                          </select>
+                          <textarea className="input-field h-24" placeholder="Value" value={contentForm.value} onChange={(e) => setContentForm({ ...contentForm, value: e.target.value })} />
+                          <div className="grid grid-cols-2 gap-3">
+                            <input type="number" className="input-field" placeholder="Order" value={contentForm.order} onChange={(e) => setContentForm({ ...contentForm, order: e.target.value })} />
+                            <label className="flex items-center gap-2 text-sm text-slate-300">
+                              <input type="checkbox" checked={contentForm.isActive} onChange={(e) => setContentForm({ ...contentForm, isActive: e.target.checked })} />
+                              Active
+                            </label>
+                          </div>
+                          <div className="flex gap-3">
+                            <button type="submit" className="btn-primary text-xs">{editingContentId ? 'Save Block' : 'Create Block'}</button>
+                            {editingContentId && <button type="button" onClick={() => { setEditingContentId(null); setContentForm({ page: 'home', key: '', title: '', type: 'text', value: '', order: 0, isActive: true }); }} className="btn-ghost text-xs">Cancel</button>}
+                          </div>
+                        </form>
+                      </div>
+
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
+                        <h4 className="font-display font-bold text-white text-base">Existing Content Blocks</h4>
+                        <div className="space-y-3 max-h-[420px] overflow-y-auto">
+                          {contentBlocks.map(item => (
+                            <div key={item._id} className="p-3 rounded-xl bg-white/5 border border-white/10">
+                              <div className="flex justify-between items-start gap-3">
+                                <div>
+                                  <h5 className="font-semibold text-white text-sm">{item.title}</h5>
+                                  <p className="text-slate-400 text-[11px] mt-1">{item.page} / {item.key}</p>
+                                </div>
+                                <div className="flex gap-2">
+                                  <button onClick={() => handleEditContent(item)} className="text-accent-400 text-xs">Edit</button>
+                                  <button onClick={() => handleDeleteContent(item._id)} className="text-red-400 text-xs">Delete</button>
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 6. BROADCAST TAB */}
                 {activeTab === 'broadcast' && (
                   <div>
                     <h3 className="font-display font-bold text-white text-xl mb-2">Send Broadcast Alert</h3>
@@ -569,12 +1125,23 @@ const AdminDashboard = () => {
                 {/* 6. REPORTS TAB */}
                 {activeTab === 'reports' && stats && (
                   <div className="space-y-8">
-                    <div className="flex justify-between items-center border-b border-white/10 pb-4">
-                      <div>
-                        <h3 className="font-display font-bold text-white text-xl">Reports & Exports</h3>
-                        <p className="text-slate-400 text-xs mt-1">Aggregated statistics and print leaderboard.</p>
+                    <div className="flex flex-col gap-3 border-b border-white/10 pb-4">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <h3 className="font-display font-bold text-white text-xl">Reports & Exports</h3>
+                          <p className="text-slate-400 text-xs mt-1">Aggregated statistics, export data, and publish finalists/winners.</p>
+                        </div>
+                        <div className="flex gap-2 flex-wrap">
+                          <button onClick={() => handleExportReport('csv')} className="btn-primary text-xs">Export Excel</button>
+                          <button onClick={() => handleExportReport('pdf')} className="btn-gold text-xs">Export PDF</button>
+                          <button onClick={() => window.print()} className="bg-white/5 border border-white/10 px-3 py-2 rounded-xl text-xs text-slate-300 hover:bg-white/10">Print</button>
+                        </div>
                       </div>
-                      <button onClick={() => window.print()} className="btn-gold text-xs">Print Report (PDF)</button>
+                      <div className="flex flex-wrap gap-2">
+                        <button onClick={handlePublishFinalists} disabled={reportActionBusy} className="btn-primary text-xs disabled:opacity-50">Publish Finalists</button>
+                        <button onClick={handlePublishWinners} disabled={reportActionBusy} className="btn-gold text-xs disabled:opacity-50">Publish Winners</button>
+                        <button onClick={handleGenerateCertificates} disabled={reportActionBusy} className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-xl text-xs text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50">Generate Certificates</button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -606,14 +1173,18 @@ const AdminDashboard = () => {
                         <div className="space-y-3">
                           {applications.slice(0, 5).sort((a,b)=>b.averageScore - a.averageScore).map((app, idx) => (
                             <div key={app._id} className="flex justify-between items-center text-xs border-b border-white/5 pb-2.5 last:border-0 last:pb-0 text-slate-300">
-                              <div>
-                                <span className="font-bold text-white mr-1">#{idx+1}</span>
-                                {app.projectTitle}
+                              <div className="flex items-center gap-2">
+                                <input type="checkbox" checked={selectedReportIds.includes(app._id)} onChange={() => toggleReportSelection(app._id)} className="rounded border-white/10 bg-transparent" />
+                                <span>
+                                  <span className="font-bold text-white mr-1">#{idx+1}</span>
+                                  {app.projectTitle}
+                                </span>
                               </div>
                               <span className="font-bold text-accent-400">{app.averageScore?.toFixed(1) || '-'}</span>
                             </div>
                           ))}
                         </div>
+                        <div className="mt-4 text-[11px] text-slate-400">Selected: {selectedReportIds.length}</div>
                       </div>
                     </div>
                   </div>

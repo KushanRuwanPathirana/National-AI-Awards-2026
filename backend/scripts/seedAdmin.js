@@ -4,19 +4,22 @@ const User = require('../models/User.model');
 const connectDB = require('../config/db');
 const logger = require('../utils/logger');
 
-const seedUsers = async () => {
+const seedDefaultAdmin = async ({ skipConnect = false } = {}) => {
   try {
-    await connectDB();
+    if (!skipConnect && mongoose.connection.readyState !== 1) {
+      await connectDB();
+    }
 
-    // 1. Seed Admin
-    const adminEmail = 'admin@aiawards.lk';
+    const adminEmail = 'admin@gmail.com';
+    const adminPassword = 'admin@123';
     const existingAdmin = await User.findOne({ email: adminEmail });
+
     if (!existingAdmin) {
       const adminUser = new User({
         firstName: 'System',
         lastName: 'Administrator',
         email: adminEmail,
-        password: 'AdminPassword126!',
+        password: adminPassword,
         role: 'admin',
         isEmailVerified: true,
         phone: '+94 11 234 5678',
@@ -24,58 +27,33 @@ const seedUsers = async () => {
         designation: 'Chief Administrator',
       });
       await adminUser.save();
-      logger.info(`✅ Seeded Admin: ${adminEmail} / AdminPassword126!`);
-    } else {
-      logger.info(`Admin user already exists.`);
+      logger.info(`✅ Seeded default admin: ${adminEmail} / ${adminPassword}`);
+      return adminUser;
     }
 
-    // 2. Seed Candidate (Applicant)
-    const candidateEmail = 'candidate@aiawards.lk';
-    const existingCandidate = await User.findOne({ email: candidateEmail });
-    if (!existingCandidate) {
-      const candidateUser = new User({
-        firstName: 'John',
-        lastName: 'Innovator',
-        email: candidateEmail,
-        password: 'CandidatePassword126!',
-        role: 'candidate',
-        isEmailVerified: true,
-        phone: '+94 77 123 4567',
-        organization: 'Sri Lanka AI Lab',
-        designation: 'Lead Researcher',
-      });
-      await candidateUser.save();
-      logger.info(`✅ Seeded Candidate: ${candidateEmail} / CandidatePassword126!`);
-    } else {
-      logger.info(`Candidate user already exists.`);
+    if (existingAdmin.role !== 'admin') {
+      existingAdmin.role = 'admin';
+      existingAdmin.isActive = true;
+      existingAdmin.isEmailVerified = true;
+      await existingAdmin.save({ validateBeforeSave: false });
+      logger.info(`✅ Updated existing user to admin role: ${adminEmail}`);
     }
 
-    // 3. Seed Judge
-    const judgeEmail = 'judge@aiawards.lk';
-    const existingJudge = await User.findOne({ email: judgeEmail });
-    if (!existingJudge) {
-      const judgeUser = new User({
-        firstName: 'Dr. Sarah',
-        lastName: 'Evaluator',
-        email: judgeEmail,
-        password: 'JudgePassword126!',
-        role: 'judge',
-        isEmailVerified: true,
-        phone: '+94 71 987 6543',
-        organization: 'University of Moratuwa',
-        designation: 'Professor in AI',
-      });
-      await judgeUser.save();
-      logger.info(`✅ Seeded Judge: ${judgeEmail} / JudgePassword126!`);
-    } else {
-      logger.info(`Judge user already exists.`);
-    }
-
-    process.exit(0);
+    logger.info(`Default admin already exists: ${adminEmail}`);
+    return existingAdmin;
   } catch (error) {
-    logger.error(`❌ Seeding failed: ${error.message}`);
-    process.exit(1);
+    logger.error(`❌ Admin seeding failed: ${error.message}`);
+    throw error;
   }
 };
 
-seedUsers();
+if (require.main === module) {
+  seedDefaultAdmin()
+    .then(() => process.exit(0))
+    .catch((error) => {
+      logger.error(`❌ Seeding failed: ${error.message}`);
+      process.exit(1);
+    });
+}
+
+module.exports = { seedDefaultAdmin };

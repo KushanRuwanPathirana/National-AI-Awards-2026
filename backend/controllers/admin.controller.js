@@ -13,7 +13,9 @@ const getDashboardStats = async (req, res, next) => {
     const [
       totalApplications, totalCandidates, totalJudges,
       submittedApps, shortlistedApps, finalistApps, winnerApps,
+      pendingEvaluations, completedEvaluations,
       recentApplications, categoryBreakdown, submissionTrend,
+      recentActivities, notifications,
     ] = await Promise.all([
       Application.countDocuments(),
       User.countDocuments({ role: 'candidate' }),
@@ -22,6 +24,8 @@ const getDashboardStats = async (req, res, next) => {
       Application.countDocuments({ status: 'shortlisted' }),
       Application.countDocuments({ status: 'finalist' }),
       Application.countDocuments({ status: 'winner' }),
+      Evaluation.countDocuments({ isSubmitted: false }),
+      Evaluation.countDocuments({ isSubmitted: true }),
       Application.find()
         .populate('candidate', 'firstName lastName email')
         .populate('category', 'name')
@@ -43,6 +47,8 @@ const getDashboardStats = async (req, res, next) => {
         { $limit: 30 },
         { $project: { _id: 0, date: '$_id', count: 1 } },
       ]),
+      AuditLog.find({}).populate('performedBy', 'firstName lastName role').sort({ createdAt: -1 }).limit(8),
+      Notification.find({ recipient: req.user._id }).sort({ createdAt: -1 }).limit(8),
     ]);
 
     // Status distribution
@@ -56,11 +62,14 @@ const getDashboardStats = async (req, res, next) => {
         stats: {
           totalApplications, totalCandidates, totalJudges,
           submittedApps, shortlistedApps, finalistApps, winnerApps,
+          pendingEvaluations, completedEvaluations,
         },
         recentApplications,
         categoryBreakdown,
         submissionTrend,
         statusBreakdown,
+        recentActivities,
+        notifications,
       },
     });
   } catch (error) { next(error); }
@@ -219,4 +228,19 @@ const broadcastNotification = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { getDashboardStats, getUsers, toggleUserStatus, deleteUser, updateUserRole, getReports, getAuditLogs, broadcastNotification };
+const createUser = async (req, res, next) => {
+  try {
+    const { firstName, lastName, email, password, role, phone, organization, designation } = req.body;
+    if (!firstName || !lastName || !email || !password) {
+      return errorResponse(res, { statusCode: 400, message: 'First name, last name, email, and password are required.' });
+    }
+
+    const existing = await User.findOne({ email });
+    if (existing) return errorResponse(res, { statusCode: 409, message: 'An account with this email already exists.' });
+
+    const user = await User.create({ firstName, lastName, email, password, role: role || 'candidate', phone, organization, designation, isEmailVerified: true });
+    return successResponse(res, { statusCode: 201, message: 'User created.', data: { user } });
+  } catch (error) { next(error); }
+};
+
+module.exports = { getDashboardStats, getUsers, createUser, toggleUserStatus, deleteUser, updateUserRole, getReports, getAuditLogs, broadcastNotification };

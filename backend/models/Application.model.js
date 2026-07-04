@@ -146,6 +146,13 @@ const applicationSchema = new mongoose.Schema(
     // Scores (aggregated from evaluations)
     averageScore: { type: Number, default: 0 },
     evaluationCount: { type: Number, default: 0 },
+
+    // Awards & publishing
+    publishedAsFinalist: { type: Boolean, default: false },
+    publishedAsWinner: { type: Boolean, default: false },
+    certificateNumber: { type: String, trim: true },
+    certificateIssuedAt: { type: Date },
+    awardCitation: { type: String, maxlength: [2000] },
   },
   {
     timestamps: true,

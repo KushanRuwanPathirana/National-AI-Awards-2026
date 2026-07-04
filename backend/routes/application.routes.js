@@ -8,7 +8,9 @@ const { requireRole } = require('../middleware/role.middleware');
 const {
   createApplication, updateApplication, submitApplication,
   getMyApplications, getApplicationById, getAllApplications,
-  changeApplicationStatus, assignJudges,
+  changeApplicationStatus, assignJudges, reviewEligibility,
+  getMonitoringOverview, getJudgeProgress, exportApplications,
+  publishFinalists, publishWinners, generateCertificates,
   uploadDocuments, deleteDocument, deleteApplication,
 } = require('../controllers/application.controller');
 
@@ -52,8 +54,15 @@ router.delete('/:id',             authenticate, requireRole('candidate'), delete
 
 // Admin
 router.get('/',                   authenticate, requireRole('admin'), getAllApplications);
+router.get('/monitoring',        authenticate, requireRole('admin'), getMonitoringOverview);
+router.get('/judge-progress',    authenticate, requireRole('admin'), getJudgeProgress);
+router.get('/export',            authenticate, requireRole('admin'), exportApplications);
+router.post('/publish-finalists', authenticate, requireRole('admin'), publishFinalists);
+router.post('/publish-winners',  authenticate, requireRole('admin'), publishWinners);
+router.post('/generate-certificates', authenticate, requireRole('admin'), generateCertificates);
 router.patch('/:id/status',       authenticate, requireRole('admin'), changeApplicationStatus);
 router.patch('/:id/assign-judges', authenticate, requireRole('admin'), assignJudges);
+router.patch('/:id/review-eligibility', authenticate, requireRole('admin'), reviewEligibility);
 
 // Shared (admin/judge/candidate own)
 router.get('/:id',                authenticate, getApplicationById);

@@ -9,13 +9,20 @@ const connectDB = require('./config/db');
 const routes = require('./routes');
 const errorHandler = require('./middleware/error.middleware');
 const logger = require('./utils/logger');
+const { seedDefaultAdmin } = require('./scripts/seedAdmin');
 
 // ─── App Initialization ────────────────────────────────────────────────────────
 const app = express();
 const PORT = process.env.PORT || 5001;
 
 // ─── Connect to MongoDB ────────────────────────────────────────────────────────
-connectDB();
+connectDB().then(() => {
+  seedDefaultAdmin({ skipConnect: true }).catch((error) => {
+    logger.error(`Default admin seeding skipped due to error: ${error.message}`);
+  });
+}).catch(() => {
+  // Database connection errors are already logged by connectDB
+});
 
 // ─── Security Middleware ───────────────────────────────────────────────────────
 app.use(helmet({

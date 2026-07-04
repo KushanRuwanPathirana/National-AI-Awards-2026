@@ -7,8 +7,8 @@ const { sendOTPEmail, sendWelcomeEmail, sendPasswordResetEmail } = require('../s
 const logger = require('../utils/logger');
 
 // Helper: generate JWT
-const generateToken = (userId) => {
-  return jwt.sign({ id: userId }, process.env.JWT_SECRET, {
+const generateToken = (user) => {
+  return jwt.sign({ id: user._id, role: user.role, email: user.email }, process.env.JWT_SECRET, {
     expiresIn: process.env.JWT_EXPIRES_IN || '7d',
   });
 };
@@ -67,7 +67,7 @@ const register = async (req, res, next) => {
       });
     }
 
-    const token = generateToken(user._id);
+    const token = generateToken(user);
     console.log('\n┌────────────────────────────────────────┐');
     console.log(`│  OTP CODE FOR: ${user.email.toUpperCase().padEnd(23)} │`);
     console.log(`│  CODE: ${otp.padEnd(31)} │`);
@@ -231,7 +231,7 @@ const login = async (req, res, next) => {
     user.lastLogin = new Date();
     await user.save({ validateBeforeSave: false });
 
-    const token = generateToken(user._id);
+    const token = generateToken(user);
     logger.info(`User logged in: ${user.email}`);
 
     return successResponse(res, {

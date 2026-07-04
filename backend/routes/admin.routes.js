@@ -3,7 +3,7 @@ const router = express.Router();
 const { authenticate } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
 const {
-  getDashboardStats, getUsers, toggleUserStatus, deleteUser,
+  getDashboardStats, getUsers, createUser, toggleUserStatus, deleteUser,
   updateUserRole, getReports, getAuditLogs, broadcastNotification,
 } = require('../controllers/admin.controller');
 
@@ -12,6 +12,7 @@ router.use(authenticate, requireRole('admin'));
 
 router.get('/stats',             getDashboardStats);
 router.get('/users',             getUsers);
+router.post('/users',            createUser);
 router.patch('/users/:id/status', toggleUserStatus);
 router.patch('/users/:id/role',   updateUserRole);
 router.delete('/users/:id',      deleteUser);
