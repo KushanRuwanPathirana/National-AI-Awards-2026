@@ -1,0 +1,201 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ── Base Reset & Tokens ─────────────────────────────────────────────────── */
+@layer base {
+  :root {
+    --color-primary:    #0A1628;
+    --color-surface:    #0f1e35;
+    --color-accent:     #0072ff;
+    --color-gold:       #00ff87;
+    --color-text:       #e2e8f0;
+    --color-muted:      #94a3b8;
+    --radius-card:      1rem;
+    --radius-btn:       0.5rem;
+    --transition-base:  0.25s ease;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    scroll-behavior: smooth;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  body {
+    @apply bg-navy-950 text-slate-200 font-sans;
+    background-image:
+      radial-gradient(ellipse 80% 60% at 50% -10%, rgba(0,114,255,0.15) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 40% at 80% 80%, rgba(0,255,135,0.05) 0%, transparent 50%);
+    min-height: 100vh;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    @apply font-display font-bold;
+  }
+
+  ::selection {
+    background: rgba(0,114,255,0.4);
+    color: #fff;
+  }
+
+  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar-track { background: #0A1628; }
+  ::-webkit-scrollbar-thumb {
+    background: rgba(0,114,255,0.5);
+    border-radius: 4px;
+  }
+  ::-webkit-scrollbar-thumb:hover { background: #0072ff; }
+}
+
+/* ── Component Layer ─────────────────────────────────────────────────────── */
+@layer components {
+
+  /* Glassmorphism card */
+  .glass-card {
+    @apply rounded-2xl border border-white/10;
+    background: rgba(255,255,255,0.04);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+    transition: transform var(--transition-base), box-shadow var(--transition-base);
+  }
+
+  .glass-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 40px rgba(0,114,255,0.25), inset 0 1px 0 rgba(255,255,255,0.08);
+  }
+
+  /* Gradient border card */
+  .gradient-border {
+    position: relative;
+    @apply rounded-2xl;
+  }
+  .gradient-border::before {
+    content: '';
+    position: absolute;
+    inset: -1px;
+    border-radius: inherit;
+    background: linear-gradient(135deg, rgba(0,114,255,0.6), rgba(0,255,135,0.4));
+    z-index: -1;
+  }
+
+  /* Primary button */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-white text-sm;
+    background: linear-gradient(135deg, #0072ff 0%, #00c6ff 100%);
+    box-shadow: 0 4px 16px rgba(0,114,255,0.4);
+    transition: all 0.25s ease;
+  }
+  .btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0,114,255,0.5);
+    background: linear-gradient(135deg, #3ba1ff 0%, #0072ff 100%);
+  }
+  .btn-primary:active { transform: translateY(0); }
+
+  /* Gold / CTA button - customized to Electric Blue to Spring Green gradient */
+  .btn-gold {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-navy-950 text-sm;
+    background: linear-gradient(135deg, #0072ff 0%, #00ff87 100%);
+    box-shadow: 0 4px 16px rgba(0,255,135,0.3);
+    transition: all 0.25s ease;
+  }
+  .btn-gold:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(0,255,135,0.5);
+  }
+
+  /* Ghost button */
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 rounded-xl font-semibold text-slate-200 text-sm;
+    border: 1px solid rgba(255,255,255,0.15);
+    background: rgba(255,255,255,0.04);
+    transition: all 0.25s ease;
+  }
+  .btn-ghost:hover {
+    border-color: rgba(0,114,255,0.5);
+    background: rgba(0,114,255,0.1);
+    color: #7ec0ff;
+  }
+
+  /* Section container */
+  .section-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
+  }
+
+  /* Section padding */
+  .section-py { @apply py-20 lg:py-28; }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #3ba1ff 0%, #0072ff 50%, #00ff87 100%);
+  }
+
+  .gradient-text-gold {
+    @apply bg-clip-text text-transparent;
+    background-image: linear-gradient(135deg, #0072ff 0%, #00ff87 100%);
+  }
+
+  /* Dot pattern bg */
+  .dot-pattern {
+    background-image: radial-gradient(rgba(0,114,255,0.15) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  /* Glowing divider */
+  .divider-glow {
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(0,114,255,0.6), rgba(0,255,135,0.4), transparent);
+  }
+
+  /* Input field */
+  .input-field {
+    @apply w-full px-4 py-3 rounded-xl text-sm text-slate-200 placeholder-slate-500;
+    background: rgba(255,255,255,0.06);
+    border: 1px solid rgba(255,255,255,0.1);
+    transition: border-color 0.25s, box-shadow 0.25s;
+    outline: none;
+  }
+  .input-field:focus {
+    border-color: rgba(0,114,255,0.6);
+    box-shadow: 0 0 0 3px rgba(0,114,255,0.15);
+  }
+
+  /* Badge */
+  .badge {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold;
+  }
+  .badge-accent { @apply badge text-accent-300 bg-accent-500/15 border border-accent-500/30; }
+  .badge-gold   { @apply badge text-gold-400   bg-gold-500/15   border border-gold-500/30; }
+  .badge-green  { @apply badge text-emerald-400 bg-emerald-500/15 border border-emerald-500/30; }
+
+  /* Animated underline link */
+  .nav-link {
+    @apply relative text-slate-300 text-sm font-medium transition-colors duration-200;
+  }
+  .nav-link::after {
+    content: '';
+    @apply absolute left-0 -bottom-1 w-0 h-0.5 rounded-full transition-all duration-300;
+    background: linear-gradient(90deg, #0072ff, #00ff87);
+  }
+  .nav-link:hover, .nav-link.active {
+    @apply text-white;
+  }
+  .nav-link:hover::after, .nav-link.active::after {
+    @apply w-full;
+  }
+}
+
+/* ── Utility Layer ───────────────────────────────────────────────────────── */
+@layer utilities {
+  .text-balance { text-wrap: balance; }
+
+  .animation-delay-200 { animation-delay: 0.2s; }
+  .animation-delay-400 { animation-delay: 0.4s; }
+  .animation-delay-600 { animation-delay: 0.6s; }
+}
