@@ -61,6 +61,10 @@ const register = async (req, res, next) => {
       logger.info(`Verification OTP sent to: ${email}`);
     } catch (mailErr) {
       logger.error(`Error sending verification email to ${email}: ${mailErr.message}`);
+      return errorResponse(res, {
+        statusCode: 502,
+        message: 'Account created, but the verification email could not be sent. Please try resending the OTP.',
+      });
     }
 
     const token = generateToken(user._id);
@@ -182,6 +186,10 @@ const resendOTP = async (req, res, next) => {
       logger.info(`Verification OTP resent to: ${userEmail} - OTP: ${otp}`);
     } catch (mailErr) {
       logger.error(`Error sending email to ${userEmail}: ${mailErr.message}`);
+      return errorResponse(res, {
+        statusCode: 502,
+        message: 'Verification email could not be sent. Please check the email configuration and try again.',
+      });
     }
 
     return successResponse(res, {

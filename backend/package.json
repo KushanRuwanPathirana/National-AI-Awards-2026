@@ -8,7 +8,12 @@
     "dev": "nodemon server.js",
     "lint": "eslint ."
   },
-  "keywords": ["ai-awards", "mern", "express", "mongodb"],
+  "keywords": [
+    "ai-awards",
+    "mern",
+    "express",
+    "mongodb"
+  ],
   "author": "AI Awards Sri Lanka",
   "license": "MIT",
   "dependencies": {
@@ -22,7 +27,7 @@
     "mongoose": "^8.4.1",
     "morgan": "^1.10.0",
     "multer": "^1.4.5-lts.1",
-    "nodemailer": "^6.9.13",
+    "nodemailer": "^6.10.1",
     "winston": "^3.13.0"
   },
   "devDependencies": {

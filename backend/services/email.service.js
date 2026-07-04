@@ -1,15 +1,24 @@
 const nodemailer = require('nodemailer');
 const logger = require('../utils/logger');
 
+const getEmailAuth = () => {
+  const user = process.env.EMAIL_USER;
+  const pass = process.env.EMAIL_PASS?.replace(/\s/g, '');
+
+  return { user, pass };
+};
+
 /**
  * Creates a reusable Nodemailer transporter.
  */
 const createTransporter = () => {
+  const { user, pass } = getEmailAuth();
+
   return nodemailer.createTransport({
     service: 'gmail',
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+      user,
+      pass,
     },
   });
 };
@@ -18,13 +27,15 @@ const createTransporter = () => {
  * Generic send email helper
  */
 const sendEmail = async ({ to, subject, html }) => {
-  if (!process.env.EMAIL_USER || process.env.EMAIL_USER === 'your_email@gmail.com') {
-    logger.warn(`[DEV] ⚠️ Email to "${to}" bypassed because EMAIL_USER is not configured.`);
-    return;
+  const { user, pass } = getEmailAuth();
+
+  if (!user || user === 'your_email@gmail.com' || !pass || pass === 'your_email_app_password') {
+    throw new Error('Email credentials are not configured.');
   }
+
   const transporter = createTransporter();
   await transporter.sendMail({
-    from: `"National AI Awards Sri Lanka" <${process.env.EMAIL_USER}>`,
+    from: `"National AI Awards Sri Lanka" <${user}>`,
     to,
     subject,
     html,
