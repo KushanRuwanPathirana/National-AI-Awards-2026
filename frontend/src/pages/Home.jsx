@@ -6,6 +6,7 @@ import {
   RiBrainLine, RiHeartPulseLine, RiBuilding4Line, RiLeafLine,
   RiShieldLine, RiBarChartLine, RiStarLine, RiArrowRightLine,
   RiCheckLine, RiCalendarLine, RiMapPinLine, RiLightbulbLine,
+  RiUserLine,
 } from 'react-icons/ri';
 import { FaQuoteLeft } from 'react-icons/fa';
 import SectionHeader from '../components/shared/SectionHeader';
@@ -16,19 +17,19 @@ import heroBanner from '../assets/hero-banner.png';
 // ─── Data ──────────────────────────────────────────────────────────────────────
 
 const stats = [
-  { value: '10+', label: 'Award Categories' },
+  { value: '8+', label: 'Award Categories' },
   { value: '500+', label: 'Expected Applications' },
   { value: '50+', label: 'Expert Judges' },
   { value: 'LKR 10M+', label: 'Prize Pool' },
 ];
 
 const categories = [
-  { icon: RiHeartPulseLine, title: 'AI in Healthcare',      color: 'from-rose-500/20 to-pink-500/10',    border: 'border-rose-500/30' },
-  { icon: RiBarChartLine,   title: 'AI in Finance & FinTech', color: 'from-emerald-500/20 to-teal-500/10', border: 'border-emerald-500/30' },
-  { icon: RiLeafLine,       title: 'AI in Agriculture',     color: 'from-green-500/20 to-lime-500/10',   border: 'border-green-500/30' },
-  { icon: RiBrainLine,      title: 'AI in Education',       color: 'from-purple-500/20 to-violet-500/10', border: 'border-purple-500/30' },
-  { icon: RiBuilding4Line,  title: 'AI in Smart Cities',    color: 'from-blue-500/20 to-cyan-500/10',    border: 'border-blue-500/30' },
-  { icon: RiShieldLine,     title: 'AI in Cybersecurity',   color: 'from-orange-500/20 to-amber-500/10', border: 'border-orange-500/30' },
+  { icon: RiAwardLine,      title: 'Core National Awards',      color: 'from-gold-500/20 to-orange-500/10',   border: 'border-gold-500/30' },
+  { icon: RiUserLine,       title: 'Women in AI Leadership',    color: 'from-pink-500/20 to-rose-500/10',     border: 'border-pink-500/30' },
+  { icon: RiRocketLine,     title: 'Innovation & Future Tech',  color: 'from-purple-500/20 to-violet-500/10', border: 'border-purple-500/30' },
+  { icon: RiLeafLine,       title: 'AI in Agriculture',         color: 'from-green-500/20 to-lime-500/10',    border: 'border-green-500/30' },
+  { icon: RiBarChartLine,   title: 'AI in Finance & Banking',   color: 'from-emerald-500/20 to-teal-500/10',   border: 'border-emerald-500/30' },
+  { icon: RiHeartPulseLine, title: 'AI in Healthcare & Life Sci', color: 'from-rose-500/20 to-pink-500/10',    border: 'border-rose-500/30' },
 ];
 
 const whyParticipate = [
@@ -323,9 +324,9 @@ const Home = () => {
         <div className="section-container">
           <SectionHeader
             badge="Award Categories"
-            title="10 Tracks of"
+            title="8 Tracks of"
             highlight="Excellence"
-            subtitle="From healthcare to smart cities — we celebrate AI innovation across every sector driving Sri Lanka forward."
+            subtitle="From national strategy to healthcare and education — we celebrate AI innovation across every sector driving Sri Lanka forward."
           />
           <motion.div
             variants={stagger}
@@ -351,7 +352,7 @@ const Home = () => {
           <div className="text-center">
             <Link to="/categories">
               <Button variant="ghost">
-                View All 10 Categories <RiArrowRightLine />
+                View All 8 Categories <RiArrowRightLine />
               </Button>
             </Link>
           </div>

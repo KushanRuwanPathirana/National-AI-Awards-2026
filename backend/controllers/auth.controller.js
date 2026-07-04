@@ -368,11 +368,34 @@ const getMe = async (req, res) => {
   });
 };
 
-// @desc    Logout
-// @route   POST /api/auth/logout
+// @desc    Update profile image
+// @route   POST /api/auth/profile-image
 // @access  Private
-const logout = (req, res) => {
-  return successResponse(res, { message: 'Logged out successfully.' });
+const updateProfileImage = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return errorResponse(res, { statusCode: 400, message: 'Please upload an image file (JPEG, PNG, WebP).' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return errorResponse(res, { statusCode: 404, message: 'User not found.' });
+    }
+
+    // Save relative path: e.g. uploads/profiles/filename.png
+    const relativePath = `uploads/profiles/${req.file.filename}`;
+    user.profileImage = relativePath;
+    await user.save({ validateBeforeSave: false });
+
+    logger.info(`Profile image updated for: ${user.email}`);
+
+    return successResponse(res, {
+      message: 'Profile image updated successfully.',
+      data: { user },
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
-module.exports = { register, login, getMe, logout, verifyOTP, resendOTP, forgotPassword, resetPassword, changePassword };
+module.exports = { register, login, getMe, logout, verifyOTP, resendOTP, forgotPassword, resetPassword, changePassword, updateProfileImage };
