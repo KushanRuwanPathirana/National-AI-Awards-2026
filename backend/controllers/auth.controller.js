@@ -368,6 +368,29 @@ const getMe = async (req, res) => {
   });
 };
 
+// @desc    Logout user / clear cookie
+// @route   POST /api/auth/logout
+// @access  Private
+const logout = async (req, res, next) => {
+  try {
+    res.cookie('token', 'none', {
+      expires: new Date(Date.now() + 10 * 1000),
+      httpOnly: true,
+    });
+
+    if (req.user) {
+      logger.info(`User logged out: ${req.user.email}`);
+    }
+
+    return successResponse(res, {
+      statusCode: 200,
+      message: 'Logged out successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Update profile image
 // @route   POST /api/auth/profile-image
 // @access  Private
