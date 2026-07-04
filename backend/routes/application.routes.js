@@ -9,7 +9,7 @@ const {
   createApplication, updateApplication, submitApplication,
   getMyApplications, getApplicationById, getAllApplications,
   changeApplicationStatus, assignJudges,
-  uploadDocuments, deleteDocument,
+  uploadDocuments, deleteDocument, deleteApplication,
 } = require('../controllers/application.controller');
 
 // ── Multer Config ──────────────────────────────────────────────────────────────
@@ -48,6 +48,7 @@ router.put('/:id',                authenticate, requireRole('candidate'), update
 router.post('/:id/submit',        authenticate, requireRole('candidate'), submitApplication);
 router.post('/:id/documents',     authenticate, requireRole('candidate'), upload.array('documents', 5), uploadDocuments);
 router.delete('/:id/documents/:docId', authenticate, requireRole('candidate'), deleteDocument);
+router.delete('/:id',             authenticate, requireRole('candidate'), deleteApplication);
 
 // Admin
 router.get('/',                   authenticate, requireRole('admin'), getAllApplications);

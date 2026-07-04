@@ -354,9 +354,48 @@ const deleteDocument = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// ── Delete Application (Draft Only) ──────────────────────────────────────────
+const deleteApplication = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const application = await Application.findOne({ _id: id, candidate: req.user._id });
+
+    if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+    if (application.status !== APPLICATION_STATUS.DRAFT) {
+      return errorResponse(res, { statusCode: 400, message: 'Only draft applications can be deleted.' });
+    }
+
+    // Delete associated files from disk
+    if (application.documents && application.documents.length > 0) {
+      application.documents.forEach(doc => {
+        const diskPath = resolveStoredFilePath(doc.filePath);
+        if (diskPath && fs.existsSync(diskPath)) {
+          try {
+            fs.unlinkSync(diskPath);
+          } catch (e) {
+            logger.error(`Failed to delete document file from disk: ${e.message}`);
+          }
+        }
+      });
+    }
+
+    await Application.deleteOne({ _id: id });
+
+    await createAuditLog({
+      action: 'application_deleted',
+      performedBy: req.user._id,
+      targetId: id,
+      description: `Draft deleted: ${application.projectTitle}`,
+      req
+    });
+
+    return successResponse(res, { message: 'Application draft deleted successfully.' });
+  } catch (error) { next(error); }
+};
+
 module.exports = {
   createApplication, updateApplication, submitApplication,
   getMyApplications, getApplicationById, getAllApplications,
   changeApplicationStatus, assignJudges,
-  uploadDocuments, deleteDocument,
+  uploadDocuments, deleteDocument, deleteApplication,
 };

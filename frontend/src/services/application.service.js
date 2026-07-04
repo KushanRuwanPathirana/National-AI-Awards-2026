@@ -11,6 +11,7 @@ const applicationService = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   deleteDocument: (appId, docId) => api.delete(`/applications/${appId}/documents/${docId}`),
+  deleteApplication: (id) => api.delete(`/applications/${id}`),
 
   // Admin
   getAllApplications: (params) => api.get('/applications', { params }),
