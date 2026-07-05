@@ -13,98 +13,160 @@ const categories = [
   {
     id: 1,
     icon: RiAwardLine,
-    title: 'Core National Awards',
-    desc: 'Recognising the most prestigious achievements in artificial intelligence that drive national strategy and large-scale transformation across Sri Lanka.',
-    criteria: ['National impact & reach', 'Alignment with national AI strategy', 'Technical elegance', 'Ethical & standard compliance'],
+    title: 'National AI Excellence Award',
+    desc: 'The top award: best overall AI solution across all sectors.',
+    criteria: ['Overall impact', 'Technical maturity', 'Scalability & sustainability'],
     gradient: 'from-gold-500/25 to-orange-600/15',
     border: 'border-gold-500/40',
     iconColor: 'text-gold-400',
     iconBg: 'bg-gold-500/15 border-gold-500/30',
-    badge: '⭐ Flagship',
   },
   {
     id: 2,
     icon: RiUserLine,
-    title: 'Women in AI Leadership Award',
-    desc: 'Honouring outstanding female leaders, researchers, and entrepreneurs driving innovation and leadership in the field of Artificial Intelligence.',
-    criteria: ['Leadership & advocacy', 'Technical contribution', 'Mentorship & community impact', 'Innovation in AI application'],
+    title: 'National AI Leadership Excellence Award',
+    desc: 'Sri Lanka AI Transformation Leader of the Year — individual recognition for outstanding leadership.',
+    criteria: ['Leadership & vision', 'Transformation outcomes', 'Sector influence'],
     gradient: 'from-pink-500/25 to-rose-600/15',
     border: 'border-pink-500/40',
     iconColor: 'text-pink-400',
     iconBg: 'bg-pink-500/15 border-pink-500/30',
-    badge: 'Women in AI',
   },
   {
     id: 3,
-    icon: RiRocketLine,
-    title: 'Innovation & Future-Focused Awards',
-    desc: 'Celebrating disruptive, forward-looking AI concepts and emerging research that pave the way for future technological breakthroughs.',
-    criteria: ['Novelty of AI model/approach', 'Potential for disruption', 'Scalability & feasibility', 'Future market readiness'],
-    gradient: 'from-purple-500/25 to-violet-600/15',
-    border: 'border-purple-500/40',
-    iconColor: 'text-purple-400',
-    iconBg: 'bg-purple-500/15 border-purple-500/30',
-    badge: 'Future Tech',
-  },
-  {
-    id: 4,
-    icon: RiLeafLine,
-    title: 'AI in Agriculture',
-    desc: 'Smart farming, crop monitoring, weather prediction, and supply chain optimisation powered by AI for Sri Lanka\'s agricultural sector.',
-    criteria: ['Crop disease detection', 'Precision agriculture', 'Supply chain AI', 'Weather analytics'],
-    gradient: 'from-green-500/25 to-lime-600/15',
-    border: 'border-green-500/40',
-    iconColor: 'text-green-400',
-    iconBg: 'bg-green-500/15 border-green-500/30',
-    badge: 'AgriTech',
-  },
-  {
-    id: 5,
-    icon: RiBarChartLine,
-    title: 'AI in Banking, Finance & Insurance',
-    desc: 'AI-driven solutions for banking, insurance, investment, fraud detection, risk management, or financial inclusion in Sri Lanka\'s economy.',
-    criteria: ['Fraud detection systems', 'Credit scoring AI', 'Robo-advisory platforms', 'Financial inclusion tools'],
+    icon: RiGlobalLine,
+    title: 'National AI Impact Excellence Award',
+    desc: 'Government, societal, and economic transformation use cases demonstrating measurable public benefit.',
+    criteria: ['Public sector impact', 'Societal benefit', 'Measurable outcomes'],
     gradient: 'from-emerald-500/25 to-teal-600/15',
     border: 'border-emerald-500/40',
     iconColor: 'text-emerald-400',
     iconBg: 'bg-emerald-500/15 border-emerald-500/30',
-    badge: 'FinTech',
   },
   {
-    id: 6,
-    icon: RiHeartPulseLine,
-    title: 'AI in Healthcare & Life Sciences',
-    desc: 'Innovations leveraging AI to enhance diagnostics, patient outcomes, drug discovery, biological research, or healthcare delivery.',
-    criteria: ['Diagnostic or treatment AI tools', 'Patient data analytics', 'Telemedicine AI integration', 'Mental health solutions'],
-    gradient: 'from-rose-500/25 to-pink-600/15',
-    border: 'border-rose-500/40',
-    iconColor: 'text-rose-400',
-    iconBg: 'bg-rose-500/15 border-rose-500/30',
-    badge: 'Healthcare',
-  },
-  {
-    id: 7,
+    id: 4,
     icon: RiGlobalLine,
-    title: 'AI in Export Development',
-    desc: 'Leveraging AI to scale international trade, optimize global logistics, analyze export markets, and elevate Sri Lanka\'s presence in global trade.',
-    criteria: ['Supply chain optimization', 'Global market analytics', 'Automated trade processes', 'Export growth enablement'],
+    title: 'National AI Export Excellence Award',
+    desc: 'Export growth, trade facilitation, supply chain optimization, and global market competitiveness.',
+    criteria: ['Export enablement', 'Global scalability', 'Supply chain optimisation'],
     gradient: 'from-blue-500/25 to-cyan-600/15',
     border: 'border-blue-500/40',
     iconColor: 'text-blue-400',
     iconBg: 'bg-blue-500/15 border-blue-500/30',
-    badge: 'Export AI',
+  },
+
+  // Industry & Sector Excellence
+  {
+    id: 5,
+    icon: RiLeafLine,
+    title: 'Best AI Solution in Agriculture',
+    desc: 'Precision agriculture, smart farming, agri-tech innovation, and food security.',
+    criteria: ['Precision farming', 'Crop analytics', 'Agri supply chain'],
+    gradient: 'from-green-500/25 to-lime-600/15',
+    border: 'border-green-500/40',
+    iconColor: 'text-green-400',
+    iconBg: 'bg-green-500/15 border-green-500/30',
+  },
+  {
+    id: 6,
+    icon: RiBarChartLine,
+    title: 'Best AI Solution in Banking, Finance & Insurance',
+    desc: 'BFSI innovation and analytics across fraud detection, risk, and customer experience.',
+    criteria: ['Fraud & risk', 'Customer impact', 'Regulatory alignment'],
+    gradient: 'from-amber-500/25 to-yellow-600/15',
+    border: 'border-amber-500/40',
+    iconColor: 'text-amber-400',
+    iconBg: 'bg-amber-500/15 border-amber-500/30',
+  },
+  {
+    id: 7,
+    icon: RiHeartPulseLine,
+    title: 'Best AI Solution in Healthcare & Life Sciences',
+    desc: 'Patient care, diagnostics, hospital automation and life-sciences innovations.',
+    criteria: ['Clinical impact', 'Safety & validation', 'Operational efficiency'],
+    gradient: 'from-rose-500/25 to-pink-600/15',
+    border: 'border-rose-500/40',
+    iconColor: 'text-rose-400',
+    iconBg: 'bg-rose-500/15 border-rose-500/30',
   },
   {
     id: 8,
-    icon: RiBrainLine,
-    title: 'AI in Education',
-    desc: 'Personalised learning, intelligent tutoring systems, and administrative AI transforming education quality and accessibility in Sri Lanka.',
-    criteria: ['Adaptive learning platforms', 'Student performance analytics', 'EdTech AI tools', 'Language learning AI'],
+    icon: RiGlobalLine,
+    title: 'Best AI Solution in Export Development',
+    desc: 'Solutions that accelerate export growth, trade facilitation and global market competitiveness.',
+    criteria: ['Market analysis', 'Export enablement', 'Logistics optimisation'],
     gradient: 'from-sky-500/25 to-indigo-600/15',
     border: 'border-sky-500/40',
     iconColor: 'text-sky-400',
     iconBg: 'bg-sky-500/15 border-sky-500/30',
-    badge: 'EdTech',
+  },
+  {
+    id: 9,
+    icon: RiBrainLine,
+    title: 'Best AI Solution in Education',
+    desc: 'AI solutions transforming teaching, learning, educational administration, and student outcomes.',
+    criteria: ['Learner outcomes', 'Accessibility', 'Teaching innovation'],
+    gradient: 'from-sky-500/25 to-indigo-600/15',
+    border: 'border-sky-500/40',
+    iconColor: 'text-sky-400',
+    iconBg: 'bg-sky-500/15 border-sky-500/30',
+  },
+
+  // Innovation & Future-Focused
+  {
+    id: 10,
+    icon: RiRocketLine,
+    title: 'Best AI Startup / MSME Innovation',
+    desc: 'High-growth, scalable AI startups and MSMEs demonstrating strong product-market fit.',
+    criteria: ['Scalability', 'Market traction', 'Innovation'],
+    gradient: 'from-purple-500/25 to-violet-600/15',
+    border: 'border-purple-500/40',
+    iconColor: 'text-purple-400',
+    iconBg: 'bg-purple-500/15 border-purple-500/30',
+  },
+  {
+    id: 11,
+    icon: RiMicroscopeLine,
+    title: 'Best Agentic AI Solution',
+    desc: 'Copilots, LLMs, AI agents and automation delivering tangible productivity gains.',
+    criteria: ['Agent safety', 'Utility & automation', 'User experience'],
+    gradient: 'from-cyan-500/25 to-blue-600/15',
+    border: 'border-cyan-500/40',
+    iconColor: 'text-cyan-400',
+    iconBg: 'bg-cyan-500/15 border-cyan-500/30',
+  },
+  {
+    id: 12,
+    icon: RiMicroscopeLine,
+    title: 'Best Sinhala/Tamil AI & Localisation Innovation',
+    desc: 'Strategic localisation innovations in Sinhala/Tamil that strengthen Sri Lanka\'s digital advantage.',
+    criteria: ['Localization quality', 'Language coverage', 'Strategic impact'],
+    gradient: 'from-emerald-500/25 to-teal-600/15',
+    border: 'border-emerald-500/40',
+    iconColor: 'text-emerald-400',
+    iconBg: 'bg-emerald-500/15 border-emerald-500/30',
+  },
+  {
+    id: 13,
+    icon: RiMicroscopeLine,
+    title: 'University AI Innovation',
+    desc: 'Outstanding AI research, innovation, and solutions developed by universities and higher education institutions.',
+    criteria: ['Research novelty', 'Societal relevance', 'Commercialisability'],
+    gradient: 'from-indigo-500/25 to-violet-600/15',
+    border: 'border-indigo-500/40',
+    iconColor: 'text-indigo-400',
+    iconBg: 'bg-indigo-500/15 border-indigo-500/30',
+  },
+  {
+    id: 14,
+    icon: RiUserLine,
+    title: 'Women in AI Leadership',
+    desc: 'Recognizing women who are scaling AI solutions — individual award celebrating leadership and impact.',
+    criteria: ['Leadership', 'Impact', 'Mentorship'],
+    gradient: 'from-pink-500/25 to-rose-600/15',
+    border: 'border-pink-500/40',
+    iconColor: 'text-pink-400',
+    iconBg: 'bg-pink-500/15 border-pink-500/30',
   },
 ];
 
@@ -121,7 +183,7 @@ const Categories = () => (
       <div className="absolute inset-0 dot-pattern opacity-30 pointer-events-none" />
       <div className="section-container relative z-10 text-center">
         <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="badge-accent mb-6 inline-flex">
-          8 Award Tracks
+          14 Awards
         </motion.span>
         <motion.h1
           initial={{ opacity: 0, y: 32 }}
@@ -137,7 +199,7 @@ const Categories = () => (
           transition={{ delay: 0.2 }}
           className="text-slate-300 text-lg sm:text-xl max-w-2xl mx-auto"
         >
-          Ten specialised tracks celebrating AI excellence across every major industry sector in Sri Lanka.
+          Fourteen awards across core national, industry, and innovation tracks celebrating AI excellence in Sri Lanka.
         </motion.p>
       </div>
     </section>
@@ -145,64 +207,71 @@ const Categories = () => (
     {/* ── Categories Grid ── */}
     <section className="section-py">
       <div className="section-container">
-        <motion.div
-          variants={stagger}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true }}
-          className="grid md:grid-cols-2 gap-6"
-        >
-          {categories.map((cat) => (
-            <motion.div
-              key={cat.id}
-              variants={fadeUp}
-              className={`glass-card p-8 border ${cat.border} group relative overflow-hidden`}
-            >
-              {/* Background gradient */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${cat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl`} />
-
-              <div className="relative z-10">
-                {/* Header */}
-                <div className="flex items-start justify-between mb-5">
-                  <div className={`w-14 h-14 rounded-2xl ${cat.iconBg} border flex items-center justify-center`}>
-                    <cat.icon className={`${cat.iconColor} text-2xl`} />
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-slate-500 text-xs font-mono">#{String(cat.id).padStart(2, '0')}</span>
-                    {cat.badge === '⭐ Flagship' && (
-                      <span className="badge-gold text-xs">{cat.badge}</span>
-                    )}
-                  </div>
-                </div>
-
-                {/* Title & desc */}
-                <h2 className="font-display font-bold text-white text-xl mb-3">{cat.title}</h2>
-                <p className="text-slate-400 text-sm leading-relaxed mb-5">{cat.desc}</p>
-
-                {/* Criteria */}
-                <div>
-                  <p className="text-slate-500 text-xs uppercase tracking-widest mb-3">Key Criteria</p>
-                  <ul className="grid grid-cols-2 gap-2">
-                    {cat.criteria.map((c) => (
-                      <li key={c} className="flex items-center gap-2 text-xs text-slate-300">
-                        <RiCheckLine className={`${cat.iconColor} flex-shrink-0`} />
-                        {c}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-
-                {/* Apply link */}
-                <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-between">
-                  <span className="badge-green text-xs">Open for Applications</span>
-                  <Link to="/apply" className={`${cat.iconColor} text-sm font-medium flex items-center gap-1 hover:gap-2 transition-all`}>
-                    Apply <RiArrowRightLine />
-                  </Link>
-                </div>
+        {/** Render grouped sections A/B/C **/}
+        <div className="space-y-8">
+          {[
+            { key: 'A', title: 'Core National Awards', items: categories.slice(0, 4) },
+            { key: 'B', title: 'Industry & Sector Excellence Awards', items: categories.slice(4, 9) },
+            { key: 'C', title: 'Innovation & Future-Focused Awards', items: categories.slice(9, 14) },
+          ].map((group) => (
+            <div key={group.key}>
+              <div className="mb-4">
+                <h3 className="text-emerald-300 font-semibold text-sm">{group.key}. {group.title}</h3>
               </div>
-            </motion.div>
+
+              <motion.div
+                variants={stagger}
+                initial="hidden"
+                whileInView="show"
+                viewport={{ once: true }}
+                className="grid md:grid-cols-2 gap-6"
+              >
+                {group.items.map((cat) => (
+                  <motion.div
+                    key={cat.id}
+                    variants={fadeUp}
+                    className={`glass-card p-8 border ${cat.border} group relative overflow-hidden`}
+                  >
+                    <div className={`absolute inset-0 bg-gradient-to-br ${cat.gradient} opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none rounded-2xl`} />
+
+                    <div className="relative z-10">
+                      <div className="flex items-start justify-between mb-5">
+                        <div className={`w-14 h-14 rounded-2xl ${cat.iconBg} border flex items-center justify-center`}>
+                          <cat.icon className={`${cat.iconColor} text-2xl`} />
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-slate-500 text-xs font-mono">#{String(cat.id).padStart(2, '0')}</span>
+                        </div>
+                      </div>
+
+                      <h2 className="font-display font-bold text-white text-xl mb-3">{cat.title}</h2>
+                      <p className="text-slate-400 text-sm leading-relaxed mb-5">{cat.desc}</p>
+
+                      <div>
+                        <p className="text-slate-500 text-xs uppercase tracking-widest mb-3">Key Criteria</p>
+                        <ul className="grid grid-cols-2 gap-2">
+                          {cat.criteria.map((c) => (
+                            <li key={c} className="flex items-center gap-2 text-xs text-slate-300">
+                              <RiCheckLine className={`${cat.iconColor} flex-shrink-0`} />
+                              {c}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+
+                      <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-between">
+                        <span className="badge-green text-xs">Open for Applications</span>
+                        <Link to="/apply" className={`${cat.iconColor} text-sm font-medium flex items-center gap-1 hover:gap-2 transition-all`}>
+                          Apply <RiArrowRightLine />
+                        </Link>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </motion.div>
+            </div>
           ))}
-        </motion.div>
+        </div>
       </div>
     </section>
 
