@@ -497,149 +497,88 @@ const JudgePortal = () => {
       </div>
 
       {/* ── Hero Section ── */}
-      <section className="relative pt-36 pb-20 overflow-hidden z-10 border-b border-white/5 bg-gradient-hero">
-        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
-          <div className="grid lg:grid-cols-12 gap-12 items-center">
-            {/* Left Content */}
-            <div className="lg:col-span-7 text-left space-y-6">
-              <motion.div
-                initial={{ opacity: 0, y: -16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6 }}
-                className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-500/10 border border-accent-500/20 text-accent-400 text-xs font-semibold uppercase tracking-wider"
-              >
-                <RiShieldUserLine className="text-sm" /> Expert Jury Panel
-              </motion.div>
-              
-              <motion.h1
-                initial={{ opacity: 0, y: 32 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.1 }}
-                className="font-display font-black text-4xl sm:text-5xl lg:text-6xl text-white tracking-tight leading-[1.1]"
-              >
-                Meet the Experts <br />
-                Shaping Sri Lanka's <br />
-                <span className="gradient-text">
-                  AI Future
-                </span>
-              </motion.h1>
+      <section className="relative pt-24 pb-16 overflow-hidden z-10 border-b border-white/5 bg-gradient-hero">
+  <div className="max-w-5xl mx-auto px-6 sm:px-8 text-center">
+    
+    {/* Header Badge */}
+    <motion.div
+      initial={{ opacity: 0, y: -16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6 }}
+      className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-500/10 border border-accent-500/20 text-accent-400 text-xs font-semibold uppercase tracking-wider mb-4"
+    >
+      <RiShieldUserLine className="text-sm" /> Expert Jury Panel
+    </motion.div>
 
-              <motion.p
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.2 }}
-                className="text-slate-300 text-lg sm:text-xl max-w-xl font-normal leading-relaxed"
-              >
-                Our distinguished judging panel consists of nationally and internationally recognized leaders from academia, government, industry, research, venture capital, and innovation.
-              </motion.p>
+    {/* Heading */}
+    <motion.h1
+      initial={{ opacity: 0, y: 32 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: 0.1 }}
+      className="font-display font-black text-4xl sm:text-5xl lg:text-6xl text-white tracking-tight leading-[1.1]"
+    >
+      Meet the Experts <br />
+      Shaping Sri Lanka's <br />
+      <span className="gradient-text">AI Future</span>
+    </motion.h1>
 
-              {/* Statistics Grid */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.3 }}
-                className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-4 border-t border-white/5"
-              >
-                <div className="space-y-1">
-                  <p className="font-display font-black text-3xl text-accent-400">40+</p>
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Judges Joined</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="font-display font-black text-3xl text-purple-400">6</p>
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Categories</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="font-display font-black text-3xl text-cyan-400">Global</p>
-                  <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Representation</p>
-                </div>
-                <div className="space-y-1">
-                  <p className="font-display font-bold text-xs text-white leading-tight">Gov • Academia • Industry</p>
-                  <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Ecosystem Sectors</p>
-                </div>
-              </motion.div>
+    {/* Description */}
+    <motion.p
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: 0.2 }}
+      className="text-slate-300 text-lg sm:text-xl max-w-2xl mx-auto font-normal leading-relaxed mt-6"
+    >
+      Our distinguished judging panel consists of nationally and internationally recognized leaders from academia, government, industry, research, venture capital, and innovation.
+    </motion.p>
 
-              {/* CTA Buttons */}
-              <motion.div
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.4 }}
-                className="flex flex-wrap items-center gap-4 pt-4"
-              >
-                <a href="#judges-grid-section">
-                  <Button variant="primary" className="hover:shadow-glow text-white font-semibold rounded-2xl px-8 py-3.5">
-                    Explore Judges
-                  </Button>
-                </a>
-                <Link to="/categories">
-                  <Button variant="ghost" className="border border-white/10 text-slate-300 hover:bg-white/5 rounded-2xl px-6 py-3.5 flex items-center gap-2">
-                    View Award Categories <RiArrowRightLine />
-                  </Button>
-                </Link>
-              </motion.div>
-            </div>
+    {/* Stats */}
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: 0.3 }}
+      className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-8 border-t border-white/5 justify-center"
+    >
+      <div>
+        <p className="font-display font-black text-3xl text-accent-400">40+</p>
+        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Judges Joined</p>
+      </div>
+      <div>
+        <p className="font-display font-black text-3xl text-purple-400">6</p>
+        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Categories</p>
+      </div>
+      <div>
+        <p className="font-display font-black text-3xl text-cyan-400">Global</p>
+        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Representation</p>
+      </div>
+      <div>
+        <p className="font-display font-bold text-xs text-white leading-tight">Gov • Academia • Industry</p>
+        <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Ecosystem Sectors</p>
+      </div>
+    </motion.div>
 
-            {/* Right Collage Graphic */}
-            <div className="lg:col-span-5 relative hidden lg:flex items-center justify-center">
-              <div className="absolute inset-0 bg-radial-gradient from-accent-500/10 via-transparent to-transparent blur-2xl z-0" />
-              <div className="relative w-full max-w-[420px] h-[400px] z-10 flex items-center justify-center">
-                {/* Float Collage profile 1 */}
-                <motion.div
-                  animate={{ y: [0, -12, 0] }}
-                  transition={{ duration: 5, repeat: Infinity, ease: 'easeInOut' }}
-                  className="absolute top-4 left-6 p-4 bg-surface-100/70 backdrop-blur-md rounded-[24px] shadow-xl border border-white/10 w-44 flex flex-col items-center text-center space-y-2"
-                >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-r from-accent-500 to-cyan-400 flex items-center justify-center font-display font-bold text-white text-sm shadow-inner">
-                    RW
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-xs text-white">Dr. Ruvan Weerasinghe</h4>
-                    <p className="text-[10px] text-slate-400">Academic Dean • IIT</p>
-                  </div>
-                </motion.div>
+    {/* CTA Buttons */}
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.6, delay: 0.4 }}
+      className="flex flex-wrap items-center justify-center gap-4 pt-8"
+    >
+      <a href="#judges-grid-section">
+        <Button variant="primary" className="hover:shadow-glow text-white font-semibold rounded-2xl px-8 py-3.5">
+          Explore Judges
+        </Button>
+      </a>
+      <Link to="/categories">
+        <Button variant="ghost" className="border border-white/10 text-slate-300 hover:bg-white/5 rounded-2xl px-6 py-3.5 flex items-center gap-2">
+          View Award Categories <RiArrowRightLine />
+        </Button>
+      </Link>
+    </motion.div>
 
-                {/* Float Collage profile 2 */}
-                <motion.div
-                  animate={{ y: [0, 16, 0] }}
-                  transition={{ duration: 6, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-                  className="absolute bottom-6 right-2 p-4 bg-surface-100/70 backdrop-blur-md rounded-[24px] shadow-xl border border-white/10 w-48 flex flex-col items-center text-center space-y-2"
-                >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 flex items-center justify-center font-display font-bold text-white text-sm shadow-inner">
-                    LW
-                  </div>
-                  <div>
-                    <h4 className="font-bold text-xs text-white">Ms. Lakmini Wijesundara</h4>
-                    <p className="text-[10px] text-slate-400">Founder & ED • BoardPAC</p>
-                  </div>
-                </motion.div>
+  </div>
+</section>
 
-                {/* Float Collage profile 3 */}
-                <motion.div
-                  animate={{ x: [0, 12, 0], y: [0, -8, 0] }}
-                  transition={{ duration: 5.5, repeat: Infinity, ease: 'easeInOut', delay: 0.5 }}
-                  className="absolute top-36 right-8 p-4 bg-surface-100/80 backdrop-blur-md rounded-[28px] shadow-2xl border border-white/20 w-52 flex flex-col items-center text-center space-y-3 z-20"
-                >
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-r from-accent-500 to-violet-600 flex items-center justify-center font-display font-black text-white text-lg shadow-inner">
-                    ID
-                  </div>
-                  <div>
-                    <h4 className="font-extrabold text-sm text-white">Mr. Indika De Zoysa</h4>
-                    <p className="text-xs text-accent-400 font-semibold mt-0.5">FITIS Chairman</p>
-                    <p className="text-[9px] text-slate-400 mt-1 uppercase tracking-wider font-semibold">Grand Jury Chair</p>
-                  </div>
-                </motion.div>
-
-                {/* Center abstract shape representing connection networks */}
-                <svg className="absolute inset-0 w-full h-full text-accent-500/20 z-0" fill="none" viewBox="0 0 400 400">
-                  <path d="M100 100 L250 250 M250 250 L320 150 M100 100 L320 150" stroke="currentColor" strokeWidth="2" strokeDasharray="6 6" />
-                  <circle cx="100" cy="100" r="4" fill="currentColor" />
-                  <circle cx="250" cy="250" r="4" fill="currentColor" />
-                  <circle cx="320" cy="150" r="4" fill="currentColor" />
-                </svg>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
 
       {/* ── Featured Grand Jury Section ── */}
       <section className="py-24 border-b border-white/5 relative bg-surface-300/40">
