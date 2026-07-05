@@ -185,7 +185,7 @@ const ApplyNow = () => (
             <span className="gradient-text-gold">31 March 2026</span>
           </h2>
           <p className="text-slate-400 text-base mb-8">
-            Don't let your AI innovation go unrecognised. Apply today — it's completely free.
+            Don't let your AI innovation go unrecognised. Apply today.
           </p>
           <Link to="/login">
             <Button variant="gold" size="lg">

@@ -6,7 +6,8 @@ import {
   RiAwardLine, RiRocketLine, RiTeamLine, RiGlobalLine,
   RiBrainLine, RiHeartPulseLine, RiBuilding4Line, RiLeafLine,
   RiShieldLine, RiBarChartLine, RiStarLine, RiArrowRightLine,
-  RiCheckLine, RiCalendarLine, RiMapPinLine, RiLightbulbLine,
+  RiCheckLine, RiCalendarLine, RiPhoneLine, RiLightbulbLine,
+  RiMicroscopeLine,
   RiUserLine,
 } from 'react-icons/ri';
 import { FaQuoteLeft } from 'react-icons/fa';
@@ -18,20 +19,29 @@ import heroBanner from '../assets/hero-banner.png';
 // ─── Data ──────────────────────────────────────────────────────────────────────
 
 const stats = [
-  { value: '8+', label: 'Award Categories' },
+  { value: '10+', label: 'Award Categories' },
   { value: '500+', label: 'Expected Applications' },
-  { value: '50+', label: 'Expert Judges' },
-  { value: 'LKR 10M+', label: 'Prize Pool' },
+  { value: '20+', label: 'Expert Judges' },
 ];
 
 const categories = [
-  { icon: RiAwardLine,      title: 'Core National Awards',      color: 'from-gold-500/20 to-orange-500/10',   border: 'border-gold-500/30' },
-  { icon: RiUserLine,       title: 'Women in AI Leadership',    color: 'from-pink-500/20 to-rose-500/10',     border: 'border-pink-500/30' },
-  { icon: RiRocketLine,     title: 'Innovation & Future Tech',  color: 'from-purple-500/20 to-violet-500/10', border: 'border-purple-500/30' },
-  { icon: RiLeafLine,       title: 'AI in Agriculture',         color: 'from-green-500/20 to-lime-500/10',    border: 'border-green-500/30' },
-  { icon: RiBarChartLine,   title: 'AI in Finance & Banking',   color: 'from-emerald-500/20 to-teal-500/10',   border: 'border-emerald-500/30' },
-  { icon: RiHeartPulseLine, title: 'AI in Healthcare & Life Sci', color: 'from-rose-500/20 to-pink-500/10',    border: 'border-rose-500/30' },
+  { icon: RiAwardLine,      title: 'National AI Excellence Award',                  color: 'from-gold-500/20 to-orange-500/10',   border: 'border-gold-500/30' },
+  { icon: RiUserLine,       title: 'National AI Leadership Excellence Award',        color: 'from-pink-500/20 to-rose-500/10',     border: 'border-pink-500/30' },
+  { icon: RiGlobalLine,     title: 'National AI Impact Excellence Award',            color: 'from-emerald-500/20 to-teal-500/10',   border: 'border-emerald-500/30' },
+  { icon: RiGlobalLine,     title: 'National AI Export Excellence Award',            color: 'from-blue-500/20 to-cyan-500/10',      border: 'border-blue-500/30' },
+  { icon: RiLeafLine,       title: 'Best AI Solution in Agriculture',               color: 'from-green-500/20 to-lime-500/10',    border: 'border-green-500/30' },
+  { icon: RiBarChartLine,   title: 'Best AI Solution in Banking, Finance & Insurance', color: 'from-amber-500/20 to-yellow-500/10',   border: 'border-amber-500/30' },
+  { icon: RiHeartPulseLine, title: 'Best AI Solution in Healthcare & Life Sciences', color: 'from-rose-500/20 to-pink-500/10',      border: 'border-rose-500/30' },
+  { icon: RiGlobalLine,     title: 'Best AI Solution in Export Development',        color: 'from-sky-500/20 to-indigo-500/10',    border: 'border-sky-500/30' },
+  { icon: RiBrainLine,      title: 'Best AI Solution in Education',                  color: 'from-sky-500/20 to-indigo-500/10',    border: 'border-sky-500/30' },
+  { icon: RiRocketLine,     title: 'Best AI Startup / MSME Innovation',             color: 'from-purple-500/20 to-violet-500/10', border: 'border-purple-500/30' },
+  { icon: RiMicroscopeLine, title: 'Best Agentic AI Solution',                      color: 'from-cyan-500/20 to-blue-500/10',     border: 'border-cyan-500/30' },
+  { icon: RiMicroscopeLine, title: 'Best Sinhala/Tamil AI & Localisation Innovation', color: 'from-emerald-500/20 to-teal-500/10',   border: 'border-emerald-500/30' },
+  { icon: RiMicroscopeLine, title: 'University AI Innovation',                      color: 'from-indigo-500/20 to-violet-500/10',  border: 'border-indigo-500/30' },
+  { icon: RiUserLine,       title: 'Women in AI Leadership',                        color: 'from-pink-500/20 to-rose-500/10',     border: 'border-pink-500/30' },
 ];
+
+const featuredCategories = categories.slice(0, 3);
 
 const whyParticipate = [
   { icon: RiAwardLine,    title: 'National Recognition',   desc: 'Gain prestigious recognition at Sri Lanka\'s premier AI awards programme.' },
@@ -189,7 +199,7 @@ const Home = () => {
             initial={{ opacity: 0, y: 32 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.6 }}
-            className="mt-20 grid grid-cols-2 lg:grid-cols-4 gap-6 max-w-3xl mx-auto"
+            className="mt-20 grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto"
           >
             {stats.map((s) => (
               <div key={s.label} className="glass-card p-5 text-center !hover:transform-none">
@@ -260,7 +270,7 @@ const Home = () => {
             >
               {[
                 { icon: RiBrainLine,    label: 'AI Innovation', value: '10+ Categories' },
-                { icon: RiTeamLine,     label: 'Expert Panel',  value: '50+ Judges' },
+                { icon: RiTeamLine,     label: 'Expert Panel',  value: '20+ Judges' },
                 { icon: RiAwardLine,    label: 'Recognition',   value: 'National Level' },
                 { icon: RiGlobalLine,   label: 'Impact',        value: 'Cross-Industry' },
               ].map((item) => (
@@ -314,37 +324,50 @@ const Home = () => {
         <div className="section-container">
           <SectionHeader
             badge="Award Categories"
-            title="8 Tracks of"
+            title="14 Tracks of"
             highlight="Excellence"
             subtitle="From national strategy to healthcare and education — we celebrate AI innovation across every sector driving Sri Lanka forward."
           />
-          <motion.div
-            variants={stagger}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true }}
-            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5 mb-10"
-          >
-            {categories.map((cat) => (
-              <motion.div
-                key={cat.title}
-                variants={fadeUp}
-                className={`glass-card p-6 group cursor-default border ${cat.border}`}
-              >
-                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center mb-4 border ${cat.border}`}>
-                  <cat.icon className="text-white text-2xl" />
+          <div className="glass-card p-6 sm:p-8 border border-slate-700/60">
+            <motion.div
+              variants={stagger}
+              initial="hidden"
+              whileInView="show"
+              viewport={{ once: true }}
+              className="grid md:grid-cols-3 gap-6"
+            >
+              {featuredCategories.map((cat) => (
+                <motion.div
+                  key={cat.title}
+                  variants={fadeUp}
+                  className={`glass-card p-6 group cursor-default border ${cat.border}`}
+                >
+                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center mb-4 border ${cat.border}`}>
+                    <cat.icon className="text-white text-2xl" />
+                  </div>
+                  <h3 className="font-display font-semibold text-white text-base leading-snug">{cat.title}</h3>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {categories.map((cat) => (
+                <div
+                  key={cat.title}
+                  className="rounded-2xl border border-slate-700/60 bg-surface-100/50 px-4 py-3"
+                >
+                  <p className="text-slate-200 text-sm leading-snug">{cat.title}</p>
                 </div>
-                <h3 className="font-display font-semibold text-white text-base">{cat.title}</h3>
-                <p className="text-slate-500 text-xs mt-1">Open for applications</p>
-              </motion.div>
-            ))}
-          </motion.div>
-          <div className="text-center">
-            <Link to="/categories">
-              <Button variant="ghost">
-                View All 8 Categories <RiArrowRightLine />
-              </Button>
-            </Link>
+              ))}
+            </div>
+
+            <div className="text-center mt-8">
+              <Link to="/categories">
+                <Button variant="ghost">
+                  View All 14 Categories <RiArrowRightLine />
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -498,45 +521,7 @@ const Home = () => {
         </div>
       </section>
 
-      {/* ═══════════════ TESTIMONIALS ═══════════════════════════════════════════ */}
-      <section className="section-py">
-        <div className="section-container">
-          <SectionHeader
-            badge="Success Stories"
-            title="Voices of"
-            highlight="Past Winners"
-            subtitle="Hear from the innovators whose lives and careers were transformed by the AI Awards."
-          />
-          <motion.div
-            variants={stagger}
-            initial="hidden"
-            whileInView="show"
-            viewport={{ once: true }}
-            className="grid md:grid-cols-3 gap-6"
-          >
-            {testimonials.map((t) => (
-              <motion.div
-                key={t.name}
-                variants={fadeUp}
-                className="glass-card p-8 flex flex-col gap-5"
-              >
-                <FaQuoteLeft className="text-accent-500/40 text-3xl flex-shrink-0" />
-                <p className="text-slate-300 text-sm leading-relaxed flex-1 italic">"{t.quote}"</p>
-                <div className="flex items-center gap-4 mt-auto">
-                  <div className={`w-11 h-11 rounded-full bg-gradient-to-br ${t.color} flex items-center justify-center font-bold text-white`}>
-                    {t.initial}
-                  </div>
-                  <div>
-                    <p className="text-white font-semibold text-sm">{t.name}</p>
-                    <p className="text-slate-500 text-xs">{t.role}</p>
-                  </div>
-                </div>
-              </motion.div>
-            ))}
-          </motion.div>
-        </div>
-      </section>
-
+     
       {/* ═══════════════ FAQ ════════════════════════════════════════════════════ */}
       <section className="section-py bg-surface-200/50">
         <div className="section-container">
@@ -599,12 +584,12 @@ const Home = () => {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <ApplyLink>
                   <Button variant="gold" size="lg">
-                    Apply Now — It's Free <RiArrowRightLine />
+                    Apply Now <RiArrowRightLine />
                   </Button>
                 </ApplyLink>
                 <Link to="/contact">
                   <Button variant="ghost" size="lg">
-                    <RiMapPinLine /> Contact Us
+                    <RiPhoneLine /> Contact Us
                   </Button>
                 </Link>
               </div>
