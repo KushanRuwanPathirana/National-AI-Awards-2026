@@ -1,5 +1,6 @@
 import { useRef } from 'react';
 import { Link } from 'react-router-dom';
+import ApplyLink from '../components/shared/ApplyLink';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {
   RiAwardLine, RiRocketLine, RiTeamLine, RiGlobalLine,
@@ -170,12 +171,12 @@ const Home = () => {
             transition={{ duration: 0.6, delay: 0.45 }}
             className="flex flex-col sm:flex-row items-center justify-center gap-4"
           >
-            <Link to="/apply">
+            <ApplyLink>
               <Button variant="gold" size="lg" className="shadow-glow-gold">
                 Apply Now
                 <RiArrowRightLine className="text-lg" />
               </Button>
-            </Link>
+            </ApplyLink>
             <Link to="/about">
               <Button variant="ghost" size="lg">
                 Learn More
@@ -391,11 +392,11 @@ const Home = () => {
                 The National AI Awards welcomes applications from a diverse range of innovators. 
                 Review the key eligibility requirements below to see if your AI-driven solution qualifies.
               </p>
-              <Link to="/apply">
+              <ApplyLink>
                 <Button variant="gold">
                   Start Your Application <RiArrowRightLine />
                 </Button>
-              </Link>
+              </ApplyLink>
             </motion.div>
           </div>
         </div>
@@ -596,11 +597,11 @@ const Home = () => {
                 Join hundreds of Sri Lanka's brightest minds competing for the most prestigious AI awards in the country.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link to="/apply">
+                <ApplyLink>
                   <Button variant="gold" size="lg">
                     Apply Now — It's Free <RiArrowRightLine />
                   </Button>
-                </Link>
+                </ApplyLink>
                 <Link to="/contact">
                   <Button variant="ghost" size="lg">
                     <RiMapPinLine /> Contact Us

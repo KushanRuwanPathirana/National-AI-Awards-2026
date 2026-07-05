@@ -5,6 +5,7 @@ import { HiMenuAlt3, HiX, HiChevronDown } from 'react-icons/hi';
 import { RiAwardLine } from 'react-icons/ri';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './shared/NotificationBell';
+import ApplyLink from './shared/ApplyLink';
 
 const navLinks = [
   { label: 'Home',             path: '/' },
@@ -107,9 +108,9 @@ const Navbar = () => {
                 <Link to="/login" className="btn-ghost text-sm px-4 py-2">
                   Login
                 </Link>
-                <Link to="/apply" className="btn-gold text-sm px-5 py-2">
+                <ApplyLink className="btn-gold text-sm px-5 py-2">
                   Apply Now
-                </Link>
+                </ApplyLink>
               </>
             )}
           </div>
@@ -177,9 +178,9 @@ const Navbar = () => {
                   <Link to="/login" onClick={() => setIsOpen(false)} className="btn-ghost w-full mt-1 text-center">
                     Login
                   </Link>
-                  <Link to="/apply" onClick={() => setIsOpen(false)} className="btn-gold w-full mt-1 text-center">
+                  <ApplyLink onClick={() => setIsOpen(false)} className="btn-gold w-full mt-1 text-center">
                     Apply Now
-                  </Link>
+                  </ApplyLink>
                 </>
               )}
             </div>

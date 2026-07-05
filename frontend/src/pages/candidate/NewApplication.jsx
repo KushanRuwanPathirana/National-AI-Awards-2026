@@ -10,6 +10,7 @@ import {
 import Button from '../../components/shared/Button';
 import categoryService from '../../services/category.service';
 import applicationService from '../../services/application.service';
+import { categories as frontCategories } from '../Categories';
 
 const steps = [
   { label: 'Category & Title' },
@@ -64,10 +65,29 @@ const NewApplication = () => {
   }, []);
 
   useEffect(() => {
-    if (categoryId && categories.length > 0) {
-      const cat = categories.find(c => c._id === categoryId);
-      setSelectedCategory(cat);
+    if (!categoryId) {
+      setSelectedCategory(null);
+      return;
     }
+
+    // Prefer API-backed category when available
+    const apiCat = categories.find(c => c._id === categoryId);
+    if (apiCat) {
+      setSelectedCategory(apiCat);
+      return;
+    }
+
+    // Fallback to front-end categories (local static list)
+    if (String(categoryId).startsWith('local-')) {
+      const localId = Number(categoryId.split('-')[1]);
+      const fc = frontCategories.find(f => f.id === localId);
+      if (fc) {
+        setSelectedCategory({ name: fc.title, description: fc.desc, eligibilityQuestions: [] });
+        return;
+      }
+    }
+
+    setSelectedCategory(null);
   }, [categoryId, categories]);
 
   const handleNext = async () => {
@@ -271,9 +291,13 @@ const NewApplication = () => {
                       {...register('categoryId', { required: 'Please select a category' })}
                     >
                       <option value="">Choose category...</option>
-                      {categories.map(c => (
-                        <option key={c._id} value={c._id} className="bg-navy-950">{c.name}</option>
-                      ))}
+                      {frontCategories.map(fc => {
+                        const match = categories.find(a => (a.name || '').toLowerCase() === (fc.title || '').toLowerCase());
+                        const value = match ? match._id : `local-${fc.id}`;
+                        return (
+                          <option key={fc.id} value={value} className="bg-navy-950">{fc.title}</option>
+                        );
+                      })}
                     </select>
                   </div>
 

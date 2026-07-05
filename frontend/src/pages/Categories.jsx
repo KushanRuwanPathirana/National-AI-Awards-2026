@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import ApplyLink from '../components/shared/ApplyLink';
 import {
   RiHeartPulseLine, RiBarChartLine, RiLeafLine, RiBrainLine,
   RiBuilding4Line, RiShieldLine, RiRocketLine, RiStore2Line,
@@ -9,7 +10,7 @@ import {
 import SectionHeader from '../components/shared/SectionHeader';
 import Button from '../components/shared/Button';
 
-const categories = [
+export const categories = [
   {
     id: 1,
     icon: RiAwardLine,
@@ -216,7 +217,7 @@ const Categories = () => (
           ].map((group) => (
             <div key={group.key}>
               <div className="mb-4">
-                <h3 className="text-emerald-300 font-semibold text-sm">{group.key}. {group.title}</h3>
+                <h3 className="text-emerald-300 font-semibold text-4xl">{group.key}. {group.title}</h3>
               </div>
 
               <motion.div
@@ -244,7 +245,7 @@ const Categories = () => (
                         </div>
                       </div>
 
-                      <h2 className="font-display font-bold text-white text-xl mb-3">{cat.title}</h2>
+                      <h2 className="font-display font-bold text-white text-2xl mb-3">{cat.title}</h2>
                       <p className="text-slate-400 text-sm leading-relaxed mb-5">{cat.desc}</p>
 
                       <div>
@@ -261,9 +262,9 @@ const Categories = () => (
 
                       <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-between">
                         <span className="badge-green text-xs">Open for Applications</span>
-                        <Link to="/apply" className={`${cat.iconColor} text-sm font-medium flex items-center gap-1 hover:gap-2 transition-all`}>
+                        <ApplyLink className={`${cat.iconColor} text-sm font-medium flex items-center gap-1 hover:gap-2 transition-all`}>
                           Apply <RiArrowRightLine />
-                        </Link>
+                        </ApplyLink>
                       </div>
                     </div>
                   </motion.div>
@@ -284,11 +285,11 @@ const Categories = () => (
           highlight="Apply Today"
           subtitle="Applications are open until 31 March 2026. Submit your entry free of charge."
         />
-        <Link to="/apply">
+        <ApplyLink>
           <Button variant="gold" size="lg">
             Start Application <RiArrowRightLine />
           </Button>
-        </Link>
+        </ApplyLink>
       </div>
     </section>
   </div>

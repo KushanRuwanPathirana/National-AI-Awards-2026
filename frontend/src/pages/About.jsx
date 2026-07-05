@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import ApplyLink from '../components/shared/ApplyLink';
 import {
   RiAwardLine, RiTeamLine, RiGlobalLine, RiGovernmentLine,
   RiArrowRightLine, RiCheckLine, RiBrainLine,
@@ -194,8 +195,8 @@ const About = () => (
           <p className="text-slate-400 text-lg mb-8 max-w-xl mx-auto">
             Apply today and let your innovation represent what Sri Lanka is capable of achieving.
           </p>
-          <div className="flex items-center justify-center gap-4 flex-wrap">
-            <Link to="/apply"><Button variant="gold" size="lg">Apply Now <RiArrowRightLine /></Button></Link>
+            <div className="flex items-center justify-center gap-4 flex-wrap">
+            <ApplyLink><Button variant="gold" size="lg">Apply Now <RiArrowRightLine /></Button></ApplyLink>
             <Link to="/categories"><Button variant="ghost" size="lg">View Categories</Button></Link>
           </div>
         </motion.div>

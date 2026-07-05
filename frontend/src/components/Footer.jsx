@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import ApplyLink from './shared/ApplyLink';
 import { RiAwardLine, RiMailLine, RiPhoneLine, RiMapPinLine } from 'react-icons/ri';
 import { FaLinkedin, FaTwitter, FaFacebook, FaYoutube } from 'react-icons/fa';
 import { motion } from 'framer-motion';
@@ -73,13 +74,20 @@ const Footer = () => (
             <ul className="space-y-3">
               {links.map((link) => (
                 <li key={link.path}>
-                  <Link
-                    to={link.path}
-                    className="text-slate-400 text-sm hover:text-accent-300 transition-colors duration-200 flex items-center gap-2 group"
-                  >
-                    <span className="w-1 h-1 rounded-full bg-accent-500/0 group-hover:bg-accent-400 transition-colors" />
-                    {link.label}
-                  </Link>
+                  {link.path === '/apply' ? (
+                    <ApplyLink className="text-slate-400 text-sm hover:text-accent-300 transition-colors duration-200 flex items-center gap-2 group">
+                      <span className="w-1 h-1 rounded-full bg-accent-500/0 group-hover:bg-accent-400 transition-colors" />
+                      {link.label}
+                    </ApplyLink>
+                  ) : (
+                    <Link
+                      to={link.path}
+                      className="text-slate-400 text-sm hover:text-accent-300 transition-colors duration-200 flex items-center gap-2 group"
+                    >
+                      <span className="w-1 h-1 rounded-full bg-accent-500/0 group-hover:bg-accent-400 transition-colors" />
+                      {link.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
