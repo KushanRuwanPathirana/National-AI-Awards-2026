@@ -16,7 +16,7 @@ export const categories = [
     icon: RiAwardLine,
     title: 'National AI Excellence Award',
     desc: 'The top award: best overall AI solution across all sectors.',
-    criteria: ['Overall impact', 'Technical maturity', 'Scalability & sustainability'],
+    criteria: ['Innovation & Originality', 'Measurable Impact', 'Technical Excellence', 'Responsible AI & Governance', 'Scalability & Sustainability', 'Execution & Evidence'],
     gradient: 'from-gold-500/25 to-orange-600/15',
     border: 'border-gold-500/40',
     iconColor: 'text-gold-400',
@@ -27,7 +27,15 @@ export const categories = [
     icon: RiUserLine,
     title: 'National AI Leadership Excellence Award',
     desc: 'Sri Lanka AI Transformation Leader of the Year — individual recognition for outstanding leadership.',
-    criteria: ['Leadership & vision', 'Transformation outcomes', 'Sector influence'],
+    criteria: [
+      'Strategic AI Vision & Leadership',
+      'Business & Societal Impact',
+      'Responsible AI Leadership',
+      'Innovation & Thought Leadership',
+      'Talent & Workforce Development',
+      'Ecosystem & National Contribution',
+    ],
+
     gradient: 'from-pink-500/25 to-rose-600/15',
     border: 'border-pink-500/40',
     iconColor: 'text-pink-400',
@@ -38,7 +46,7 @@ export const categories = [
     icon: RiGlobalLine,
     title: 'National AI Impact Excellence Award',
     desc: 'Government, societal, and economic transformation use cases demonstrating measurable public benefit.',
-    criteria: ['Public sector impact', 'Societal benefit', 'Measurable outcomes'],
+    criteria: ['Innovation & Originality', 'Measurable Impact', 'Technical Excellence', 'Responsible AI & Governance', 'Scalability & Sustainability', 'Execution & Evidence'],
     gradient: 'from-emerald-500/25 to-teal-600/15',
     border: 'border-emerald-500/40',
     iconColor: 'text-emerald-400',
@@ -49,7 +57,7 @@ export const categories = [
     icon: RiGlobalLine,
     title: 'National AI Export Excellence Award',
     desc: 'Export growth, trade facilitation, supply chain optimization, and global market competitiveness.',
-    criteria: ['Export enablement', 'Global scalability', 'Supply chain optimisation'],
+    criteria: ['Innovation & Originality', 'Measurable Impact', 'Technical Excellence', 'Responsible AI & Governance', 'Scalability & Sustainability', 'Execution & Evidence'],
     gradient: 'from-blue-500/25 to-cyan-600/15',
     border: 'border-blue-500/40',
     iconColor: 'text-blue-400',
@@ -62,7 +70,7 @@ export const categories = [
     icon: RiLeafLine,
     title: 'Best AI Solution in Agriculture',
     desc: 'Precision agriculture, smart farming, agri-tech innovation, and food security.',
-    criteria: ['Precision farming', 'Crop analytics', 'Agri supply chain'],
+    criteria: ['Innovation & Originality', 'Measurable Impact', 'Technical Excellence', 'Responsible AI & Governance', 'Scalability & Sustainability', 'Execution & Evidence'],
     gradient: 'from-green-500/25 to-lime-600/15',
     border: 'border-green-500/40',
     iconColor: 'text-green-400',
@@ -73,7 +81,7 @@ export const categories = [
     icon: RiBarChartLine,
     title: 'Best AI Solution in Banking, Finance & Insurance',
     desc: 'BFSI innovation and analytics across fraud detection, risk, and customer experience.',
-    criteria: ['Fraud & risk', 'Customer impact', 'Regulatory alignment'],
+    criteria: ['Innovation & Originality', 'Measurable Impact', 'Technical Excellence', 'Responsible AI & Governance', 'Scalability & Sustainability', 'Execution & Evidence'],
     gradient: 'from-amber-500/25 to-yellow-600/15',
     border: 'border-amber-500/40',
     iconColor: 'text-amber-400',
@@ -84,7 +92,7 @@ export const categories = [
     icon: RiHeartPulseLine,
     title: 'Best AI Solution in Healthcare & Life Sciences',
     desc: 'Patient care, diagnostics, hospital automation and life-sciences innovations.',
-    criteria: ['Clinical impact', 'Safety & validation', 'Operational efficiency'],
+    criteria: ['Innovation & Originality', 'Measurable Impact', 'Technical Excellence', 'Responsible AI & Governance', 'Scalability & Sustainability', 'Execution & Evidence'],
     gradient: 'from-rose-500/25 to-pink-600/15',
     border: 'border-rose-500/40',
     iconColor: 'text-rose-400',
@@ -95,7 +103,7 @@ export const categories = [
     icon: RiGlobalLine,
     title: 'Best AI Solution in Export Development',
     desc: 'Solutions that accelerate export growth, trade facilitation and global market competitiveness.',
-    criteria: ['Market analysis', 'Export enablement', 'Logistics optimisation'],
+    criteria: ['Innovation & Originality', 'Measurable Impact', 'Technical Excellence', 'Responsible AI & Governance', 'Scalability & Sustainability', 'Execution & Evidence'],
     gradient: 'from-sky-500/25 to-indigo-600/15',
     border: 'border-sky-500/40',
     iconColor: 'text-sky-400',
@@ -106,64 +114,83 @@ export const categories = [
     icon: RiBrainLine,
     title: 'Best AI Solution in Education',
     desc: 'AI solutions transforming teaching, learning, educational administration, and student outcomes.',
-    criteria: ['Learner outcomes', 'Accessibility', 'Teaching innovation'],
+    criteria: ['Innovation & Originality', 'Measurable Impact', 'Technical Excellence', 'Responsible AI & Governance', 'Scalability & Sustainability', 'Execution & Evidence'],
     gradient: 'from-sky-500/25 to-indigo-600/15',
     border: 'border-sky-500/40',
     iconColor: 'text-sky-400',
     iconBg: 'bg-sky-500/15 border-sky-500/30',
   },
+  {
+    id: 10,
+    icon: RiBrainLine,
+    title: 'Best AI Solution in Manufacturing & Industry 5.0',
+    desc: 'AI-driven smart factories, IIoT, and automation enhancing productivity, safety, and sustainability.',
+    criteria: ['Innovation & Originality', 'Measurable Impact', 'Technical Excellence', 'Responsible AI & Governance', 'Scalability & Sustainability', 'Execution & Evidence'],
+    gradient: 'from-amber-500/25 to-emerald-600/15',
+    border: 'border-amber-500/40',
+    iconColor: 'text-amber-400',
+    iconBg: 'bg-amber-500/15 border-amber-500/30',
+  },
 
   // Innovation & Future-Focused
   {
-    id: 10,
+    id: 11,
     icon: RiRocketLine,
     title: 'Best AI Startup / MSME Innovation',
     desc: 'High-growth, scalable AI startups and MSMEs demonstrating strong product-market fit.',
-    criteria: ['Scalability', 'Market traction', 'Innovation'],
+    criteria: ['Innovation & Originality', 'Measurable Impact', 'Technical Excellence', 'Responsible AI & Governance', 'Scalability & Sustainability', 'Execution & Evidence'],
     gradient: 'from-purple-500/25 to-violet-600/15',
     border: 'border-purple-500/40',
     iconColor: 'text-purple-400',
     iconBg: 'bg-purple-500/15 border-purple-500/30',
   },
   {
-    id: 11,
+    id: 12,
     icon: RiMicroscopeLine,
     title: 'Best Agentic AI Solution',
     desc: 'Copilots, LLMs, AI agents and automation delivering tangible productivity gains.',
-    criteria: ['Agent safety', 'Utility & automation', 'User experience'],
+    criteria: ['Innovation & Originality', 'Measurable Impact', 'Technical Excellence', 'Responsible AI & Governance', 'Scalability & Sustainability', 'Execution & Evidence'],
     gradient: 'from-cyan-500/25 to-blue-600/15',
     border: 'border-cyan-500/40',
     iconColor: 'text-cyan-400',
     iconBg: 'bg-cyan-500/15 border-cyan-500/30',
   },
   {
-    id: 12,
+    id: 13,
     icon: RiMicroscopeLine,
     title: 'Best Sinhala/Tamil AI & Localisation Innovation',
     desc: 'Strategic localisation innovations in Sinhala/Tamil that strengthen Sri Lanka\'s digital advantage.',
-    criteria: ['Localization quality', 'Language coverage', 'Strategic impact'],
+    criteria: ['Innovation & Originality', 'Measurable Impact', 'Technical Excellence', 'Responsible AI & Governance', 'Scalability & Sustainability', 'Execution & Evidence'],
     gradient: 'from-emerald-500/25 to-teal-600/15',
     border: 'border-emerald-500/40',
     iconColor: 'text-emerald-400',
     iconBg: 'bg-emerald-500/15 border-emerald-500/30',
   },
   {
-    id: 13,
+    id: 14,
     icon: RiMicroscopeLine,
     title: 'University AI Innovation',
     desc: 'Outstanding AI research, innovation, and solutions developed by universities and higher education institutions.',
-    criteria: ['Research novelty', 'Societal relevance', 'Commercialisability'],
+    criteria: ['Innovation & Originality', 'Measurable Impact', 'Technical Excellence', 'Responsible AI & Governance', 'Scalability & Sustainability', 'Execution & Evidence'],
     gradient: 'from-indigo-500/25 to-violet-600/15',
     border: 'border-indigo-500/40',
     iconColor: 'text-indigo-400',
     iconBg: 'bg-indigo-500/15 border-indigo-500/30',
   },
   {
-    id: 14,
+    id: 15,
     icon: RiUserLine,
     title: 'Women in AI Leadership',
     desc: 'Recognizing women who are scaling AI solutions — individual award celebrating leadership and impact.',
-    criteria: ['Leadership', 'Impact', 'Mentorship'],
+    criteria: [
+      'Strategic AI Vision & Leadership',
+      'Business & Societal Impact',
+      'Responsible AI Leadership',
+      'Innovation & Thought Leadership',
+      'Talent & Workforce Development',
+      'Ecosystem & National Contribution',
+    ],
+
     gradient: 'from-pink-500/25 to-rose-600/15',
     border: 'border-pink-500/40',
     iconColor: 'text-pink-400',
@@ -173,7 +200,7 @@ export const categories = [
 
 const fadeUp = {
   hidden: { opacity: 0, y: 28 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.6 } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6 } },
 };
 const stagger = { show: { transition: { staggerChildren: 0.08 } } };
 
@@ -184,7 +211,7 @@ const Categories = () => (
       <div className="absolute inset-0 dot-pattern opacity-30 pointer-events-none" />
       <div className="section-container relative z-10 text-center">
         <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="badge-accent mb-6 inline-flex">
-          14 Awards
+          15 Awards
         </motion.span>
         <motion.h1
           initial={{ opacity: 0, y: 32 }}
@@ -200,7 +227,7 @@ const Categories = () => (
           transition={{ delay: 0.2 }}
           className="text-slate-300 text-lg sm:text-xl max-w-2xl mx-auto"
         >
-          Fourteen awards across core national, industry, and innovation tracks celebrating AI excellence in Sri Lanka.
+          Fifteen awards across core national, industry, and innovation tracks celebrating AI excellence in Sri Lanka.
         </motion.p>
       </div>
     </section>
@@ -208,12 +235,11 @@ const Categories = () => (
     {/* ── Categories Grid ── */}
     <section className="section-py">
       <div className="section-container">
-        {/** Render grouped sections A/B/C **/}
         <div className="space-y-8">
           {[
-            { key: 'A', title: 'Core National Awards', items: categories.slice(0, 4) },
-            { key: 'B', title: 'Industry & Sector Excellence Awards', items: categories.slice(4, 9) },
-            { key: 'C', title: 'Innovation & Future-Focused Awards', items: categories.slice(9, 14) },
+            { key: 'A', title: 'National AI Trailblazer Awards', items: categories.slice(0, 4) },
+            { key: 'B', title: 'Industry & Sector Excellence Awards', items: categories.slice(4, 10) },
+            { key: 'C', title: 'Innovation & Future-Focused Awards', items: categories.slice(10, 15) },
           ].map((group) => (
             <div key={group.key}>
               <div className="mb-4">
