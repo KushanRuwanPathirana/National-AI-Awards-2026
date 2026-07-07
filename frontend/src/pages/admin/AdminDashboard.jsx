@@ -56,9 +56,18 @@ const AdminDashboard = () => {
   const [editingCategoryId, setEditingCategoryId] = useState(null);
   const { register: regPassword, handleSubmit: handlePassword, formState: { errors: passErrors, isSubmitting: passSubmitting }, watch, reset: resetPassword } = useForm();
   const newPassword = watch('newPassword');
+  const passwordRules = [
+    { label: 'At least 8 characters', passed: (newPassword || '').length >= 8 },
+    { label: 'Includes an uppercase letter', passed: /[A-Z]/.test(newPassword || '') },
+    { label: 'Includes a number', passed: /\d/.test(newPassword || '') },
+    { label: 'Includes a symbol', passed: /[^A-Za-z0-9]/.test(newPassword || '') },
+  ];
+  const passwordStrength = passwordRules.filter((rule) => rule.passed).length;
 
   // Broadcast form
-  const { register: regBroadcast, handleSubmit: handleBroadcast, reset: resetBroadcast, formState: { isSubmitting: broadcastSubmitting } } = useForm();
+  const { register: regBroadcast, handleSubmit: handleBroadcast, reset: resetBroadcast, watch: watchBroadcast, formState: { isSubmitting: broadcastSubmitting } } = useForm({
+    defaultValues: { role: 'all', title: '', message: '' },
+  });
 
   const fetchStats = async () => {
     try {
@@ -130,6 +139,15 @@ const AdminDashboard = () => {
   };
 
   const judgesList = users.filter((userItem) => userItem.role === 'judge');
+  const candidatesList = users.filter((userItem) => userItem.role === 'candidate');
+  const broadcastRole = watchBroadcast('role') || 'all';
+  const broadcastTitle = watchBroadcast('title') || '';
+  const broadcastMessage = watchBroadcast('message') || '';
+  const broadcastAudienceCount = broadcastRole === 'judge'
+    ? judgesList.length
+    : broadcastRole === 'candidate'
+      ? candidatesList.length
+      : users.length;
 
   // Change Password submit
   const onChangePasswordSubmit = async (data) => {
@@ -992,34 +1010,111 @@ const AdminDashboard = () => {
 
                 {/* 5. BROADCAST TAB */}
                 {activeTab === 'broadcast' && (
-                  <div>
-                    <h3 className="font-display font-bold text-white text-xl mb-2">Send Broadcast Alert</h3>
-                    <p className="text-slate-400 text-xs mb-6">Dispatch a system notification alert to users of a selected role or globally.</p>
-
-                    <form onSubmit={handleBroadcast(onBroadcastSubmit)} className="space-y-4 max-w-md">
+                  <div className="space-y-6">
+                    <div className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1.5 font-medium">Send Alert To</label>
-                        <select className="input-field" {...regBroadcast('role')}>
-                          <option value="all">All Registered Users</option>
-                          <option value="candidate">Candidates Only</option>
-                          <option value="judge">Judges Only</option>
-                        </select>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-accent-300">Communication Center</p>
+                        <h3 className="mt-1 font-display text-2xl font-black text-white">Send Broadcast Alert</h3>
+                        <p className="mt-1 max-w-2xl text-sm text-slate-400">Dispatch a targeted system notification to candidates, judges, or every registered user.</p>
                       </div>
-
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1.5 font-medium">Alert Title</label>
-                        <input className="input-field" placeholder="e.g. Submissions Deadline Extended" {...regBroadcast('title', { required: true })} />
+                      <div className="rounded-xl border border-accent-500/20 bg-accent-500/10 px-4 py-3">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-accent-300">Estimated Reach</div>
+                        <div className="mt-1 font-display text-2xl font-black text-white">{broadcastAudienceCount}</div>
                       </div>
+                    </div>
 
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1.5 font-medium">Alert Message</label>
-                        <textarea className="input-field h-24 resize-none" placeholder="Enter notification message..." {...regBroadcast('message', { required: true })} />
+                    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+                      <form onSubmit={handleBroadcast(onBroadcastSubmit)} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
+                        <div className="grid gap-4 sm:grid-cols-3">
+                          {[
+                            { value: 'all', label: 'All Users', count: users.length, helper: 'Full platform notice' },
+                            { value: 'candidate', label: 'Candidates', count: candidatesList.length, helper: 'Applicants only' },
+                            { value: 'judge', label: 'Judges', count: judgesList.length, helper: 'Evaluation panel' },
+                          ].map((audience) => (
+                            <label
+                              key={audience.value}
+                              className={`cursor-pointer rounded-xl border p-4 transition-all ${
+                                broadcastRole === audience.value
+                                  ? 'border-accent-500 bg-accent-500/10 shadow-glow'
+                                  : 'border-white/10 bg-navy-950/30 hover:border-white/20 hover:bg-white/5'
+                              }`}
+                            >
+                              <input type="radio" value={audience.value} className="sr-only" {...regBroadcast('role')} />
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-sm font-bold text-white">{audience.label}</span>
+                                <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold text-slate-300">{audience.count}</span>
+                              </div>
+                              <p className="mt-2 text-xs text-slate-500">{audience.helper}</p>
+                            </label>
+                          ))}
+                        </div>
+
+                        <div className="mt-6 space-y-4">
+                          <div>
+                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Alert Title</label>
+                            <input className="input-field" placeholder="e.g. Submissions Deadline Extended" {...regBroadcast('title', { required: true })} />
+                          </div>
+
+                          <div>
+                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Alert Message</label>
+                            <textarea className="input-field min-h-36 resize-none" placeholder="Enter notification message..." {...regBroadcast('message', { required: true })} />
+                            <div className="mt-2 flex justify-between text-[11px] text-slate-500">
+                              <span>Keep the message direct and action-oriented.</span>
+                              <span>{broadcastMessage.length} chars</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
+                          <p className="text-xs text-slate-500">This sends an in-app notification immediately.</p>
+                          <button type="submit" disabled={broadcastSubmitting} className="btn-primary min-w-[180px] disabled:cursor-not-allowed disabled:opacity-60">
+                            {broadcastSubmitting ? (
+                              <><span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Sending...</>
+                            ) : (
+                              <><RiMailSendLine /> Send Broadcast</>
+                            )}
+                          </button>
+                        </div>
+                      </form>
+
+                      <div className="space-y-5">
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                          <div className="flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-white">Notification Preview</h4>
+                            <span className="rounded-full border border-gold-500/20 bg-gold-500/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-gold-400">Live</span>
+                          </div>
+                          <div className="mt-4 rounded-2xl border border-white/10 bg-navy-950/60 p-4">
+                            <div className="flex items-start gap-3">
+                              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-accent-500/15 text-accent-300">
+                                <RiMailSendLine size={18} />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="truncate text-sm font-bold text-white">{broadcastTitle || 'Alert title preview'}</p>
+                                <p className="mt-1 text-xs leading-5 text-slate-400">{broadcastMessage || 'Your broadcast message will appear here as users receive the notification.'}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                          <h4 className="text-sm font-bold text-white">Delivery Summary</h4>
+                          <div className="mt-4 space-y-3 text-sm">
+                            <div className="flex justify-between rounded-xl bg-navy-950/40 px-3 py-2">
+                              <span className="text-slate-400">Audience</span>
+                              <span className="font-semibold text-white">{broadcastRole === 'all' ? 'All users' : broadcastRole === 'candidate' ? 'Candidates' : 'Judges'}</span>
+                            </div>
+                            <div className="flex justify-between rounded-xl bg-navy-950/40 px-3 py-2">
+                              <span className="text-slate-400">Recipients</span>
+                              <span className="font-semibold text-white">{broadcastAudienceCount}</span>
+                            </div>
+                            <div className="flex justify-between rounded-xl bg-navy-950/40 px-3 py-2">
+                              <span className="text-slate-400">Channel</span>
+                              <span className="font-semibold text-white">In-app alert</span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
-
-                      <button type="submit" disabled={broadcastSubmitting} className="btn-primary w-full mt-2">
-                        {broadcastSubmitting ? 'Sending...' : 'Send Broadcast'}
-                      </button>
-                    </form>
+                    </div>
                   </div>
                 )}
 
@@ -1093,78 +1188,134 @@ const AdminDashboard = () => {
 
                 {/* 7. CHANGE PASSWORD */}
                 {activeTab === 'password' && (
-                  <div>
-                    <h3 className="font-display font-bold text-white text-xl mb-2">Change Password</h3>
-                    <p className="text-slate-400 text-sm mb-6">Ensure your account uses a secure password to keep your administrator portal data safe.</p>
-
-                    {changeError && (
-                      <div className="mb-5 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
-                        {changeError}
-                      </div>
-                    )}
-
-                    {changeSuccess && (
-                      <div className="mb-5 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm">
-                        {changeSuccess}
-                      </div>
-                    )}
-
-                    <form onSubmit={handlePassword(onChangePasswordSubmit)} className="space-y-4 max-w-md">
+                  <div className="space-y-6">
+                    <div className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
                       <div>
-                        <label className="block text-xs text-slate-400 mb-1.5 font-medium">Current Password *</label>
-                        <input
-                          id="admin-oldpassword"
-                          type="password"
-                          className="input-field"
-                          placeholder="Enter current password"
-                          {...regPassword('oldPassword', { required: 'Current password is required' })}
-                        />
-                        {passErrors.oldPassword && <p className="text-red-400 text-xs mt-1">{passErrors.oldPassword.message}</p>}
+                        <p className="text-xs font-semibold uppercase tracking-wider text-accent-300">Account Security</p>
+                        <h3 className="mt-1 font-display text-2xl font-black text-white">Change Password</h3>
+                        <p className="mt-1 max-w-2xl text-sm text-slate-400">Update your administrator credentials and keep portal access protected.</p>
                       </div>
-
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1.5 font-medium">New Password *</label>
-                        <input
-                          id="admin-newpassword"
-                          type="password"
-                          className="input-field"
-                          placeholder="At least 8 characters"
-                          {...regPassword('newPassword', {
-                            required: 'New password is required',
-                            minLength: { value: 8, message: 'Password must be at least 8 characters' },
-                          })}
-                        />
-                        {passErrors.newPassword && <p className="text-red-400 text-xs mt-1">{passErrors.newPassword.message}</p>}
+                      <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">Signed In As</div>
+                        <div className="mt-1 max-w-[220px] truncate text-sm font-semibold text-white">{user?.email || user?.fullName || 'Administrator'}</div>
                       </div>
+                    </div>
 
-                      <div>
-                        <label className="block text-xs text-slate-400 mb-1.5 font-medium">Confirm New Password *</label>
-                        <input
-                          id="admin-confirm"
-                          type="password"
-                          className="input-field"
-                          placeholder="Re-enter new password"
-                          {...regPassword('confirmPassword', {
-                            validate: (v) => v === newPassword || 'Passwords do not match',
-                          })}
-                        />
-                        {passErrors.confirmPassword && <p className="text-red-400 text-xs mt-1">{passErrors.confirmPassword.message}</p>}
-                      </div>
-
-                      <button
-                        id="admin-change-submit"
-                        type="submit"
-                        disabled={passSubmitting}
-                        className="btn-primary w-full mt-2"
-                        style={passSubmitting ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
-                      >
-                        {passSubmitting ? (
-                          <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Updating...</>
-                        ) : (
-                          <>Update Password <RiCheckDoubleLine /></>
+                    <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+                      <form onSubmit={handlePassword(onChangePasswordSubmit)} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
+                        {(changeError || changeSuccess) && (
+                          <div className={`mb-5 rounded-xl border p-4 text-sm ${
+                            changeError
+                              ? 'border-red-500/30 bg-red-500/10 text-red-400'
+                              : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                          }`}>
+                            {changeError || changeSuccess}
+                          </div>
                         )}
-                      </button>
-                    </form>
+
+                        <div className="space-y-4">
+                          <div>
+                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Current Password</label>
+                            <input
+                              id="admin-oldpassword"
+                              type="password"
+                              className="input-field"
+                              placeholder="Enter current password"
+                              {...regPassword('oldPassword', { required: 'Current password is required' })}
+                            />
+                            {passErrors.oldPassword && <p className="mt-1 text-xs text-red-400">{passErrors.oldPassword.message}</p>}
+                          </div>
+
+                          <div>
+                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">New Password</label>
+                            <input
+                              id="admin-newpassword"
+                              type="password"
+                              className="input-field"
+                              placeholder="At least 8 characters"
+                              {...regPassword('newPassword', {
+                                required: 'New password is required',
+                                minLength: { value: 8, message: 'Password must be at least 8 characters' },
+                              })}
+                            />
+                            {passErrors.newPassword && <p className="mt-1 text-xs text-red-400">{passErrors.newPassword.message}</p>}
+                          </div>
+
+                          <div>
+                            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Confirm New Password</label>
+                            <input
+                              id="admin-confirm"
+                              type="password"
+                              className="input-field"
+                              placeholder="Re-enter new password"
+                              {...regPassword('confirmPassword', {
+                                validate: (v) => v === newPassword || 'Passwords do not match',
+                              })}
+                            />
+                            {passErrors.confirmPassword && <p className="mt-1 text-xs text-red-400">{passErrors.confirmPassword.message}</p>}
+                          </div>
+                        </div>
+
+                        <div className="mt-6 border-t border-white/10 pt-5">
+                          <button
+                            id="admin-change-submit"
+                            type="submit"
+                            disabled={passSubmitting}
+                            className="btn-primary w-full disabled:cursor-not-allowed disabled:opacity-60"
+                          >
+                            {passSubmitting ? (
+                              <><span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Updating...</>
+                            ) : (
+                              <>Update Password <RiCheckDoubleLine /></>
+                            )}
+                          </button>
+                        </div>
+                      </form>
+
+                      <div className="space-y-5">
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                          <div className="flex items-center gap-3">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-500/15 text-accent-300">
+                              <RiLockPasswordLine size={20} />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-white">Password Strength</h4>
+                              <p className="text-xs text-slate-500">{passwordStrength} of {passwordRules.length} checks passed</p>
+                            </div>
+                          </div>
+
+                          <div className="mt-4 grid grid-cols-4 gap-2">
+                            {passwordRules.map((rule, index) => (
+                              <div key={rule.label} className={`h-2 rounded-full ${index < passwordStrength ? 'bg-emerald-400' : 'bg-white/10'}`} />
+                            ))}
+                          </div>
+
+                          <div className="mt-4 space-y-3">
+                            {passwordRules.map((rule) => (
+                              <div key={rule.label} className="flex items-center gap-2 text-sm">
+                                <span className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] ${
+                                  rule.passed
+                                    ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
+                                    : 'border-white/10 bg-white/5 text-slate-500'
+                                }`}>
+                                  {rule.passed ? '✓' : ''}
+                                </span>
+                                <span className={rule.passed ? 'text-slate-200' : 'text-slate-500'}>{rule.label}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                          <h4 className="text-sm font-bold text-white">Security Notes</h4>
+                          <div className="mt-4 space-y-3 text-sm text-slate-400">
+                            <div className="rounded-xl bg-navy-950/40 px-3 py-3">Use a password that is unique to this admin portal.</div>
+                            <div className="rounded-xl bg-navy-950/40 px-3 py-3">Avoid sharing credentials with other administrators.</div>
+                            <div className="rounded-xl bg-navy-950/40 px-3 py-3">After updating, use the new password on your next sign-in.</div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </>
