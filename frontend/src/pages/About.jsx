@@ -60,7 +60,7 @@ const About = () => (
           transition={{ duration: 0.6, delay: 0.25 }}
           className="text-slate-300 text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed"
         >
-          Sri Lanka's most prestigious recognition programme for Artificial Intelligence innovation —
+          Sri Lanka's most prestigious recognition programme for Artificial Intelligence innovation
           uniting government, industry, and academia to celebrate our nation's brightest minds.
         </motion.p>
       </div>
@@ -79,11 +79,11 @@ const About = () => (
             <p className="text-slate-400 text-base leading-relaxed mb-4">
               Launched by Sri Lanka's leading technology and government bodies, the National AI Awards
               exists to shine a spotlight on the extraordinary AI innovations happening across our island
-              — in hospitals, farms, classrooms, and factories.
+              in hospitals, farms, classrooms, and factories.
             </p>
             <p className="text-slate-400 text-base leading-relaxed mb-8">
               We believe that by recognising excellence today, we inspire the trailblazers of tomorrow.
-              This programme is more than an awards night — it is a movement to build a sustainable,
+              This programme is more than an awards night it is a movement to build a sustainable,
               inclusive AI ecosystem in Sri Lanka.
             </p>
             <div className="flex items-center gap-4">
