@@ -13,7 +13,7 @@ import {
 import { FaQuoteLeft } from 'react-icons/fa';
 import SectionHeader from '../components/shared/SectionHeader';
 import Button from '../components/shared/Button';
-import heroBanner from '../assets/hero-banner.png';
+import heroBackground from '../assets/ai-awards-hero-bg.png';
 
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
@@ -125,14 +125,10 @@ const Home = () => {
 
         {/* Background layers */}
         <motion.div style={{ y: heroY }} className="absolute inset-0 pointer-events-none">
-          <div className="absolute inset-0 bg-cover bg-center opacity-25" style={{ backgroundImage: `url(${heroBanner})` }} />
-          <div className="absolute inset-0 bg-gradient-to-b from-navy-950/20 via-navy-950/50 to-navy-950" />
-          <div className="absolute inset-0 dot-pattern opacity-30" />
-          {/* Glowing orbs */}
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 rounded-full bg-accent-600/10 blur-3xl animate-pulse-slow" />
-          <div className="absolute bottom-1/4 right-1/4 w-80 h-80 rounded-full bg-gold-500/5 blur-3xl animate-pulse-slow animation-delay-400" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-accent-500/10" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full border border-accent-500/5" />
+          <div className="absolute inset-0 bg-cover bg-center" style={{ backgroundImage: `url(${heroBackground})` }} />
+          <div className="absolute inset-0 bg-gradient-to-b from-navy-950/45 via-navy-950/35 to-navy-950" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,transparent_0%,rgba(10,22,40,0.34)_52%,rgba(10,22,40,0.9)_100%)]" />
+          <div className="absolute inset-0 dot-pattern opacity-20" />
         </motion.div>
 
         <motion.div
