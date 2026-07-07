@@ -105,6 +105,64 @@ const sendPasswordResetEmail = async (user, resetToken) => {
 };
 
 /**
+ * Send password reset OTP email
+ */
+const sendPasswordResetOTPEmail = async (user, otp) => {
+  const html = `
+    <div style="font-family:'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:30px;background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:16px;color:#e2e8f0;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#818cf8;margin:0;">Password Reset OTP</h1>
+        <p style="color:#94a3b8;font-size:13px;">National AI Awards Sri Lanka 2026</p>
+      </div>
+      <p>Hi <strong>${user.firstName}</strong>,</p>
+      <p>Use this one-time code to reset your password:</p>
+      <div style="text-align:center;margin:24px 0;">
+        <span style="background:#818cf8;color:#fff;font-size:28px;font-weight:800;letter-spacing:8px;padding:14px 32px;border-radius:12px;display:inline-block;">${otp}</span>
+      </div>
+      <p style="color:#94a3b8;font-size:13px;">This code expires in <strong>15 minutes</strong>. If you did not request this, you can ignore this email.</p>
+      <hr style="border:1px solid #334155;margin:24px 0;">
+      <p style="color:#64748b;font-size:11px;text-align:center;">National AI Awards Sri Lanka 2026</p>
+    </div>`;
+  await sendEmail({ to: user.email, subject: 'Password Reset OTP — AI Awards Sri Lanka', html });
+};
+
+/**
+ * Send confirmation after a password reset succeeds
+ */
+const sendPasswordResetSuccessEmail = async (user) => {
+  const html = `
+    <div style="font-family:'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:30px;background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:16px;color:#e2e8f0;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#818cf8;margin:0;">Password Reset Complete</h1>
+      </div>
+      <p>Hi <strong>${user.firstName}</strong>,</p>
+      <p>Your National AI Awards Sri Lanka account password was reset successfully.</p>
+      <p style="color:#94a3b8;font-size:13px;">If this was not you, please contact the awards support team immediately.</p>
+      <hr style="border:1px solid #334155;margin:24px 0;">
+      <p style="color:#64748b;font-size:11px;text-align:center;">National AI Awards Sri Lanka 2026</p>
+    </div>`;
+  await sendEmail({ to: user.email, subject: 'Password Reset Complete — AI Awards Sri Lanka', html });
+};
+
+/**
+ * Send confirmation after an authenticated password change succeeds
+ */
+const sendPasswordChangedEmail = async (user) => {
+  const html = `
+    <div style="font-family:'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:30px;background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:16px;color:#e2e8f0;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#818cf8;margin:0;">Password Changed</h1>
+      </div>
+      <p>Hi <strong>${user.firstName}</strong>,</p>
+      <p>Your account password was changed successfully.</p>
+      <p style="color:#94a3b8;font-size:13px;">If you did not make this change, reset your password immediately and contact the awards support team.</p>
+      <hr style="border:1px solid #334155;margin:24px 0;">
+      <p style="color:#64748b;font-size:11px;text-align:center;">National AI Awards Sri Lanka 2026</p>
+    </div>`;
+  await sendEmail({ to: user.email, subject: 'Password Changed — AI Awards Sri Lanka', html });
+};
+
+/**
  * Send application status update email
  */
 const sendApplicationStatusUpdate = async (user, application, newStatus) => {
@@ -154,4 +212,14 @@ const sendJudgeInvitation = async (judge, application) => {
   await sendEmail({ to: judge.email, subject: '⚖️ New Evaluation Assignment — AI Awards', html });
 };
 
-module.exports = { sendEmail, sendOTPEmail, sendWelcomeEmail, sendPasswordResetEmail, sendApplicationStatusUpdate, sendJudgeInvitation };
+module.exports = {
+  sendEmail,
+  sendOTPEmail,
+  sendWelcomeEmail,
+  sendPasswordResetEmail,
+  sendPasswordResetOTPEmail,
+  sendPasswordResetSuccessEmail,
+  sendPasswordChangedEmail,
+  sendApplicationStatusUpdate,
+  sendJudgeInvitation,
+};

@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
-import { RiAwardLine, RiEyeLine, RiEyeOffLine, RiCheckDoubleLine, RiArrowLeftLine } from 'react-icons/ri';
+import { RiEyeLine, RiEyeOffLine, RiCheckDoubleLine, RiArrowLeftLine, RiShieldCheckLine } from 'react-icons/ri';
 import api from '../services/api';
-import Button from '../components/shared/Button';
+import sltMobitelLogo from '../assets/slt-mobitel-logo.png';
 
 const ResetPassword = () => {
   const [searchParams] = useSearchParams();
@@ -45,21 +45,21 @@ const ResetPassword = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-navy-950">
+    <div className="min-h-screen flex items-center justify-center relative overflow-hidden bg-navy-950 px-4 py-24">
       {/* Background */}
-      <div className="absolute inset-0 dot-pattern opacity-20 pointer-events-none" />
-      <div className="absolute top-1/4 left-1/4 w-80 h-80 rounded-full bg-accent-600/15 blur-3xl pointer-events-none" />
-      <div className="absolute bottom-1/4 right-1/4 w-64 h-64 rounded-full bg-gold-500/10 blur-3xl pointer-events-none" />
+      <div className="absolute inset-0 dot-pattern opacity-15 pointer-events-none" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(59,130,246,0.18),transparent_32%),radial-gradient(circle_at_bottom_right,rgba(168,85,247,0.16),transparent_34%)] pointer-events-none" />
 
-      <div className="relative z-10 w-full max-w-md px-4">
+      <div className="relative z-10 w-full max-w-md">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-accent flex items-center justify-center shadow-glow">
-              <RiAwardLine className="text-white text-3xl" />
-            </div>
+          <Link to="/" className="inline-flex items-center justify-center mb-5">
+            <img src={sltMobitelLogo} alt="SLT MOBITEL" className="h-12 w-auto" />
           </Link>
-          <h1 className="font-display font-black text-2xl text-white">Create New Password</h1>
+          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl border border-accent-400/30 bg-accent-500/15 text-accent-200 shadow-glow">
+            <RiShieldCheckLine className="text-2xl" />
+          </div>
+          <h1 className="font-display font-black text-3xl text-white">Create New Password</h1>
           <p className="text-slate-400 text-sm mt-1">
             Choose a strong password containing numbers and letters
           </p>
@@ -69,7 +69,7 @@ const ResetPassword = () => {
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-card p-8"
+          className="glass-card p-8 !hover:transform-none"
         >
           {serverError && (
             <div className="mb-5 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
