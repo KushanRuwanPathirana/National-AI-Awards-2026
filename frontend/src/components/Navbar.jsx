@@ -2,10 +2,10 @@ import { useState, useEffect } from 'react';
 import { NavLink, Link, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { HiMenuAlt3, HiX, HiChevronDown } from 'react-icons/hi';
-import { RiAwardLine } from 'react-icons/ri';
 import { useAuth } from '../context/AuthContext';
 import NotificationBell from './shared/NotificationBell';
 import ApplyLink from './shared/ApplyLink';
+import sltMobitelLogo from '../assets/slt-mobitel-logo.png';
 
 const navLinks = [
   { label: 'Home',             path: '/' },
@@ -53,17 +53,12 @@ const Navbar = () => {
         <nav className="flex items-center justify-between h-20">
 
           {/* ── Logo ─────────────────────────────────────────── */}
-          <Link to="/" className="flex items-center gap-3 group" onClick={() => setIsOpen(false)}>
-            <div className="relative w-10 h-10 rounded-xl bg-gradient-accent flex items-center justify-center shadow-glow">
-              <RiAwardLine className="text-white text-2xl" />
-              <div className="absolute inset-0 rounded-xl bg-gradient-accent opacity-0 group-hover:opacity-100 blur-md transition-opacity duration-300" />
-            </div>
-            <div className="hidden sm:block">
-              <p className="font-display font-bold text-white text-sm leading-tight">
-                National AI Awards
-              </p>
-              <p className="text-xs text-accent-400 font-medium">Sri Lanka 2026</p>
-            </div>
+          <Link to="/" className="group flex items-center" onClick={() => setIsOpen(false)} aria-label="SLT MOBITEL home">
+            <img
+              src={sltMobitelLogo}
+              alt="SLT MOBITEL"
+              className="h-11 w-auto transition-transform duration-300 group-hover:scale-[1.02] sm:h-12"
+            />
           </Link>
 
           {/* ── Desktop Nav ───────────────────────────────────── */}

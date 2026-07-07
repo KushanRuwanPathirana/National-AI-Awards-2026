@@ -8,7 +8,7 @@ import {
   RiSendPlane2Line, RiCheckDoubleLine, RiFileList3Line, RiInformationLine,
   RiArrowRightLine, RiAddLine, RiCalendarLine, RiFolderOpenLine,
   RiEditLine, RiCheckboxCircleLine, RiMessageLine, RiTimeLine,
-  RiQuestionLine, RiCheckLine, RiBellLine, RiDeleteBinLine,
+  RiQuestionLine, RiCheckLine, RiNotification3Line, RiDeleteBinLine,
   RiSubtractLine, RiExternalLinkLine,
 } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
@@ -694,7 +694,7 @@ const CandidateDashboard = () => {
                 ) : notifications.length === 0 ? (
                   <div className="border border-dashed border-white/10 rounded-2xl p-10 text-center">
                     <div className="w-14 h-14 rounded-full bg-accent-500/10 flex items-center justify-center mx-auto mb-4">
-                      <RiBellLine className="text-accent-400 text-2xl" />
+                      <RiNotification3Line className="text-accent-400 text-2xl" />
                     </div>
                     <h4 className="font-display font-semibold text-white text-base mb-1">No Messages Yet</h4>
                     <p className="text-slate-500 text-xs max-w-xs mx-auto">

@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { RiBellLine, RiCheckDoubleLine, RiDeleteBinLine } from 'react-icons/ri';
+import { RiNotification3Line, RiCheckDoubleLine } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
 import notificationService from '../../services/notification.service';
 import { useNavigate } from 'react-router-dom';
@@ -62,12 +62,16 @@ const NotificationBell = () => {
     <div className="relative" ref={ref}>
       <button
         onClick={() => setOpen(!open)}
-        className="relative p-2 rounded-lg text-slate-400 hover:text-white hover:bg-white/10 transition-colors"
+        className={`relative p-2 rounded-lg transition-colors ${
+          unreadCount > 0
+            ? 'bg-accent-500/15 text-accent-200 ring-1 ring-accent-400/30'
+            : 'text-slate-400 hover:text-white hover:bg-white/10'
+        }`}
         aria-label="Notifications"
       >
-        <RiBellLine size={20} />
+        <RiNotification3Line size={21} />
         {unreadCount > 0 && (
-          <span className="absolute -top-0.5 -right-0.5 w-4.5 h-4.5 bg-red-500 rounded-full text-[10px] font-bold text-white flex items-center justify-center min-w-[18px] h-[18px] px-1">
+          <span className="absolute -top-1 -right-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-gradient-to-br from-fuchsia-500 to-cyan-400 px-1 text-[10px] font-bold text-white shadow-lg shadow-cyan-500/20">
             {unreadCount > 9 ? '9+' : unreadCount}
           </span>
         )}

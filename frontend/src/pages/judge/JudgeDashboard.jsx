@@ -7,7 +7,7 @@ import {
   RiUserLine, RiLockPasswordLine, RiLogoutBoxLine,
   RiCheckDoubleLine, RiStarLine, RiTimeLine,
   RiDashboardLine, RiFileList3Line, RiSearchLine,
-  RiArrowRightLine, RiAwardLine, RiBellLine,
+  RiArrowRightLine, RiAwardLine, RiNotification3Line,
   RiCheckLine, RiEditLine, RiEyeLine,
   RiTrophyLine, RiBarChartBoxLine, RiCalendarLine,
   RiFilterLine, RiSortAsc, RiArrowUpLine, RiShieldLine,
@@ -422,7 +422,7 @@ const JudgeDashboard = () => {
                         style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(16px)' }}
                       >
                         <h3 className="font-display font-bold text-white text-sm mb-3 flex items-center gap-2">
-                          <RiBellLine className="text-gold-400" /> Notifications
+                          <RiNotification3Line className="text-gold-400" /> Notifications
                           {notifications.filter(n => !n.isRead).length > 0 && (
                             <span className="ml-auto text-[9px] font-bold bg-accent-500/20 text-accent-300 border border-accent-500/30 px-1.5 py-0.5 rounded-full">
                               {notifications.filter(n => !n.isRead).length} new

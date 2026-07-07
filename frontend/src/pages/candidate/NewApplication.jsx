@@ -10,7 +10,6 @@ import {
 import Button from '../../components/shared/Button';
 import categoryService from '../../services/category.service';
 import applicationService from '../../services/application.service';
-import { categories as frontCategories } from '../Categories';
 
 const steps = [
   { label: 'Category & Title' },
@@ -77,16 +76,6 @@ const NewApplication = () => {
       return;
     }
 
-    // Fallback to front-end categories (local static list)
-    if (String(categoryId).startsWith('local-')) {
-      const localId = Number(categoryId.split('-')[1]);
-      const fc = frontCategories.find(f => f.id === localId);
-      if (fc) {
-        setSelectedCategory({ name: fc.title, description: fc.desc, eligibilityQuestions: [] });
-        return;
-      }
-    }
-
     setSelectedCategory(null);
   }, [categoryId, categories]);
 
@@ -96,6 +85,10 @@ const NewApplication = () => {
     if (currentStep === 0) {
       if (!values.categoryId || !values.projectTitle) {
         toast.error('Please select a category and fill project title.');
+        return;
+      }
+      if (!categories.some(c => c._id === values.categoryId)) {
+        toast.error('Please select a valid award category from the list.');
         return;
       }
 
@@ -291,14 +284,17 @@ const NewApplication = () => {
                       {...register('categoryId', { required: 'Please select a category' })}
                     >
                       <option value="">Choose category...</option>
-                      {frontCategories.map(fc => {
-                        const match = categories.find(a => (a.name || '').toLowerCase() === (fc.title || '').toLowerCase());
-                        const value = match ? match._id : `local-${fc.id}`;
-                        return (
-                          <option key={fc.id} value={value} className="bg-navy-950">{fc.title}</option>
-                        );
-                      })}
+                      {categories.map(category => (
+                        <option key={category._id} value={category._id} className="bg-navy-950">
+                          {category.name}
+                        </option>
+                      ))}
                     </select>
+                    {categories.length === 0 && (
+                      <p className="mt-2 text-xs text-amber-300">
+                        No active award categories are available. Please ask an administrator to seed or activate categories.
+                      </p>
+                    )}
                   </div>
 
                   {selectedCategory && (
