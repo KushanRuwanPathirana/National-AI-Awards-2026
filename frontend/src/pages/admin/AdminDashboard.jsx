@@ -9,7 +9,7 @@ import {
 } from 'recharts';
 import {
   RiAwardLine, RiLockPasswordLine, RiLogoutBoxLine,
-  RiCheckDoubleLine, RiFileList3Line, RiSettings4Line, RiTeamLine,
+  RiCheckDoubleLine, RiFileList3Line, RiTeamLine,
   RiDashboardLine, RiFileChartLine, RiMailSendLine,
   RiArrowRightLine, RiFolderShield2Line, RiRefreshLine, RiPulseLine,
 } from 'react-icons/ri';
@@ -18,7 +18,6 @@ import api from '../../services/api';
 import adminService from '../../services/admin.service';
 import applicationService from '../../services/application.service';
 import categoryService from '../../services/category.service';
-import contentService from '../../services/content.service';
 
 const COLORS = ['#0072ff', '#00ff87', '#ffc658', '#ff7300', '#d0ed57', '#a4de6c'];
 
@@ -33,10 +32,8 @@ const AdminDashboard = () => {
   const [users, setUsers] = useState([]);
   const [admins, setAdmins] = useState([]);
   const [categories, setCategories] = useState([]);
-  const [contentBlocks, setContentBlocks] = useState([]);
   const [monitoring, setMonitoring] = useState(null);
   const [judgeProgress, setJudgeProgress] = useState([]);
-  const [auditLogs, setAuditLogs] = useState([]);
   const [loading, setLoading] = useState(true);
 
   // Search & Filters
@@ -57,8 +54,6 @@ const AdminDashboard = () => {
   const [eligibilityReview, setEligibilityReview] = useState({ appId: null, isEligible: true, note: '' });
   const [categoryForm, setCategoryForm] = useState({ name: '', description: '', shortDescription: '', order: 0, maxApplications: '', isActive: true });
   const [editingCategoryId, setEditingCategoryId] = useState(null);
-  const [contentForm, setContentForm] = useState({ page: 'home', key: '', title: '', type: 'text', value: '', order: 0, isActive: true });
-  const [editingContentId, setEditingContentId] = useState(null);
   const { register: regPassword, handleSubmit: handlePassword, formState: { errors: passErrors, isSubmitting: passSubmitting }, watch, reset: resetPassword } = useForm();
   const newPassword = watch('newPassword');
 
@@ -106,13 +101,6 @@ const AdminDashboard = () => {
     } catch { toast.error('Failed to load categories.'); }
   };
 
-  const fetchAuditLogs = async () => {
-    try {
-      const { data } = await adminService.getAuditLogs({ limit: 30 });
-      setAuditLogs(data.data.logs);
-    } catch { /* silent */ }
-  };
-
   const fetchMonitoring = async () => {
     try {
       const [{ data: monitoringData }, { data: judgeProgressData }] = await Promise.all([
@@ -126,16 +114,9 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchContentBlocks = async () => {
-    try {
-      const { data } = await contentService.getContent();
-      setContentBlocks(data.data.content || []);
-    } catch { toast.error('Failed to load website content.'); }
-  };
-
   const loadAll = async () => {
     setLoading(true);
-    await Promise.all([fetchStats(), fetchApps(), fetchUsers(), fetchAdmins(), fetchCategories(), fetchContentBlocks(), fetchAuditLogs(), fetchMonitoring()]);
+    await Promise.all([fetchStats(), fetchApps(), fetchUsers(), fetchAdmins(), fetchCategories(), fetchMonitoring()]);
     setLoading(false);
   };
 
@@ -248,49 +229,6 @@ const AdminDashboard = () => {
       fetchCategories();
     } catch {
       toast.error('Failed to delete category.');
-    }
-  };
-
-  const handleSubmitContent = async (e) => {
-    e.preventDefault();
-    try {
-      const payload = { ...contentForm, order: Number(contentForm.order || 0) };
-      if (editingContentId) {
-        await contentService.updateContent(editingContentId, payload);
-        toast.success('Content block updated.');
-      } else {
-        await contentService.createContent(payload);
-        toast.success('Content block created.');
-      }
-      setContentForm({ page: 'home', key: '', title: '', type: 'text', value: '', order: 0, isActive: true });
-      setEditingContentId(null);
-      fetchContentBlocks();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save content.');
-    }
-  };
-
-  const handleEditContent = (item) => {
-    setEditingContentId(item._id);
-    setContentForm({
-      page: item.page || 'home',
-      key: item.key || '',
-      title: item.title || '',
-      type: item.type || 'text',
-      value: item.value || '',
-      order: item.order || 0,
-      isActive: item.isActive !== false,
-    });
-  };
-
-  const handleDeleteContent = async (id) => {
-    if (!window.confirm('Delete this content block?')) return;
-    try {
-      await contentService.deleteContent(id);
-      toast.success('Content block deleted.');
-      fetchContentBlocks();
-    } catch {
-      toast.error('Failed to delete content.');
     }
   };
 
@@ -460,7 +398,6 @@ const AdminDashboard = () => {
               { id: 'monitoring', label: 'Application Monitoring', icon: RiFileChartLine },
               { id: 'users', label: 'User Directory', icon: RiTeamLine },
               { id: 'categories', label: 'Categories', icon: RiFolderShield2Line },
-              { id: 'content', label: 'Website Content', icon: RiSettings4Line },
               { id: 'broadcast', label: 'Broadcast Alerts', icon: RiMailSendLine },
               { id: 'reports', label: 'Reports & Export', icon: RiFileChartLine },
               { id: 'password', label: 'Change Password', icon: RiLockPasswordLine },
@@ -604,22 +541,7 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
-                        <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4">Recent Activities</h4>
-                        <div className="space-y-3">
-                          {(stats.recentActivities || auditLogs).slice(0, 5).map((log) => (
-                            <div key={log._id} className="flex justify-between items-center text-xs border-b border-white/5 pb-2.5 last:border-0 last:pb-0 text-slate-300">
-                              <div>
-                                <strong className="text-white">{log.performedBy?.firstName || 'System'} {log.performedBy?.lastName || ''}</strong>{' '}
-                                {log.description || `performed ${log.action?.replace('_', ' ')}`}
-                              </div>
-                              <span className="text-slate-500 font-mono text-[10px]">{new Date(log.createdAt).toLocaleTimeString()}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-
+                    <div>
                       <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
                         <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-1.5"><RiMailSendLine className="text-accent-400" /> Notifications</h4>
                         <div className="space-y-3">
@@ -1068,66 +990,7 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
-                {/* 5. WEBSITE CONTENT TAB */}
-                {activeTab === 'content' && (
-                  <div className="space-y-8">
-                    <div>
-                      <h3 className="font-display font-bold text-white text-xl">Website Content Management</h3>
-                      <p className="text-slate-400 text-xs mt-1">Manage reusable website content blocks for public pages.</p>
-                    </div>
-
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
-                        <h4 className="font-display font-bold text-white text-base">{editingContentId ? 'Edit Content Block' : 'Create Content Block'}</h4>
-                        <form onSubmit={handleSubmitContent} className="space-y-3">
-                          <input className="input-field" placeholder="Page slug (home, about, etc.)" value={contentForm.page} onChange={(e) => setContentForm({ ...contentForm, page: e.target.value })} required />
-                          <input className="input-field" placeholder="Content key" value={contentForm.key} onChange={(e) => setContentForm({ ...contentForm, key: e.target.value })} required />
-                          <input className="input-field" placeholder="Title" value={contentForm.title} onChange={(e) => setContentForm({ ...contentForm, title: e.target.value })} required />
-                          <select className="input-field" value={contentForm.type} onChange={(e) => setContentForm({ ...contentForm, type: e.target.value })}>
-                            <option value="text">Text</option>
-                            <option value="richtext">Rich Text</option>
-                            <option value="json">JSON</option>
-                            <option value="list">List</option>
-                          </select>
-                          <textarea className="input-field h-24" placeholder="Value" value={contentForm.value} onChange={(e) => setContentForm({ ...contentForm, value: e.target.value })} />
-                          <div className="grid grid-cols-2 gap-3">
-                            <input type="number" className="input-field" placeholder="Order" value={contentForm.order} onChange={(e) => setContentForm({ ...contentForm, order: e.target.value })} />
-                            <label className="flex items-center gap-2 text-sm text-slate-300">
-                              <input type="checkbox" checked={contentForm.isActive} onChange={(e) => setContentForm({ ...contentForm, isActive: e.target.checked })} />
-                              Active
-                            </label>
-                          </div>
-                          <div className="flex gap-3">
-                            <button type="submit" className="btn-primary text-xs">{editingContentId ? 'Save Block' : 'Create Block'}</button>
-                            {editingContentId && <button type="button" onClick={() => { setEditingContentId(null); setContentForm({ page: 'home', key: '', title: '', type: 'text', value: '', order: 0, isActive: true }); }} className="btn-ghost text-xs">Cancel</button>}
-                          </div>
-                        </form>
-                      </div>
-
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
-                        <h4 className="font-display font-bold text-white text-base">Existing Content Blocks</h4>
-                        <div className="space-y-3 max-h-[420px] overflow-y-auto">
-                          {contentBlocks.map(item => (
-                            <div key={item._id} className="p-3 rounded-xl bg-white/5 border border-white/10">
-                              <div className="flex justify-between items-start gap-3">
-                                <div>
-                                  <h5 className="font-semibold text-white text-sm">{item.title}</h5>
-                                  <p className="text-slate-400 text-[11px] mt-1">{item.page} / {item.key}</p>
-                                </div>
-                                <div className="flex gap-2">
-                                  <button onClick={() => handleEditContent(item)} className="text-accent-400 text-xs">Edit</button>
-                                  <button onClick={() => handleDeleteContent(item._id)} className="text-red-400 text-xs">Delete</button>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* 6. BROADCAST TAB */}
+                {/* 5. BROADCAST TAB */}
                 {activeTab === 'broadcast' && (
                   <div>
                     <h3 className="font-display font-bold text-white text-xl mb-2">Send Broadcast Alert</h3>
