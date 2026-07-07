@@ -433,6 +433,7 @@ const publishFinalists = async (req, res, next) => {
     const { ids = [] } = req.body;
     const applications = await Application.find({ _id: { $in: ids } });
     await Promise.all(applications.map(async (app) => {
+      app.status = APPLICATION_STATUS.FINALIST;
       app.publishedAsFinalist = true;
       app.publishedAsWinner = false;
       app.awardCitation = app.awardCitation || `${app.projectTitle} has been recognized as a finalist.`;
@@ -448,6 +449,7 @@ const publishWinners = async (req, res, next) => {
     const { ids = [] } = req.body;
     const applications = await Application.find({ _id: { $in: ids } });
     await Promise.all(applications.map(async (app, index) => {
+      app.status = APPLICATION_STATUS.WINNER;
       app.publishedAsWinner = true;
       app.publishedAsFinalist = true;
       app.certificateNumber = app.certificateNumber || `CERT-${String(Date.now()).slice(-6)}-${String(index + 1).padStart(2, '0')}`;
