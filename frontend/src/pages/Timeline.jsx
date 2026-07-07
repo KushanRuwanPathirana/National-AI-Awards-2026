@@ -155,7 +155,7 @@ const Timeline = () => (
                 <div className="space-y-6">
                   {phase.milestones.map((m, mi) => (
                     <motion.div
-                      key={m.date}
+                      key={`${phase.phase}-${m.date}-${mi}`}
                       initial={{ opacity: 0, x: -16 }}
                       whileInView={{ opacity: 1, x: 0 }}
                       viewport={{ once: true }}

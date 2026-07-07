@@ -10,6 +10,7 @@ const logger = require('../utils/logger');
 const { buildApplicationsCsv, buildSimplePdf } = require('../utils/reportExporter');
 const path = require('path');
 const fs = require('fs');
+const mongoose = require('mongoose');
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const getPublicUploadPath = (file) => path.posix.join('uploads', 'documents', file.filename);
@@ -47,6 +48,9 @@ const createApplication = async (req, res, next) => {
 
     if (!categoryId || !projectTitle) {
       return errorResponse(res, { statusCode: 400, message: 'Category and project title are required.' });
+    }
+    if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+      return errorResponse(res, { statusCode: 400, message: 'Please select a valid award category.' });
     }
 
     const category = await Category.findById(categoryId);
