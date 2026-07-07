@@ -4,10 +4,10 @@ import ApplyLink from '../components/shared/ApplyLink';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import {
   RiAwardLine, RiRocketLine, RiTeamLine, RiGlobalLine,
-  RiBrainLine, RiHeartPulseLine, RiBuilding4Line, RiLeafLine,
+  RiBrainLine, RiHeartPulseLine, RiBuilding2Line, RiBuilding4Line, RiLeafLine,
   RiShieldLine, RiBarChartLine, RiStarLine, RiArrowRightLine,
   RiCheckLine, RiCalendarLine, RiPhoneLine, RiLightbulbLine,
-  RiMicroscopeLine,
+  RiMicroscopeLine, RiCameraLensLine, RiTranslate2, RiCommunityLine,
   RiUserLine,
 } from 'react-icons/ri';
 import { FaQuoteLeft } from 'react-icons/fa';
@@ -25,31 +25,38 @@ const stats = [
 ];
 
 const categories = [
-  { icon: RiAwardLine,      title: 'National AI Excellence Award',                  color: 'from-gold-500/20 to-orange-500/10',   border: 'border-gold-500/30' },
-  { icon: RiUserLine,       title: 'National AI Leadership Excellence Award',        color: 'from-pink-500/20 to-rose-500/10',     border: 'border-pink-500/30' },
-  { icon: RiGlobalLine,     title: 'National AI Impact Excellence Award',            color: 'from-emerald-500/20 to-teal-500/10',   border: 'border-emerald-500/30' },
-  { icon: RiGlobalLine,     title: 'National AI Export Excellence Award',            color: 'from-blue-500/20 to-cyan-500/10',      border: 'border-blue-500/30' },
-  { icon: RiLeafLine,       title: 'Best AI Solution in Agriculture',               color: 'from-green-500/20 to-lime-500/10',    border: 'border-green-500/30' },
-  { icon: RiBarChartLine,   title: 'Best AI Solution in Banking, Finance & Insurance', color: 'from-amber-500/20 to-yellow-500/10',   border: 'border-amber-500/30' },
-  { icon: RiHeartPulseLine, title: 'Best AI Solution in Healthcare & Life Sciences', color: 'from-rose-500/20 to-pink-500/10',      border: 'border-rose-500/30' },
-  { icon: RiGlobalLine,     title: 'Best AI Solution in Export Development',        color: 'from-sky-500/20 to-indigo-500/10',    border: 'border-sky-500/30' },
-  { icon: RiBrainLine,      title: 'Best AI Solution in Education',                  color: 'from-sky-500/20 to-indigo-500/10',    border: 'border-sky-500/30' },
-  { icon: RiRocketLine,     title: 'Best AI Startup / MSME Innovation',             color: 'from-purple-500/20 to-violet-500/10', border: 'border-purple-500/30' },
-  { icon: RiMicroscopeLine, title: 'Best Agentic AI Solution',                      color: 'from-cyan-500/20 to-blue-500/10',     border: 'border-cyan-500/30' },
-  { icon: RiMicroscopeLine, title: 'Best Sinhala/Tamil AI & Localisation Innovation', color: 'from-emerald-500/20 to-teal-500/10',   border: 'border-emerald-500/30' },
-  { icon: RiMicroscopeLine, title: 'University AI Innovation',                      color: 'from-indigo-500/20 to-violet-500/10',  border: 'border-indigo-500/30' },
-  { icon: RiUserLine,       title: 'Women in AI Leadership',                        color: 'from-pink-500/20 to-rose-500/10',     border: 'border-pink-500/30' },
+  // A. National AI Trailblazer Awards
+  { icon: RiAwardLine, title: 'National AI Excellence Award', color: 'from-gold-500/20 to-orange-500/10', border: 'border-gold-500/30' },
+  { icon: RiUserLine, title: 'National AI Leadership Excellence Award', color: 'from-pink-500/20 to-rose-500/10', border: 'border-pink-500/30' },
+  { icon: RiGlobalLine, title: 'National AI Impact Excellence Award', color: 'from-emerald-500/20 to-teal-500/10', border: 'border-emerald-500/30' },
+  { icon: RiGlobalLine, title: 'National AI Export Excellence Award', color: 'from-blue-500/20 to-cyan-500/10', border: 'border-blue-500/30' },
+
+  // B. Industry & Sector Excellence Awards
+  { icon: RiLeafLine, title: 'Best AI Solution in Agriculture', color: 'from-green-500/20 to-lime-500/10', border: 'border-green-500/30' },
+  { icon: RiBarChartLine, title: 'Best AI Solution in Banking, Finance & Insurance', color: 'from-amber-500/20 to-yellow-500/10', border: 'border-amber-500/30' },
+  { icon: RiHeartPulseLine, title: 'Best AI Solution in Healthcare & Life Sciences', color: 'from-rose-500/20 to-pink-500/10', border: 'border-rose-500/30' },
+  { icon: RiBuilding2Line, title: 'Best AI Solution in Manufacturing & Industry 5.0', color: 'from-orange-500/20 to-amber-500/10', border: 'border-orange-500/30' },
+  { icon: RiBrainLine, title: 'Best AI Solution in Education', color: 'from-sky-500/20 to-indigo-500/10', border: 'border-sky-500/30' },
+  { icon: RiCameraLensLine, title: 'Best AI Solution in Media', color: 'from-rose-500/20 to-orange-500/10', border: 'border-rose-500/30' },
+
+  // C. Innovation & Future-Focused Awards
+  { icon: RiRocketLine, title: 'Best AI Startup / MSME Innovation', color: 'from-purple-500/20 to-violet-500/10', border: 'border-purple-500/30' },
+  { icon: RiMicroscopeLine, title: 'Best Agentic AI Solution', color: 'from-cyan-500/20 to-blue-500/10', border: 'border-cyan-500/30' },
+  { icon: RiTranslate2, title: 'Best Sinhala/Tamil AI & Localisation Innovation', color: 'from-emerald-500/20 to-teal-500/10', border: 'border-emerald-500/30' },
+  { icon: RiCommunityLine, title: 'University AI Innovation', color: 'from-indigo-500/20 to-violet-500/10', border: 'border-indigo-500/30' },
+  { icon: RiUserLine, title: 'Women in AI Leadership', color: 'from-pink-500/20 to-rose-500/10', border: 'border-pink-500/30' },
 ];
+
 
 const featuredCategories = categories.slice(0, 3);
 
 const whyParticipate = [
-  { icon: RiAwardLine,    title: 'National Recognition',   desc: 'Gain prestigious recognition at Sri Lanka\'s premier AI awards programme.' },
-  { icon: RiTeamLine,     title: 'Expert Networking',      desc: 'Connect with industry leaders, investors, and AI pioneers across the island.' },
-  { icon: RiRocketLine,   title: 'Scale Your Innovation',  desc: 'Receive mentorship, media coverage, and resources to accelerate your growth.' },
-  { icon: RiGlobalLine,   title: 'Global Spotlight',       desc: 'Represent Sri Lanka on the global AI stage and attract international partners.' },
-  { icon: RiLightbulbLine,title: 'Inspiration & Insights', desc: 'Learn from world-class keynotes, workshops, and panel discussions.' },
-  { icon: RiStarLine,     title: 'Cash Prizes & Trophies', desc: 'Win substantial cash awards plus coveted trophies recognising your excellence.' },
+  { icon: RiAwardLine, title: 'National Recognition', desc: 'Gain prestigious recognition at Sri Lanka\'s premier AI awards programme.' },
+  { icon: RiTeamLine, title: 'Expert Networking', desc: 'Connect with industry leaders, investors, and AI pioneers across the island.' },
+  { icon: RiRocketLine, title: 'Scale Your Innovation', desc: 'Receive mentorship, media coverage, and resources to accelerate your growth.' },
+  { icon: RiGlobalLine, title: 'Global Spotlight', desc: 'Represent Sri Lanka on the global AI stage and attract international partners.' },
+  { icon: RiLightbulbLine, title: 'Inspiration & Insights', desc: 'Learn from world-class keynotes, workshops, and panel discussions.' },
+  { icon: RiStarLine, title: 'Cash Prizes & Trophies', desc: 'Win substantial cash awards plus coveted trophies recognising your excellence.' },
 ];
 
 const eligibility = [
@@ -61,13 +68,13 @@ const eligibility = [
 ];
 
 const timeline = [
-  { date: 'Jan 01, 2026', event: 'Applications Open',        status: 'done' },
-  { date: 'Mar 31, 2026', event: 'Application Deadline',     status: 'done' },
-  { date: 'Apr 15, 2026', event: 'Shortlist Announced',      status: 'active' },
-  { date: 'May 01, 2026', event: 'Judging Panel Review',     status: 'upcoming' },
-  { date: 'Jun 15, 2026', event: 'Finalists Announced',      status: 'upcoming' },
-  { date: 'Jul 25, 2026', event: 'Awards Ceremony',          status: 'upcoming' },
+  { date: '15 July 2026', event: 'Application Calling', status: 'active' },
+  { date: '15 August 2026', event: 'Application Deadline', status: 'upcoming' },
+  { date: 'First Week of August', event: 'Initial Screening', status: 'upcoming' },
+  { date: 'Second Week of August', event: 'Face-to-Face Evaluation', status: 'upcoming' },
+  { date: 'Last Week of August', event: 'Final Announcements', status: 'upcoming' },
 ];
+
 
 const testimonials = [
   {
@@ -94,11 +101,11 @@ const testimonials = [
 ];
 
 const faqs = [
-  { q: 'Who can apply for the AI Awards?',           a: 'Any Sri Lankan individual, startup, SME, corporate, or research institution with an AI-driven solution is eligible to apply.' },
-  { q: 'Is there an application fee?',               a: 'No. All applications to the National AI Awards Sri Lanka are completely free of charge.' },
-  { q: 'Can I apply in multiple categories?',        a: 'Yes, you may apply in up to 2 categories if your solution genuinely qualifies for both.' },
-  { q: 'How are winners selected?',                  a: 'A panel of independent expert judges evaluates each submission based on innovation, impact, scalability, and technical excellence.' },
-  { q: 'When will winners be announced?',            a: 'Finalists will be announced in June 2026, with winners revealed at the Awards Ceremony on 25 July 2026.' },
+  { q: 'Who can apply for the AI Awards?', a: 'Any Sri Lankan individual, startup, SME, corporate, or research institution with an AI-driven solution is eligible to apply.' },
+  { q: 'Is there an application fee?', a: 'No. All applications to the National AI Awards Sri Lanka are completely free of charge.' },
+  { q: 'Can I apply in multiple categories?', a: 'Yes, you may apply in up to 2 categories if your solution genuinely qualifies for both.' },
+  { q: 'How are winners selected?', a: 'A panel of independent expert judges evaluates each submission based on innovation, impact, scalability, and technical excellence.' },
+  { q: 'When will winners be announced?', a: 'Finalists will be announced in June 2026, with winners revealed at the Awards Ceremony on 25 July 2026.' },
 ];
 
 const sponsors = ['SLT-Mobitel', 'Dialog', 'Bank of Ceylon', 'John Keells', 'Hayleys', 'ICTA'];
@@ -106,7 +113,7 @@ const sponsors = ['SLT-Mobitel', 'Dialog', 'Bank of Ceylon', 'John Keells', 'Hay
 // ─── Animation Variants ────────────────────────────────────────────────────────
 const fadeUp = {
   hidden: { opacity: 0, y: 32 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6, ease: 'easeOut' } },
 };
 const stagger = { show: { transition: { staggerChildren: 0.1 } } };
 
@@ -114,7 +121,7 @@ const stagger = { show: { transition: { staggerChildren: 0.1 } } };
 const Home = () => {
   const heroRef = useRef(null);
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
-  const heroY     = useTransform(scrollYProgress, [0, 1], ['0%', '30%']);
+  const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '30%']);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
 
   return (
@@ -166,7 +173,7 @@ const Home = () => {
             transition={{ duration: 0.6, delay: 0.3 }}
             className="text-slate-300 text-lg sm:text-xl max-w-2xl mx-auto mb-10 leading-relaxed"
           >
-            The National AI Awards recognise groundbreaking innovations that harness the power of 
+            The National AI Awards recognise groundbreaking innovations that harness the power of
             Artificial Intelligence to transform industries and improve lives across Sri Lanka.
           </motion.p>
 
@@ -240,13 +247,13 @@ const Home = () => {
                 <span className="gradient-text">AI Revolution</span>
               </h2>
               <p className="text-slate-400 text-base leading-relaxed mb-4">
-                The National AI Awards Sri Lanka is the country's most prestigious technology recognition 
-                programme, dedicated to honouring individuals and organisations that are leveraging 
+                The National AI Awards Sri Lanka is the country's most prestigious technology recognition
+                programme, dedicated to honouring individuals and organisations that are leveraging
                 Artificial Intelligence to solve real-world challenges.
               </p>
               <p className="text-slate-400 text-base leading-relaxed mb-8">
-                Organised in partnership with leading government bodies, industry associations, and 
-                academic institutions, this programme serves as a catalyst for innovation and digital 
+                Organised in partnership with leading government bodies, industry associations, and
+                academic institutions, this programme serves as a catalyst for innovation and digital
                 transformation in Sri Lanka's economy.
               </p>
               <Link to="/about">
@@ -265,10 +272,10 @@ const Home = () => {
               className="grid grid-cols-2 gap-4"
             >
               {[
-                { icon: RiBrainLine,    label: 'AI Innovation', value: '10+ Categories' },
-                { icon: RiTeamLine,     label: 'Expert Panel',  value: '20+ Judges' },
-                { icon: RiAwardLine,    label: 'Recognition',   value: 'National Level' },
-                { icon: RiGlobalLine,   label: 'Impact',        value: 'Cross-Industry' },
+                { icon: RiBrainLine, label: 'AI Innovation', value: '10+ Categories' },
+                { icon: RiTeamLine, label: 'Expert Panel', value: '20+ Judges' },
+                { icon: RiAwardLine, label: 'Recognition', value: 'National Level' },
+                { icon: RiGlobalLine, label: 'Impact', value: 'Cross-Industry' },
               ].map((item) => (
                 <motion.div key={item.label} variants={fadeUp} className="glass-card p-6">
                   <item.icon className="text-accent-400 text-3xl mb-3" />
@@ -320,17 +327,19 @@ const Home = () => {
         <div className="section-container">
           <SectionHeader
             badge="Award Categories"
-            title="14 Tracks of"
+            title="15 Tracks of"
             highlight="Excellence"
             subtitle="From national strategy to healthcare and education — we celebrate AI innovation across every sector driving Sri Lanka forward."
           />
+
           <div className="glass-card p-6 sm:p-8 border border-slate-700/60">
+            {/* Featured */}
             <motion.div
               variants={stagger}
               initial="hidden"
               whileInView="show"
               viewport={{ once: true }}
-              className="grid md:grid-cols-3 gap-6"
+              className="grid md:grid-cols-3 gap-6 mb-8"
             >
               {featuredCategories.map((cat) => (
                 <motion.div
@@ -346,6 +355,7 @@ const Home = () => {
               ))}
             </motion.div>
 
+            {/* All categories */}
             <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {categories.map((cat) => (
                 <div
@@ -360,7 +370,7 @@ const Home = () => {
             <div className="text-center mt-8">
               <Link to="/categories">
                 <Button variant="ghost">
-                  View All 14 Categories <RiArrowRightLine />
+                  View All 15 Categories <RiArrowRightLine />
                 </Button>
               </Link>
             </div>
@@ -408,7 +418,7 @@ const Home = () => {
                 <span className="gradient-text">Eligible?</span>
               </h2>
               <p className="text-slate-400 text-base leading-relaxed mb-8">
-                The National AI Awards welcomes applications from a diverse range of innovators. 
+                The National AI Awards welcomes applications from a diverse range of innovators.
                 Review the key eligibility requirements below to see if your AI-driven solution qualifies.
               </p>
               <ApplyLink>
@@ -441,31 +451,27 @@ const Home = () => {
                 whileInView={{ opacity: 1, x: 0 }}
                 viewport={{ once: true }}
                 transition={{ duration: 0.5, delay: i * 0.1 }}
-                className={`relative flex items-start gap-8 mb-8 ${
-                  i % 2 === 0 ? 'sm:flex-row' : 'sm:flex-row-reverse'
-                }`}
+                className={`relative flex items-start gap-8 mb-8 ${i % 2 === 0 ? 'sm:flex-row' : 'sm:flex-row-reverse'
+                  }`}
               >
                 {/* Dot */}
-                <div className={`absolute left-8 sm:left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 z-10 ${
-                  item.status === 'done'
-                    ? 'bg-emerald-500 border-emerald-400'
-                    : item.status === 'active'
+                <div className={`absolute left-8 sm:left-1/2 -translate-x-1/2 w-4 h-4 rounded-full border-2 z-10 ${item.status === 'done'
+                  ? 'bg-emerald-500 border-emerald-400'
+                  : item.status === 'active'
                     ? 'bg-accent-500 border-accent-400 shadow-glow'
                     : 'bg-surface-100 border-slate-600'
-                }`} />
+                  }`} />
 
                 {/* Card */}
-                <div className={`ml-16 sm:ml-0 glass-card p-5 sm:w-5/12 !hover:transform-none ${
-                  item.status === 'active' ? 'border-accent-500/50' : ''
-                }`}>
+                <div className={`ml-16 sm:ml-0 glass-card p-5 sm:w-5/12 !hover:transform-none ${item.status === 'active' ? 'border-accent-500/50' : ''
+                  }`}>
                   <div className="flex items-center gap-2 mb-1">
                     <RiCalendarLine className="text-accent-400 text-sm" />
                     <span className="text-accent-400 text-xs font-medium">{item.date}</span>
                   </div>
-                  <p className={`font-display font-semibold text-sm ${
-                    item.status === 'done'   ? 'text-emerald-300' :
+                  <p className={`font-display font-semibold text-sm ${item.status === 'done' ? 'text-emerald-300' :
                     item.status === 'active' ? 'text-white' : 'text-slate-300'
-                  }`}>
+                    }`}>
                     {item.event}
                   </p>
                   {item.status === 'done' && <span className="badge-green mt-2 text-xs">Completed</span>}
@@ -517,7 +523,7 @@ const Home = () => {
         </div>
       </section>
 
-     
+
       {/* ═══════════════ FAQ ════════════════════════════════════════════════════ */}
       <section className="section-py bg-surface-200/50">
         <div className="section-container">

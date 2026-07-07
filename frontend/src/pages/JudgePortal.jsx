@@ -9,393 +9,199 @@ import {
 } from 'react-icons/ri';
 import Button from '../components/shared/Button';
 
-// Judges Mock Data
 const judgesData = [
+  // Core National Awards & Women in AI Leadership
   {
     id: 'indika-de-zoysa',
     name: 'Mr. Indika De Zoysa',
-    designation: 'Strategic Advisor / Vice President',
-    organization: 'Huawei Technologies Sri Lanka / FITIS Chairman',
-    bio: 'A seasoned ICT professional and industry leader with over 25 years of experience driving national-level digital initiatives and telecommunications growth in Sri Lanka. Served as the Chairman of FITIS and spearheaded numerous key digitalization initiatives.',
-    expertise: ['Government', 'Industry', 'Telecom', 'Digital Policy'],
-    country: 'Sri Lanka',
-    experience: 25,
-    awardsJudged: 3,
-    isGrandJury: true,
-    avatarGradient: 'from-blue-600 to-cyan-500',
-    category: 'Core National Awards',
-    linkedin: 'https://linkedin.com',
-    website: 'https://fitis.lk'
+    designation: 'VP – Public & Government Affairs',
+    organization: 'Huawei Technologies / FITIS / CSSL',
+    category: 'Core National Awards & Women in AI Leadership',
   },
   {
     id: 'ruvan-weerasinghe',
     name: 'Dr. Ruvan Weerasinghe',
-    designation: 'Academic Dean & Former Senior Lecturer',
-    organization: 'IIT & UCSC (University of Colombo)',
-    bio: 'A pioneer of Natural Language Processing and computational linguistics in Sri Lanka. He led the University of Colombo School of Computing (UCSC) for years and continues to drive academic research and high-performance language technology engines.',
-    expertise: ['Academia', 'AI Research', 'NLP', 'Government'],
-    country: 'Sri Lanka',
-    experience: 30,
-    awardsJudged: 4,
-    isGrandJury: true,
-    avatarGradient: 'from-violet-600 to-fuchsia-500',
-    category: 'Core National Awards',
-    linkedin: 'https://linkedin.com',
-    website: 'https://ucsc.cmb.ac.lk'
+    designation: 'Academic Dean, IIT | Former Senior Lecturer, UCSC',
+    organization: 'University of Colombo',
+    category: 'Core National Awards & Women in AI Leadership',
   },
   {
-    id: 'dharmasri-kumaratunge',
-    name: 'Dr. Dharmasri Kumaratunge',
-    designation: 'Senior Advisor on Technology',
-    organization: 'Ministry of Technology / ICTA',
-    bio: 'A key visionary behind Sri Lanka\'s national AI policies and digital public infrastructure. Dr. Kumaratunge has spent decades advising government entities, setting technological standards, and scaling digital governance solutions.',
-    expertise: ['Government', 'Standards', 'Digital Infrastructure', 'Policy'],
-    country: 'Sri Lanka',
-    experience: 28,
-    awardsJudged: 5,
-    isGrandJury: true,
-    avatarGradient: 'from-cyan-500 to-emerald-500',
-    category: 'Core National Awards',
-    linkedin: 'https://linkedin.com',
-    website: 'https://mot.gov.lk'
+    id: 'waruna-sri-dhanapala',
+    name: 'Dr. Waruna Sri Dhanapala',
+    designation: 'Secretary',
+    organization: 'Ministry of Digital Economy',
+    category: 'Core National Awards & Women in AI Leadership',
   },
   {
     id: 'lakmini-wijesundara',
     name: 'Ms. Lakmini Wijesundara',
-    designation: 'Co-Founder & Executive Director',
-    organization: 'IronOne Technologies & BoardPAC',
-    bio: 'An internationally acclaimed tech entrepreneur and corporate governance pioneer. She has expanded Sri Lankan software products globally and advises multi-national boards on enterprise software deployment and cyber governance.',
-    expertise: ['Startup', 'Industry', 'Entrepreneurship', 'Tech Governance'],
-    country: 'Sri Lanka',
-    experience: 22,
-    awardsJudged: 3,
-    isGrandJury: true,
-    avatarGradient: 'from-amber-500 to-orange-500',
-    category: 'Core National Awards',
-    linkedin: 'https://linkedin.com',
-    website: 'https://boardpac.co'
+    designation: 'Co-Founder & CEO',
+    organization: 'BOARDPAC',
+    category: 'Core National Awards & Women in AI Leadership',
   },
+  { id: 'international-judge-core', name: 'International Judge', designation: 'TBI', organization: 'TBI', category: 'Core National Awards & Women in AI Leadership' },
+  { id: 'sltmobitel-core', name: 'SLTMOBITEL Member', designation: 'TBI', organization: 'TBI', category: 'Core National Awards & Women in AI Leadership' },
+
+  // AI in Agriculture
   {
-    id: 'sarah-jenkins',
-    name: 'Dr. Sarah Jenkins',
-    designation: 'Professor of AI & Robotics (International)',
-    organization: 'Stanford University',
-    bio: 'Dr. Jenkins is an international leader in computer vision and reinforcement learning. Her research revolves around neural networks in edge-computing robotics. She acts as a senior technical evaluator for global startup funds.',
-    expertise: ['Academia', 'AI Research', 'Venture Capital', 'Robotics'],
-    country: 'United States',
-    experience: 20,
-    awardsJudged: 2,
-    isGrandJury: true,
-    avatarGradient: 'from-pink-500 to-rose-500',
-    category: 'Core National Awards',
-    linkedin: 'https://linkedin.com',
-    website: 'https://stanford.edu'
-  },
-  {
-    id: 'ranjith-gayan',
-    name: 'Mr. Ranjith Gayan',
-    designation: 'Head of Innovation & Digital Products',
-    organization: 'SLTMobitel Member',
-    bio: 'Ranjith leads research and development of 5G edge applications and AI integrations at SLTMobitel. He is highly focused on expanding high-speed connectivity solutions and digital services infrastructure.',
-    expertise: ['Telecom', 'Industry', 'AI Solutions', '5G Edge'],
-    country: 'Sri Lanka',
-    experience: 18,
-    awardsJudged: 3,
-    isGrandJury: true,
-    avatarGradient: 'from-blue-600 to-indigo-600',
-    category: 'Core National Awards',
-    linkedin: 'https://linkedin.com',
-    website: 'https://sltmobitel.lk'
-  },
-  {
-    id: 'chalinda-abeykoon',
-    name: 'Mr. Chalinda Abeykoon',
-    designation: 'Managing Partner',
-    organization: 'nVentures',
-    bio: 'A seasoned venture capitalist and startup strategist. Chalinda manages nVentures, investing in early-stage B2B software-as-a-service (SaaS) and AI startups across South and Southeast Asia.',
-    expertise: ['Venture Capital', 'Startup', 'Finance', 'Investment'],
-    country: 'Sri Lanka',
-    experience: 16,
-    awardsJudged: 3,
-    isGrandJury: false,
-    avatarGradient: 'from-purple-600 to-indigo-500',
-    category: 'Innovation & Future-Focused Awards',
-    linkedin: 'https://linkedin.com',
-    website: 'https://nventures.sg'
-  },
-  {
-    id: 'asela-gunawardana',
-    name: 'Mr. Asela Gunawardana',
-    designation: 'Country Manager',
-    organization: 'Microsoft Sri Lanka & Maldives',
-    bio: 'Leads Microsoft\'s commercial partner and enterprise strategy in the region. Asela focuses on cloud adoption, enterprise generative AI integrations, and digital upskilling across public and private sectors.',
-    expertise: ['Industry', 'AI Solutions', 'Cloud Platforms', 'Enterprise'],
-    country: 'Sri Lanka',
-    experience: 19,
-    awardsJudged: 2,
-    isGrandJury: false,
-    avatarGradient: 'from-blue-500 to-violet-500',
-    category: 'Innovation & Future-Focused Awards',
-    linkedin: 'https://linkedin.com',
-    website: 'https://microsoft.com'
-  },
-  {
-    id: 'madu-ratnayake',
-    name: 'Mr. Madu Ratnayake',
-    designation: 'CIO & Executive Vice President',
-    organization: 'Virtusa',
-    bio: 'A global IT leader responsible for digital engineering operations, tech innovation initiatives, and business development across Virtusa\'s worldwide delivery centers. Former member of SLASSCOM and ICTA boards.',
-    expertise: ['Industry', 'Telecom', 'Tech Strategy', 'Engineering'],
-    country: 'Sri Lanka',
-    experience: 26,
-    awardsJudged: 4,
-    isGrandJury: false,
-    avatarGradient: 'from-cyan-600 to-blue-500',
-    category: 'Innovation & Future-Focused Awards',
-    linkedin: 'https://linkedin.com',
-    website: 'https://virtusa.com'
-  },
-  {
-    id: 'irfan-ahamed',
-    name: 'Mr. Irfan Ahamed',
-    designation: 'Director of AI Engineering',
-    organization: 'Sysco LABS',
-    bio: 'Irfan oversees the design of next-generation enterprise logistics platforms, demand forecasting, and machine learning models supporting one of the world\'s largest food services providers.',
-    expertise: ['Industry', 'AI Research', 'AI Solutions', 'Logistics'],
-    country: 'Sri Lanka',
-    experience: 15,
-    awardsJudged: 2,
-    isGrandJury: false,
-    avatarGradient: 'from-teal-500 to-emerald-500',
-    category: 'Innovation & Future-Focused Awards',
-    linkedin: 'https://linkedin.com',
-    website: 'https://syscolabs.com'
-  },
-  {
-    id: 'jiffry-zulfer',
-    name: 'Mr. Jiffry Zulfer',
+    id: 'harsha-subasinghe',
+    name: 'Mr. Harsha Subasinghe',
     designation: 'Founder & CEO',
-    organization: 'PickMe (Digital Mobility Solutions)',
-    bio: 'Pioneered the on-demand mobility sector in Sri Lanka by building PickMe. Jiffry integrates predictive demand-supply algorithms, geofencing, and route-optimization AI models into regional ride-hailing networks.',
-    expertise: ['Startup', 'Industry', 'Telecom', 'AI Solutions'],
-    country: 'Sri Lanka',
-    experience: 20,
-    awardsJudged: 3,
-    isGrandJury: false,
-    avatarGradient: 'from-yellow-500 to-amber-500',
-    category: 'Innovation & Future-Focused Awards',
-    linkedin: 'https://linkedin.com',
-    website: 'https://pickme.lk'
-  },
-  {
-    id: 'harsha-purasinghe',
-    name: 'Mr. Harsha Purasinghe',
-    designation: 'Founder & CEO',
-    organization: 'Microimage',
-    bio: 'A software industry veteran who founded Microimage, creating agricultural technologies (such as smart farming sensors and market analytics portals) to support farming systems and supply chain visibility.',
-    expertise: ['Startup', 'Agriculture', 'Industry', 'AI Research'],
-    country: 'Sri Lanka',
-    experience: 24,
-    awardsJudged: 4,
-    isGrandJury: false,
-    avatarGradient: 'from-green-500 to-emerald-500',
+    organization: 'CodeGen',
     category: 'AI in Agriculture',
-    linkedin: 'https://linkedin.com',
-    website: 'https://microimage.com'
   },
   {
     id: 'heminda-jayaweera',
     name: 'Mr. Heminda Jayaweera',
-    designation: 'Co-Founder',
-    organization: 'SLINTEC Startup Incubator',
-    bio: 'Coordinates advanced engineering research and nano-agricultural startups. Heminda focuses on IoT soil monitoring devices, precision pesticide spraying drone systems, and nanotechnology-based agricultural innovations.',
-    expertise: ['Startup', 'Academia', 'Agriculture', 'AI Solutions'],
-    country: 'Sri Lanka',
-    experience: 18,
-    awardsJudged: 3,
-    isGrandJury: false,
-    avatarGradient: 'from-emerald-500 to-teal-500',
+    designation: 'Executive Director',
+    organization: 'TRACE Sri Lanka',
     category: 'AI in Agriculture',
-    linkedin: 'https://linkedin.com',
-    website: 'https://slintec.lk'
   },
   {
     id: 'buddhi-marambe',
     name: 'Prof. Buddhi Marambe',
-    designation: 'Senior Professor of Crop Science',
+    designation: 'Professor, Faculty of Agriculture',
     organization: 'University of Peradeniya',
-    bio: 'One of the country\'s most decorated agricultural experts. Advises the government on climate change impact models and weed science. Focuses on integrating predictive data models in crop cultivation cycle management.',
-    expertise: ['Academia', 'Agriculture', 'Government', 'AI Research'],
-    country: 'Sri Lanka',
-    experience: 32,
-    awardsJudged: 5,
-    isGrandJury: false,
-    avatarGradient: 'from-teal-600 to-green-600',
     category: 'AI in Agriculture',
-    linkedin: 'https://linkedin.com',
-    website: 'https://pdn.ac.lk'
   },
+
+  // AI in Banking, Finance & Insurance
   {
     id: 'shehani-seneviratne',
     name: 'Ms. Shehani Seneviratne',
-    designation: 'Chief Operating Officer',
+    designation: 'Chairperson, SLASSCOM (2025/26) | COO',
     organization: '99x',
-    bio: 'Responsible for operational excellence and offshore software engineering portfolios. Shehani oversees fintech and payment system innovations built for high-security markets across Europe.',
-    expertise: ['Industry', 'Finance', 'AI Solutions', 'Standards'],
-    country: 'Sri Lanka',
-    experience: 21,
-    awardsJudged: 3,
-    isGrandJury: false,
-    avatarGradient: 'from-blue-500 to-indigo-500',
     category: 'AI in Banking, Finance & Insurance',
-    linkedin: 'https://linkedin.com',
-    website: 'https://99x.io'
   },
   {
-    id: 'oshada-senanayake',
-    name: 'Mr. Oshada Senanayake',
-    designation: 'Chief Operating Officer',
-    organization: 'Digital Holdings',
-    bio: 'Former Director General of TRCSL. Oshada is a prominent regulator and fintech transformation advocate, scaling secure mobile banking APIs, digital wallets, and blockchain verification nodes in the local market.',
-    expertise: ['Government', 'Industry', 'Finance', 'Telecom'],
-    country: 'Sri Lanka',
-    experience: 18,
-    awardsJudged: 4,
-    isGrandJury: false,
-    avatarGradient: 'from-indigo-500 to-violet-500',
+    id: 'dhananath-fernando',
+    name: 'Mr. Dhananath Fernando',
+    designation: 'Chief Executive Officer',
+    organization: 'Advocata Institute',
     category: 'AI in Banking, Finance & Insurance',
-    linkedin: 'https://linkedin.com',
-    website: 'https://digitalholdings.lk'
   },
   {
     id: 'channa-de-silva',
     name: 'Mr. Channa De Silva',
     designation: 'CEO',
     organization: 'LankaPay',
-    bio: 'Heads the national clearing house of Sri Lanka. Channa is at the forefront of digital finance, promoting real-time settlement rails, digital signatures, and machine learning models for payment fraud prevention.',
-    expertise: ['Industry', 'Finance', 'Standards', 'AI Research'],
-    country: 'Sri Lanka',
-    experience: 25,
-    awardsJudged: 4,
-    isGrandJury: false,
-    avatarGradient: 'from-sky-500 to-blue-500',
     category: 'AI in Banking, Finance & Insurance',
-    linkedin: 'https://linkedin.com',
-    website: 'https://lankapay.net'
   },
+
+  // AI in Healthcare & Life Sciences
   {
     id: 'vajira-dissanayake',
     name: 'Prof. Vajira H.W. Dissanayake',
-    designation: 'Dean & Senior Professor of Anatomy',
-    organization: 'Faculty of Medicine, University of Colombo',
-    bio: 'A world-renowned leader in medical genetics and bioinformatics. Prof. Vajira spearheads biomedical AI programs, clinical genomics, and mobile health registry integrations in the South Asian region.',
-    expertise: ['Academia', 'Healthcare', 'AI Research', 'Standards'],
-    country: 'Sri Lanka',
-    experience: 28,
-    awardsJudged: 5,
-    isGrandJury: false,
-    avatarGradient: 'from-red-500 to-pink-500',
+    designation: 'Dean, Faculty of Medicine',
+    organization: 'University of Colombo',
     category: 'AI in Healthcare & Life Sciences',
-    linkedin: 'https://linkedin.com',
-    website: 'https://med.cmb.ac.lk'
   },
   {
     id: 'nishan-siriwardhana',
     name: 'Dr. Nishan Siriwardhana',
-    designation: 'Director of Health Information Systems',
-    organization: 'Ministry of Health Sri Lanka',
-    bio: 'Dr. Nishan coordinates medical health data architecture, telemedicine portals, and electronic health databases to integrate diagnostics assist systems across all national medical wards.',
-    expertise: ['Healthcare', 'Government', 'Standards', 'Telecom'],
-    country: 'Sri Lanka',
-    experience: 17,
-    awardsJudged: 3,
-    isGrandJury: false,
-    avatarGradient: 'from-rose-500 to-orange-500',
+    designation: 'President / Specialist Health Informatics',
+    organization: 'Sri Lanka College of Health Informatics',
     category: 'AI in Healthcare & Life Sciences',
-    linkedin: 'https://linkedin.com',
-    website: 'https://health.gov.lk'
   },
   {
     id: 'chitranganie-mubarak',
     name: 'Mrs. Chitranganie Mubarak',
     designation: 'Former Chairperson',
-    organization: 'ICTA Sri Lanka',
-    bio: 'A public officer who led digital community and health accessibility portals under the e-Sri Lanka initiative. Former Chair of ICTA, promoting digital equity, digital health access, and regional e-government portals.',
-    expertise: ['Government', 'Standards', 'Legal', 'Healthcare'],
-    country: 'Sri Lanka',
-    experience: 30,
-    awardsJudged: 4,
-    isGrandJury: false,
-    avatarGradient: 'from-purple-500 to-fuchsia-500',
+    organization: 'ICTA',
     category: 'AI in Healthcare & Life Sciences',
-    linkedin: 'https://linkedin.com',
-    website: 'https://icta.lk'
   },
+
+  // AI in Manufacturing & Industry 5.0
   {
-    id: 'dhananath-fernando',
-    name: 'Mr. Dhananath Fernando',
-    designation: 'CEO',
-    organization: 'Advocata Institute',
-    bio: 'An economist who monitors commercial competitiveness and trade dynamics. Dhananath advises trade bodies on trade compliance digitization, customs automated clearances, and global market export dynamics.',
-    expertise: ['Startup', 'Industry', 'Legal', 'Finance'],
-    country: 'Sri Lanka',
-    experience: 14,
-    awardsJudged: 2,
-    isGrandJury: false,
-    avatarGradient: 'from-indigo-600 to-cyan-500',
-    category: 'AI in Export Development',
-    linkedin: 'https://linkedin.com',
-    website: 'https://advocata.org'
+    id: 'oshada-senanayake',
+    name: 'Mr. Oshada Senanayake',
+    designation: 'Director',
+    organization: 'Brandix',
+    category: 'AI in Manufacturing & Industry 5.0',
   },
   {
     id: 'ajith-madurapperuma',
     name: 'Dr. Ajith P. Madurapperuma',
-    designation: 'Board Member & Senior Lecturer',
-    organization: 'ICTA / OUSL',
-    bio: 'Research veteran in machine learning and hardware-software architectures. He advises regional export committees on supply chain optimization, automated quality inspections, and port shipping scheduling AI.',
-    expertise: ['Government', 'Academia', 'AI Research', 'Telecom'],
-    country: 'Sri Lanka',
-    experience: 26,
-    awardsJudged: 3,
-    isGrandJury: false,
-    avatarGradient: 'from-emerald-500 to-cyan-500',
-    category: 'AI in Export Development',
-    linkedin: 'https://linkedin.com',
-    website: 'https://ou.ac.lk'
+    designation: 'Deputy Vice-Chancellor',
+    organization: 'Open University of Sri Lanka',
+    category: 'AI in Manufacturing & Industry 5.0',
   },
+  { id: 'international-judge-manufacturing', name: 'International Judge', designation: 'TBI', organization: 'TBI', category: 'AI in Manufacturing & Industry 5.0' },
+  { id: 'sltmobitel-manufacturing', name: 'SLTMOBITEL Member', designation: 'TBI', organization: 'TBI', category: 'AI in Manufacturing & Industry 5.0' },
+
+  // AI in Education
   {
     id: 'roshan-ragel',
     name: 'Prof. Roshan Ragel',
-    designation: 'Professor of Computer Engineering',
+    designation: 'Professor, Dept. of Computer Engineering',
     organization: 'University of Peradeniya',
-    bio: 'Specializes in secure hardware and machine learning optimizations. Leading academic driving high-performance computing centers in Sri Lanka. Researching AI-powered personalized tutoring frameworks.',
-    expertise: ['Academia', 'AI Research', 'Standards', 'Industry'],
-    country: 'Sri Lanka',
-    experience: 23,
-    awardsJudged: 4,
-    isGrandJury: false,
-    avatarGradient: 'from-violet-600 to-indigo-600',
     category: 'AI in Education',
-    linkedin: 'https://linkedin.com',
-    website: 'https://eng.pdn.ac.lk'
   },
   {
     id: 'sampath-jayasundara',
     name: 'Mr. Sampath Jayasundara',
-    designation: 'CEO',
+    designation: 'Vice Chairman 1, SLASSCOM | Director/CEO',
     organization: 'hSenid Business Solutions',
-    bio: 'Leads a premier HR software provider. Sampath develops educational partnerships and implements digital skills certification curricula to close regional software engineering capability gaps.',
-    expertise: ['Industry', 'Startup', 'Finance', 'Standards'],
-    country: 'Sri Lanka',
-    experience: 20,
-    awardsJudged: 3,
-    isGrandJury: false,
-    avatarGradient: 'from-amber-600 to-rose-500',
     category: 'AI in Education',
-    linkedin: 'https://linkedin.com',
-    website: 'https://hsenidbiz.com'
-  }
+  },
+  { id: 'international-judge-education', name: 'International Judge', designation: 'TBI', organization: 'TBI', category: 'AI in Education' },
+
+  // AI in Media
+  {
+    id: 'nishan-mendis',
+    name: 'Mr. Nishan Mendis',
+    designation: 'Former Chairman',
+    organization: 'SLASSCOM (2024/25)',
+    category: 'AI in Media',
+  },
+  {
+    id: 'vajeeendra-kandegamage',
+    name: 'Mr. Vajeeendra S. Kandegamage',
+    designation: 'Former Chairman',
+    organization: 'NBQSA',
+    category: 'AI in Media',
+  },
+  { id: 'international-judge-media', name: 'International Judge', designation: 'TBI', organization: 'TBI', category: 'AI in Media' },
+  { id: 'sltmobitel-media', name: 'SLTMOBITEL Member', designation: 'TBI', organization: 'TBI', category: 'AI in Media' },
+
+  // Innovation & Future-Focused Awards
+  {
+    id: 'chalinda-abeykoon',
+    name: 'Mr. Chalinda Abeykoon',
+    designation: 'Managing Partner',
+    organization: 'nVentures',
+    category: 'Innovation & Future-Focused Awards',
+  },
+  {
+    id: 'asela-gunawardana',
+    name: 'Mr. Asela Gunawardana',
+    designation: 'Head of Operations',
+    organization: 'Lankan Angel Network',
+    category: 'Innovation & Future-Focused Awards',
+  },
+  {
+    id: 'madu-ratnayake',
+    name: 'Mr. Madu Ratnayake',
+    designation: 'Co-Founder & President',
+    organization: 'Scybers | Founder President TiE Colombo',
+    category: 'Innovation & Future-Focused Awards',
+  },
+  {
+    id: 'irfan-ahamed',
+    name: 'Mr. Irfan Ahamed',
+    designation: 'COO – Wearables and Growth Platforms',
+    organization: 'MAS Holdings',
+    category: 'Innovation & Future-Focused Awards',
+  },
+  {
+    id: 'jiffry-zulfer',
+    name: 'Mr. Jiffry Zulfer',
+    designation: 'Founder & CEO',
+    organization: 'PickMe',
+    category: 'Innovation & Future-Focused Awards',
+  },
 ];
+
 
 // All available expertise options
 const expertiseOptions = [
@@ -407,14 +213,16 @@ const expertiseOptions = [
 // Available categories matching structure
 const categoryMap = [
   'All',
-  'Core National Awards',
+  'Core National Awards & Women in AI Leadership',
   'Innovation & Future-Focused Awards',
   'AI in Agriculture',
   'AI in Banking, Finance & Insurance',
   'AI in Healthcare & Life Sciences',
-  'AI in Export Development',
-  'AI in Education'
+  'AI in Manufacturing & Industry 5.0',
+  'AI in Education',
+  'AI in Media'
 ];
+
 
 const JudgePortal = () => {
   const [searchQuery, setSearchQuery] = useState('');
@@ -498,152 +306,84 @@ const JudgePortal = () => {
 
       {/* ── Hero Section ── */}
       <section className="relative pt-24 pb-16 overflow-hidden z-10 border-b border-white/5 bg-gradient-hero">
-  <div className="max-w-5xl mx-auto px-6 sm:px-8 text-center">
-    
-    {/* Header Badge */}
-    <motion.div
-      initial={{ opacity: 0, y: -16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6 }}
-      className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-500/10 border border-accent-500/20 text-accent-400 text-xs font-semibold uppercase tracking-wider mb-4"
-    >
-      <RiShieldUserLine className="text-sm" /> Expert Jury Panel
-    </motion.div>
+        <div className="max-w-5xl mx-auto px-6 sm:px-8 text-center">
 
-    {/* Heading */}
-    <motion.h1
-      initial={{ opacity: 0, y: 32 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.1 }}
-      className="font-display font-black text-4xl sm:text-5xl lg:text-6xl text-white tracking-tight leading-[1.1]"
-    >
-      Meet the Experts <br />
-      Shaping Sri Lanka's <br />
-      <span className="gradient-text">AI Future</span>
-    </motion.h1>
+          {/* Header Badge */}
+          <motion.div
+            initial={{ opacity: 0, y: -16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6 }}
+            className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-accent-500/10 border border-accent-500/20 text-accent-400 text-xs font-semibold uppercase tracking-wider mb-4"
+          >
+            <RiShieldUserLine className="text-sm" /> Expert Jury Panel
+          </motion.div>
 
-    {/* Description */}
-    <motion.p
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.2 }}
-      className="text-slate-300 text-lg sm:text-xl max-w-2xl mx-auto font-normal leading-relaxed mt-6"
-    >
-      Our distinguished judging panel consists of nationally and internationally recognized leaders from academia, government, industry, research, venture capital, and innovation.
-    </motion.p>
+          {/* Heading */}
+          <motion.h1
+            initial={{ opacity: 0, y: 32 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.1 }}
+            className="font-display font-black text-4xl sm:text-5xl lg:text-6xl text-white tracking-tight leading-[1.1]"
+          >
+            Meet the Experts <br />
+            Shaping Sri Lanka's <br />
+            <span className="gradient-text">AI Future</span>
+          </motion.h1>
 
-    {/* Stats */}
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.3 }}
-      className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-8 border-t border-white/5 justify-center"
-    >
-      <div>
-        <p className="font-display font-black text-3xl text-accent-400">40+</p>
-        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Judges Joined</p>
-      </div>
-      <div>
-        <p className="font-display font-black text-3xl text-purple-400">6</p>
-        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Categories</p>
-      </div>
-      <div>
-        <p className="font-display font-black text-3xl text-cyan-400">Global</p>
-        <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Representation</p>
-      </div>
-      <div>
-        <p className="font-display font-bold text-xs text-white leading-tight">Gov • Academia • Industry</p>
-        <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Ecosystem Sectors</p>
-      </div>
-    </motion.div>
+          {/* Description */}
+          <motion.p
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="text-slate-300 text-lg sm:text-xl max-w-2xl mx-auto font-normal leading-relaxed mt-6"
+          >
+            Our distinguished judging panel consists of nationally and internationally recognized leaders from academia, government, industry, research, venture capital, and innovation.
+          </motion.p>
 
-    {/* CTA Buttons */}
-    <motion.div
-      initial={{ opacity: 0, y: 16 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.6, delay: 0.4 }}
-      className="flex flex-wrap items-center justify-center gap-4 pt-8"
-    >
-      <a href="#judges-grid-section">
-        <Button variant="primary" className="hover:shadow-glow text-white font-semibold rounded-2xl px-8 py-3.5">
-          Explore Judges
-        </Button>
-      </a>
-      <Link to="/categories">
-        <Button variant="ghost" className="border border-white/10 text-slate-300 hover:bg-white/5 rounded-2xl px-6 py-3.5 flex items-center gap-2">
-          View Award Categories <RiArrowRightLine />
-        </Button>
-      </Link>
-    </motion.div>
+          {/* Stats */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-8 border-t border-white/5 justify-center"
+          >
+            <div>
+              <p className="font-display font-black text-3xl text-accent-400">40+</p>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Judges Joined</p>
+            </div>
+            <div>
+              <p className="font-display font-black text-3xl text-purple-400">6</p>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Categories</p>
+            </div>
+            <div>
+              <p className="font-display font-black text-3xl text-cyan-400">Global</p>
+              <p className="text-xs font-medium text-slate-400 uppercase tracking-wider">Representation</p>
+            </div>
+            <div>
+              <p className="font-display font-bold text-xs text-white leading-tight">Gov • Academia • Industry</p>
+              <p className="text-[10px] font-medium text-slate-500 uppercase tracking-wider">Ecosystem Sectors</p>
+            </div>
+          </motion.div>
 
-  </div>
-</section>
+          {/* CTA Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, delay: 0.4 }}
+            className="flex flex-wrap items-center justify-center gap-4 pt-8"
+          >
+            <a href="#judges-grid-section">
+              <Button variant="primary" className="hover:shadow-glow text-white font-semibold rounded-2xl px-8 py-3.5">
+                Explore Judges
+              </Button>
+            </a>
+            <Link to="/categories">
+              <Button variant="ghost" className="border border-white/10 text-slate-300 hover:bg-white/5 rounded-2xl px-6 py-3.5 flex items-center gap-2">
+                View Award Categories <RiArrowRightLine />
+              </Button>
+            </Link>
+          </motion.div>
 
-
-      {/* ── Featured Grand Jury Section ── */}
-      <section className="py-24 border-b border-white/5 relative bg-surface-300/40">
-        <div className="max-w-7xl mx-auto px-6 sm:px-8 lg:px-12">
-          <div className="text-center max-w-2xl mx-auto mb-16 space-y-4">
-            <span className="px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-semibold uppercase tracking-wider">
-              Grand Jury Panel
-            </span>
-            <h2 className="font-display font-extrabold text-3xl sm:text-4xl text-white tracking-tight">
-              Distinguished Grand Jury
-            </h2>
-            <p className="text-slate-400 text-sm sm:text-base leading-relaxed">
-              These eminent industry and academic veterans preside over the main selections, ensuring the absolute integrity, merit, and high standards of the National AI Awards.
-            </p>
-          </div>
-
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {grandJuryJudges.map((judge, idx) => (
-              <motion.div
-                key={judge.id}
-                initial={{ opacity: 0, y: 32 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.5, delay: idx * 0.08 }}
-                onClick={() => setActiveModalJudge(judge)}
-                className="glass-card p-8 flex flex-col items-center text-center cursor-pointer hover:border-gold-500/50 hover:shadow-glow-gold transition-all duration-300 group"
-              >
-                <div className="space-y-5 flex flex-col items-center w-full">
-                  {/* Circular Portrait with Glowing Border */}
-                  <div className="relative">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-surface-50 to-surface-100 flex items-center justify-center font-display font-black text-white text-2xl shadow-inner border-2 border-gold-500 shadow-[0_0_15px_rgba(0,255,135,0.4)] group-hover:scale-105 transition-transform duration-300">
-                      {getInitials(judge.name)}
-                    </div>
-                  </div>
-
-                  {/* Name */}
-                  <h3 className="font-display font-bold text-white text-lg group-hover:text-gold-400 transition-colors duration-300 leading-tight">
-                    {judge.name}
-                  </h3>
-
-                  {/* Designation */}
-                  <p className="text-gold-400 text-xs font-semibold">
-                    {judge.designation}
-                  </p>
-
-                  {/* Company */}
-                  <p className="text-slate-400 text-xs truncate max-w-full">
-                    {judge.organization}
-                  </p>
-
-                  {/* Bio brief */}
-                  <p className="text-slate-400 text-xs leading-relaxed line-clamp-3 text-center mt-2">
-                    {judge.bio}
-                  </p>
-                </div>
-
-                {/* Pill Badge at the Bottom */}
-                <div className="mt-6">
-                  <span className="text-[10px] uppercase font-bold tracking-wider px-3.5 py-1 rounded-full border border-gold-500/30 text-gold-400 bg-gold-500/10">
-                    Grand Jury
-                  </span>
-                </div>
-              </motion.div>
-            ))}
-          </div>
         </div>
       </section>
 
@@ -679,11 +419,10 @@ const JudgePortal = () => {
             {/* Quick Toggle advanced filter drawer */}
             <button
               onClick={() => setShowFilters(!showFilters)}
-              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-200 ${
-                showFilters || selectedExpertise !== 'All' || selectedCountry !== 'All'
-                  ? 'bg-accent-500/10 border-accent-500/30 text-accent-400'
-                  : 'bg-surface-100 border-white/10 text-slate-300 hover:bg-surface-50'
-              }`}
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-semibold transition-all duration-200 ${showFilters || selectedExpertise !== 'All' || selectedCountry !== 'All'
+                ? 'bg-accent-500/10 border-accent-500/30 text-accent-400'
+                : 'bg-surface-100 border-white/10 text-slate-300 hover:bg-surface-50'
+                }`}
             >
               <RiFilterLine className="text-base" /> Advanced Filters
               {(selectedExpertise !== 'All' || selectedCountry !== 'All') && (
@@ -769,11 +508,10 @@ const JudgePortal = () => {
             <button
               key={cat}
               onClick={() => setSelectedCategory(cat)}
-              className={`whitespace-nowrap px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${
-                selectedCategory === cat
-                  ? 'bg-gradient-accent text-white shadow-glow'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-              }`}
+              className={`whitespace-nowrap px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-300 ${selectedCategory === cat
+                ? 'bg-gradient-accent text-white shadow-glow'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+                }`}
             >
               {cat === 'All' ? 'All Award Categories' : cat}
             </button>
@@ -800,11 +538,10 @@ const JudgePortal = () => {
                 >
                   {/* Circular Portrait with Glowing Border */}
                   <div className="relative">
-                    <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-surface-50 to-surface-100 flex items-center justify-center font-display font-black text-white text-2xl shadow-inner border-2 ${
-                      judge.isGrandJury 
-                        ? 'border-gold-400 shadow-[0_0_15px_rgba(0,255,135,0.4)]' 
-                        : 'border-cyan-400/80 shadow-[0_0_15px_rgba(34,211,238,0.4)]'
-                    } group-hover:scale-105 transition-transform duration-300`}>
+                    <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-surface-50 to-surface-100 flex items-center justify-center font-display font-black text-white text-2xl shadow-inner border-2 ${judge.isGrandJury
+                      ? 'border-gold-400 shadow-[0_0_15px_rgba(0,255,135,0.4)]'
+                      : 'border-cyan-400/80 shadow-[0_0_15px_rgba(34,211,238,0.4)]'
+                      } group-hover:scale-105 transition-transform duration-300`}>
                       {getInitials(judge.name)}
                     </div>
                   </div>
@@ -826,11 +563,10 @@ const JudgePortal = () => {
 
                   {/* Pill Badge at the Bottom */}
                   <div className="mt-6">
-                    <span className={`text-[10px] uppercase font-bold tracking-wider px-3.5 py-1 rounded-full border ${
-                      judge.isGrandJury 
-                        ? 'border-gold-500/30 text-gold-400 bg-gold-500/10' 
-                        : 'border-accent-500/30 text-accent-400 bg-accent-500/10'
-                    }`}>
+                    <span className={`text-[10px] uppercase font-bold tracking-wider px-3.5 py-1 rounded-full border ${judge.isGrandJury
+                      ? 'border-gold-500/30 text-gold-400 bg-gold-500/10'
+                      : 'border-accent-500/30 text-accent-400 bg-accent-500/10'
+                      }`}>
                       {judge.isGrandJury ? 'Grand Jury' : 'Panelist'}
                     </span>
                   </div>
@@ -895,9 +631,8 @@ const JudgePortal = () => {
 
               {/* Header profile details */}
               <div className="flex flex-col sm:flex-row gap-6 items-start">
-                <div className={`w-20 h-20 rounded-full bg-gradient-to-br from-surface-50 to-surface-100 flex items-center justify-center font-display font-black text-white text-3xl shadow-inner border-2 ${
-                  activeModalJudge.isGrandJury ? 'border-gold-500 shadow-[0_0_15px_rgba(0,255,135,0.4)]' : 'border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.4)]'
-                } flex-shrink-0`}>
+                <div className={`w-20 h-20 rounded-full bg-gradient-to-br from-surface-50 to-surface-100 flex items-center justify-center font-display font-black text-white text-3xl shadow-inner border-2 ${activeModalJudge.isGrandJury ? 'border-gold-500 shadow-[0_0_15px_rgba(0,255,135,0.4)]' : 'border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.4)]'
+                  } flex-shrink-0`}>
                   {getInitials(activeModalJudge.name)}
                 </div>
                 <div className="space-y-2">

@@ -10,7 +10,7 @@ import api from '../services/api';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.6 } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6 } },
 };
 
 const Contact = () => {
@@ -72,9 +72,9 @@ const Contact = () => {
             >
               {/* Contact Cards */}
               {[
-                { icon: RiMailLine,   label: 'Email Us',     value: 'info@aiawards.lk',      sub: 'Replies within 1–2 business days' },
-                { icon: RiPhoneLine,  label: 'Call Us',      value: '+94 11 234 5678',        sub: 'Mon–Fri, 9AM–5PM' },
-                { icon: RiMapPinLine, label: 'Visit Us',     value: 'Colombo 03, Sri Lanka',  sub: 'ICTA Head Office, Floor 7' },
+                { icon: RiMailLine, label: 'Email Us', value: 'info@aiawards.lk', sub: 'Replies within 1–2 business days' },
+                { icon: RiPhoneLine, label: 'Call Us', value: '+94 11 234 5678', sub: 'Mon–Fri, 9AM– 5PM' },
+                { icon: RiMapPinLine, label: 'Visit Us', value: 'Sri Lanka Telecom PLC,LotusRoad, P.O.Box 503,Colombo 01,Sri Lanka.', sub: 'Head Office' },
               ].map((item) => (
                 <div key={item.label} className="glass-card p-6 flex items-start gap-4 !hover:transform-none">
                   <div className="w-11 h-11 rounded-xl bg-accent-500/15 border border-accent-500/30 flex items-center justify-center flex-shrink-0">
@@ -95,8 +95,8 @@ const Contact = () => {
                   <p className="text-white font-semibold text-sm">Office Hours</p>
                 </div>
                 <div className="space-y-2 text-xs text-slate-400">
-                  <div className="flex justify-between"><span>Monday – Friday</span><span className="text-white">9:00 AM – 5:30 PM</span></div>
-                  <div className="flex justify-between"><span>Saturday</span><span className="text-white">9:00 AM – 1:00 PM</span></div>
+                  <div className="flex justify-between"><span>Monday – Friday</span><span className="text-white">9:00 AM – 5:00 PM</span></div>
+                  <div className="flex justify-between"><span>Saturday</span><span className="text-white">Closed</span></div>
                   <div className="flex justify-between"><span>Sunday</span><span className="text-slate-600">Closed</span></div>
                 </div>
               </div>
@@ -107,7 +107,7 @@ const Contact = () => {
                 <div className="flex gap-3">
                   {[
                     { icon: FaLinkedin, href: '#', label: 'LinkedIn', color: 'hover:bg-blue-600/20 hover:border-blue-500/40 hover:text-blue-400' },
-                    { icon: FaTwitter,  href: '#', label: 'Twitter',  color: 'hover:bg-sky-500/20 hover:border-sky-500/40 hover:text-sky-400' },
+                    { icon: FaTwitter, href: '#', label: 'Twitter', color: 'hover:bg-sky-500/20 hover:border-sky-500/40 hover:text-sky-400' },
                     { icon: FaFacebook, href: '#', label: 'Facebook', color: 'hover:bg-blue-700/20 hover:border-blue-700/40 hover:text-blue-500' },
                   ].map(({ icon: Icon, href, label, color }) => (
                     <a
