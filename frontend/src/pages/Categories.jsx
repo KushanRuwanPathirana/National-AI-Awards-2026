@@ -35,7 +35,6 @@ export const categories = [
       'Talent & Workforce Development',
       'Ecosystem & National Contribution',
     ],
-
     gradient: 'from-pink-500/25 to-rose-600/15',
     border: 'border-pink-500/40',
     iconColor: 'text-pink-400',
@@ -190,7 +189,6 @@ export const categories = [
       'Talent & Workforce Development',
       'Ecosystem & National Contribution',
     ],
-
     gradient: 'from-pink-500/25 to-rose-600/15',
     border: 'border-pink-500/40',
     iconColor: 'text-pink-400',
@@ -266,12 +264,22 @@ const Categories = () => (
                         <div className={`w-14 h-14 rounded-2xl ${cat.iconBg} border flex items-center justify-center`}>
                           <cat.icon className={`${cat.iconColor} text-2xl`} />
                         </div>
+
                         <div className="flex items-center gap-2">
                           <span className="text-slate-500 text-xs font-mono">#{String(cat.id).padStart(2, '0')}</span>
+
                         </div>
                       </div>
 
                       <h2 className="font-display font-bold text-white text-2xl mb-3">{cat.title}</h2>
+
+                      {/* Highlighted Individual Award Button */}
+                      {[2, 15].includes(cat.id) && (
+                        <div className="inline-flex items-center px-3 py-1 rounded-full bg-pink-600/20 border border-pink-400/40 text-pink-300 text-xs font-semibold mb-4">
+                          Individual Award
+                        </div>
+                      )}
+
                       <p className="text-slate-400 text-sm leading-relaxed mb-5">{cat.desc}</p>
 
                       <div>

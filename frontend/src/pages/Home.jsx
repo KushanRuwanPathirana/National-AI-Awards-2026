@@ -47,9 +47,6 @@ const categories = [
   { icon: RiUserLine, title: 'Women in AI Leadership', color: 'from-pink-500/20 to-rose-500/10', border: 'border-pink-500/30' },
 ];
 
-
-const featuredCategories = categories.slice(0, 3);
-
 const whyParticipate = [
   { icon: RiAwardLine, title: 'National Recognition', desc: 'Gain prestigious recognition at Sri Lanka\'s premier AI awards programme.' },
   { icon: RiTeamLine, title: 'Expert Networking', desc: 'Connect with industry leaders, investors, and AI pioneers across the island.' },
@@ -74,7 +71,6 @@ const timeline = [
   { date: 'Second Week of August', event: 'Face-to-Face Evaluation', status: 'upcoming' },
   { date: 'Last Week of August', event: 'Final Announcements', status: 'upcoming' },
 ];
-
 
 const testimonials = [
   {
@@ -333,41 +329,121 @@ const Home = () => {
           />
 
           <div className="glass-card p-6 sm:p-8 border border-slate-700/60">
-            {/* Featured */}
+
+            {/* ── Group Headings (A, B, C) ── */}
             <motion.div
               variants={stagger}
               initial="hidden"
               whileInView="show"
               viewport={{ once: true }}
-              className="grid md:grid-cols-3 gap-6 mb-8"
+              className="grid md:grid-cols-3 gap-6 mb-10"
             >
-              {featuredCategories.map((cat) => (
+              {[
+                {
+                  key: 'A',
+                  title: 'National AI Trailblazer Awards',
+                  icon: RiAwardLine,
+                  color: 'from-gold-500/20 to-orange-500/10',
+                  border: 'border-gold-500/30',
+                },
+                {
+                  key: 'B',
+                  title: 'Industry & Sector Excellence Awards',
+                  icon: RiBuilding4Line,
+                  color: 'from-emerald-500/20 to-teal-500/10',
+                  border: 'border-emerald-500/30',
+                },
+                {
+                  key: 'C',
+                  title: 'Innovation & Future-Focused Awards',
+                  icon: RiRocketLine,
+                  color: 'from-purple-500/20 to-violet-500/10',
+                  border: 'border-purple-500/30',
+                },
+              ].map((group) => (
                 <motion.div
-                  key={cat.title}
+                  key={group.key}
                   variants={fadeUp}
-                  className={`glass-card p-6 group cursor-default border ${cat.border}`}
+                  className={`glass-card p-6 border ${group.border} rounded-2xl`}
                 >
-                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center mb-4 border ${cat.border}`}>
-                    <cat.icon className="text-white text-2xl" />
+                  <div
+                    className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${group.color} flex items-center justify-center mb-4 border ${group.border}`}
+                  >
+                    <group.icon className="text-white text-2xl" />
                   </div>
-                  <h3 className="font-display font-semibold text-white text-base leading-snug">{cat.title}</h3>
+                  <h3 className="font-display font-semibold text-white text-lg leading-snug">
+                    {group.key}. {group.title}
+                  </h3>
                 </motion.div>
               ))}
             </motion.div>
 
-            {/* All categories */}
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {categories.map((cat) => (
-                <div
-                  key={cat.title}
-                  className="rounded-2xl border border-slate-700/60 bg-surface-100/50 px-4 py-3"
-                >
-                  <p className="text-slate-200 text-sm leading-snug">{cat.title}</p>
+            <div className="grid md:grid-cols-3 gap-10">
+
+              {/* A. National AI Trailblazer Awards */}
+              <div>
+                <div className="space-y-3">
+                  {[
+                    'National AI Excellence Award',
+                    'National AI Leadership Excellence Award',
+                    'National AI Impact Excellence Award',
+                    'National AI Export Excellence Award',
+                  ].map((title) => (
+                    <div
+                      key={title}
+                      className="rounded-2xl border border-slate-700/60 bg-surface-100/50 px-4 py-3"
+                    >
+                      <p className="text-slate-200 text-sm leading-snug">{title}</p>
+                    </div>
+                  ))}
                 </div>
-              ))}
+              </div>
+
+              {/* B. Industry & Sector Excellence Awards */}
+              <div>
+                <div className="space-y-3">
+                  {[
+                    'Best AI Solution in Agriculture',
+                    'Best AI Solution in Banking, Finance & Insurance',
+                    'Best AI Solution in Healthcare & Life Sciences',
+                    'Best AI Solution in Manufacturing & Industry 5.0',
+                    'Best AI Solution in Education',
+                    'Best AI Solution in Media',
+                  ].map((title) => (
+                    <div
+                      key={title}
+                      className="rounded-2xl border border-slate-700/60 bg-surface-100/50 px-4 py-3"
+                    >
+                      <p className="text-slate-200 text-sm leading-snug">{title}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* C. Innovation & Future-Focused Awards */}
+              <div>
+                <div className="space-y-3">
+                  {[
+                    'Best AI Startup / MSME Innovation',
+                    'Best Agentic AI Solution',
+                    'Best Sinhala/Tamil AI & Localisation Innovation',
+                    'University AI Innovation',
+                    'Women in AI Leadership',
+                  ].map((title) => (
+                    <div
+                      key={title}
+                      className="rounded-2xl border border-slate-700/60 bg-surface-100/50 px-4 py-3"
+                    >
+                      <p className="text-slate-200 text-sm leading-snug">{title}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
             </div>
 
-            <div className="text-center mt-8">
+            {/* CTA */}
+            <div className="text-center mt-10">
               <Link to="/categories">
                 <Button variant="ghost">
                   View All 15 Categories <RiArrowRightLine />
