@@ -12,6 +12,7 @@ import {
   RiCheckDoubleLine, RiFileList3Line, RiTeamLine,
   RiDashboardLine, RiFileChartLine, RiMailSendLine,
   RiArrowRightLine, RiFolderShield2Line, RiRefreshLine, RiPulseLine,
+  RiDeleteBinLine,
 } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
@@ -176,6 +177,21 @@ const AdminDashboard = () => {
       fetchStats();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update status.');
+    }
+  };
+
+  const handleDeleteApplication = async (app) => {
+    const title = app.projectTitle || app.referenceNumber || 'this application';
+    if (!window.confirm(`Delete "${title}"? This action cannot be undone.`)) return;
+
+    try {
+      await applicationService.deleteApplicationAsAdmin(app._id);
+      toast.success('Application deleted.');
+      fetchApps();
+      fetchStats();
+      fetchMonitoring();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete application.');
     }
   };
 
@@ -807,7 +823,16 @@ const AdminDashboard = () => {
                               </td>
                               <td className="p-4 text-center font-bold text-white">{app.averageScore?.toFixed(1) || '-'}</td>
                               <td className="p-4">
-                                <Link to={`/dashboard/applications/${app._id}`} className="text-accent-400 hover:underline">View</Link>
+                                <div className="flex items-center gap-3">
+                                  <Link to={`/dashboard/applications/${app._id}`} className="text-accent-400 hover:underline">View</Link>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleDeleteApplication(app)}
+                                    className="inline-flex items-center gap-1 text-red-400 hover:text-red-300"
+                                  >
+                                    <RiDeleteBinLine size={14} /> Delete
+                                  </button>
+                                </div>
                               </td>
                             </tr>
                           ))}

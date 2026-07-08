@@ -41,6 +41,36 @@ const createAuditLog = async ({ action, performedBy, targetId, description, oldV
   }
 };
 
+const removeApplicationRecord = async ({ application, performedBy, req }) => {
+  // Delete associated files from disk
+  if (application.documents && application.documents.length > 0) {
+    application.documents.forEach(doc => {
+      const diskPath = resolveStoredFilePath(doc.filePath);
+      if (diskPath && fs.existsSync(diskPath)) {
+        try {
+          fs.unlinkSync(diskPath);
+        } catch (e) {
+          logger.error(`Failed to delete document file from disk: ${e.message}`);
+        }
+      }
+    });
+  }
+
+  await Promise.all([
+    Evaluation.deleteMany({ application: application._id }),
+    Notification.deleteMany({ relatedApplication: application._id }),
+    Application.deleteOne({ _id: application._id }),
+  ]);
+
+  await createAuditLog({
+    action: 'application_deleted',
+    performedBy,
+    targetId: application._id,
+    description: `Application deleted: ${application.projectTitle} (${application.status})`,
+    req
+  });
+};
+
 // ── Create Draft ───────────────────────────────────────────────────────────────
 const createApplication = async (req, res, next) => {
   try {
@@ -523,33 +553,20 @@ const deleteApplication = async (req, res, next) => {
 
     if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
 
-    // Delete associated files from disk
-    if (application.documents && application.documents.length > 0) {
-      application.documents.forEach(doc => {
-        const diskPath = resolveStoredFilePath(doc.filePath);
-        if (diskPath && fs.existsSync(diskPath)) {
-          try {
-            fs.unlinkSync(diskPath);
-          } catch (e) {
-            logger.error(`Failed to delete document file from disk: ${e.message}`);
-          }
-        }
-      });
-    }
+    await removeApplicationRecord({ application, performedBy: req.user._id, req });
 
-    await Promise.all([
-      Evaluation.deleteMany({ application: id }),
-      Notification.deleteMany({ relatedApplication: id }),
-      Application.deleteOne({ _id: id }),
-    ]);
+    return successResponse(res, { message: 'Application deleted successfully.' });
+  } catch (error) { next(error); }
+};
 
-    await createAuditLog({
-      action: 'application_deleted',
-      performedBy: req.user._id,
-      targetId: id,
-      description: `Application deleted: ${application.projectTitle} (${application.status})`,
-      req
-    });
+const deleteApplicationByAdmin = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const application = await Application.findById(id);
+
+    if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+
+    await removeApplicationRecord({ application, performedBy: req.user._id, req });
 
     return successResponse(res, { message: 'Application deleted successfully.' });
   } catch (error) { next(error); }
@@ -561,5 +578,5 @@ module.exports = {
   changeApplicationStatus, assignJudges, reviewEligibility,
   getMonitoringOverview, getJudgeProgress, exportApplications,
   publishFinalists, publishWinners, generateCertificates,
-  uploadDocuments, deleteDocument, deleteApplication,
+  uploadDocuments, deleteDocument, deleteApplication, deleteApplicationByAdmin,
 };

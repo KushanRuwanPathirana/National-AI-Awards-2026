@@ -11,7 +11,7 @@ const {
   changeApplicationStatus, assignJudges, reviewEligibility,
   getMonitoringOverview, getJudgeProgress, exportApplications,
   publishFinalists, publishWinners, generateCertificates,
-  uploadDocuments, deleteDocument, deleteApplication,
+  uploadDocuments, deleteDocument, deleteApplication, deleteApplicationByAdmin,
 } = require('../controllers/application.controller');
 
 // ── Multer Config ──────────────────────────────────────────────────────────────
@@ -62,6 +62,7 @@ router.post('/generate-certificates', authenticate, requireRole('admin'), genera
 router.patch('/:id/status',       authenticate, requireRole('admin'), changeApplicationStatus);
 router.patch('/:id/assign-judges', authenticate, requireRole('admin'), assignJudges);
 router.patch('/:id/review-eligibility', authenticate, requireRole('admin'), reviewEligibility);
+router.delete('/admin/:id',       authenticate, requireRole('admin'), deleteApplicationByAdmin);
 
 // Shared (admin/judge/candidate own)
 router.get('/:id',                authenticate, getApplicationById);
