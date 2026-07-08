@@ -12,23 +12,27 @@ const getInitials = (name) => {
 
 const JudgeAvatar = ({ judge, variant = 'card', className = '' }) => {
   const [imgError, setImgError] = useState(false);
-  const imageSrc = judgeImages[judge.id];
+  const imageSrc = judge ? judgeImages[judge.id] : null;
   const showImage = imageSrc && !imgError;
 
-  const isGrandJury = judge.isGrandJury;
-  const sizeClasses = variant === 'modal' ? 'w-20 h-20 text-3xl' : 'w-24 h-24 text-2xl';
-  const borderClasses = isGrandJury
-    ? variant === 'modal'
-      ? 'border-gold-500 shadow-[0_0_15px_rgba(0,255,135,0.4)]'
-      : 'border-gold-400 shadow-[0_0_15px_rgba(0,255,135,0.4)]'
-    : variant === 'modal'
-      ? 'border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.4)]'
-      : 'border-cyan-400/80 shadow-[0_0_15px_rgba(34,211,238,0.4)]';
+  const isGrandJury = judge?.isGrandJury;
+  const sizeClasses = variant === 'modal' ? 'w-20 h-20 text-3xl' : variant === 'detail' ? 'w-full h-full text-6xl' : 'w-24 h-24 text-2xl';
+  const borderClasses = variant === 'detail'
+    ? ''
+    : `border-2 ${
+        isGrandJury
+          ? variant === 'modal'
+            ? 'border-gold-500 shadow-[0_0_15px_rgba(0,255,135,0.4)]'
+            : 'border-gold-400 shadow-[0_0_15px_rgba(0,255,135,0.4)]'
+          : variant === 'modal'
+            ? 'border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.4)]'
+            : 'border-cyan-400/80 shadow-[0_0_15px_rgba(34,211,238,0.4)]'
+      }`;
 
   return (
-    <div className="relative">
+    <div className={`relative ${variant === 'detail' ? 'w-full h-full' : ''}`}>
       <div
-        className={`${sizeClasses} rounded-full overflow-hidden flex items-center justify-center font-display font-black text-white border-2 ${borderClasses} group-hover:scale-105 transition-transform duration-300 flex-shrink-0 ${className} ${
+        className={`${sizeClasses} rounded-full overflow-hidden flex items-center justify-center font-display font-black text-white ${borderClasses} group-hover:scale-105 transition-transform duration-300 flex-shrink-0 ${className} ${
           showImage ? '' : 'bg-gradient-to-br from-surface-50 to-surface-100 shadow-inner'
         }`}
       >
@@ -40,7 +44,7 @@ const JudgeAvatar = ({ judge, variant = 'card', className = '' }) => {
             onError={() => setImgError(true)}
           />
         ) : (
-          getInitials(judge.name)
+          judge ? getInitials(judge.name) : 'AI'
         )}
       </div>
     </div>

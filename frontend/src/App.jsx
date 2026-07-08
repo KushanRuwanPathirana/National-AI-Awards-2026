@@ -11,6 +11,7 @@ import FAQs        from './pages/FAQs';
 import Contact     from './pages/Contact';
 import ApplyNow    from './pages/ApplyNow';
 import JudgePortal from './pages/JudgePortal';
+import JudgeDetail from './pages/judge/JudgeDetail';
 import Login       from './pages/Login';
 import NotFound    from './pages/NotFound';
 import VerifyOTP   from './pages/VerifyOTP';
@@ -63,6 +64,7 @@ const App = () => (
           <Route path="contact"     element={<Contact />} />
           <Route path="apply"       element={<ApplyNow />} />
           <Route path="judge-portal" element={<JudgePortal />} />
+          <Route path="judge-portal/:id" element={<JudgeDetail />} />
           <Route path="login"       element={<Login />} />
           <Route path="forgot-password" element={<ForgotPassword />} />
           <Route path="reset-password"  element={<ResetPassword />} />
