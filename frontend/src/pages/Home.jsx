@@ -138,18 +138,6 @@ const Home = () => {
           style={{ opacity: heroOpacity }}
           className="section-container relative z-10 pt-32 pb-20 text-center"
         >
-          {/* Badge */}
-          <motion.div
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
-            transition={{ duration: 0.5 }}
-            className="inline-flex items-center gap-2 mb-8"
-          >
-            <span className="badge-gold px-4 py-1.5 text-sm">
-              🏆 Sri Lanka's Premier AI Awards Programme
-            </span>
-          </motion.div>
-
           {/* Headline */}
           <motion.h1
             initial={{ opacity: 0, y: 40 }}
