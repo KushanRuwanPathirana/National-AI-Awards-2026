@@ -32,11 +32,10 @@ const upload = multer({
   storage,
   limits: { fileSize: 10 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp', 'application/msword',
-      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'];
+    const allowed = ['application/pdf'];
     if (allowed.includes(file.mimetype)) cb(null, true);
     else {
-      const error = new Error('Invalid file type. Only PDF, images, and Word documents are allowed.');
+      const error = new Error('Invalid file type. Only PDF documents are allowed.');
       error.statusCode = 400;
       cb(error);
     }
@@ -48,7 +47,7 @@ router.post('/',                  authenticate, requireRole('candidate'), create
 router.get('/my',                 authenticate, requireRole('candidate'), getMyApplications);
 router.put('/:id',                authenticate, requireRole('candidate'), updateApplication);
 router.post('/:id/submit',        authenticate, requireRole('candidate'), submitApplication);
-router.post('/:id/documents',     authenticate, requireRole('candidate'), upload.array('documents', 5), uploadDocuments);
+router.post('/:id/documents',     authenticate, requireRole('candidate'), upload.array('documents', 2), uploadDocuments);
 router.delete('/:id/documents/:docId', authenticate, requireRole('candidate'), deleteDocument);
 router.delete('/:id',             authenticate, requireRole('candidate'), deleteApplication);
 

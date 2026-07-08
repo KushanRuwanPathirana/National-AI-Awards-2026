@@ -44,7 +44,7 @@ const createAuditLog = async ({ action, performedBy, targetId, description, oldV
 // ── Create Draft ───────────────────────────────────────────────────────────────
 const createApplication = async (req, res, next) => {
   try {
-    const { categoryId, projectTitle, tagline } = req.body;
+    const { categoryId, projectTitle, tagline, organisationName, organizationName } = req.body;
 
     if (!categoryId || !projectTitle) {
       return errorResponse(res, { statusCode: 400, message: 'Category and project title are required.' });
@@ -63,6 +63,8 @@ const createApplication = async (req, res, next) => {
       category: categoryId,
       projectTitle,
       tagline,
+      organisationName: organisationName || organizationName,
+      organizationName: organisationName || organizationName,
       status: APPLICATION_STATUS.DRAFT,
       completedStep: 1,
       statusHistory: [{ status: APPLICATION_STATUS.DRAFT, changedBy: req.user._id, note: 'Application created' }],
@@ -85,11 +87,31 @@ const updateApplication = async (req, res, next) => {
       return errorResponse(res, { statusCode: 400, message: 'Only draft applications can be edited.' });
     }
 
+    if (req.body.categoryId !== undefined) {
+      if (!mongoose.Types.ObjectId.isValid(req.body.categoryId)) {
+        return errorResponse(res, { statusCode: 400, message: 'Please select a valid award category.' });
+      }
+      const category = await Category.findById(req.body.categoryId);
+      if (!category || !category.isActive) {
+        return errorResponse(res, { statusCode: 404, message: 'Category not found or inactive.' });
+      }
+      application.category = req.body.categoryId;
+    }
+
     const allowedFields = [
       'projectTitle', 'tagline', 'eligibilityAnswers', 'isEligible',
       'problemStatement', 'solution', 'aiTechnologies', 'innovationDetails',
       'impactDetails', 'teamSize', 'teamMembers', 'projectUrl', 'organizationName',
       'projectStartYear', 'declarationAccepted', 'declarationDate', 'completedStep',
+      'organisationName', 'registrationNumber', 'sectorIndustry', 'organisationSize',
+      'primaryContactName', 'primaryContactDesignation', 'primaryContactEmail',
+      'primaryContactPhone', 'authorisedSignatory', 'websiteLinkedIn',
+      'categoryEligibilityConfirmed', 'deploymentStatus', 'launchDate',
+      'customerReferenceRevenue', 'innovationOriginality', 'measurableImpact',
+      'technicalExcellence', 'responsibleAI', 'scalabilitySustainability',
+      'executionEvidence', 'demoVideoUrl', 'testimonialOne', 'testimonialTwo',
+      'nationalRelevance', 'verificationConsent', 'promotionalConsent',
+      'conflictDisclosure', 'submissionFeeAcknowledged',
     ];
 
     allowedFields.forEach(field => {
@@ -114,8 +136,14 @@ const submitApplication = async (req, res, next) => {
     if (!application.declarationAccepted) {
       return errorResponse(res, { statusCode: 400, message: 'You must accept the declaration before submitting.' });
     }
+    if (!application.verificationConsent || !application.promotionalConsent || !application.submissionFeeAcknowledged) {
+      return errorResponse(res, { statusCode: 400, message: 'Please complete all required declarations and consents before submitting.' });
+    }
     if (!application.problemStatement || !application.solution) {
       return errorResponse(res, { statusCode: 400, message: 'Please complete all required form fields before submitting.' });
+    }
+    if (!application.organisationName || !application.primaryContactName || !application.primaryContactEmail || !application.categoryEligibilityConfirmed) {
+      return errorResponse(res, { statusCode: 400, message: 'Please complete applicant details and category eligibility confirmation before submitting.' });
     }
 
     application.status = APPLICATION_STATUS.SUBMITTED;
@@ -318,6 +346,9 @@ const uploadDocuments = async (req, res, next) => {
 
     if (!req.files || req.files.length === 0) {
       return errorResponse(res, { statusCode: 400, message: 'No files uploaded.' });
+    }
+    if (application.documents.length + req.files.length > 2) {
+      return errorResponse(res, { statusCode: 400, message: 'Maximum 2 PDF documents can be uploaded per application.' });
     }
 
     const newDocs = req.files.map(f => ({

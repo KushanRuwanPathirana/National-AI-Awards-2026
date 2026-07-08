@@ -66,33 +66,57 @@ const applicationSchema = new mongoose.Schema(
       maxlength: [250, 'Tagline cannot exceed 250 characters'],
     },
 
+    // Section A: Applicant & Organisation Details
+    organisationName: {
+      type: String,
+      trim: true,
+      maxlength: [200],
+    },
+    registrationNumber: { type: String, trim: true, maxlength: [100] },
+    sectorIndustry: { type: String, trim: true, maxlength: [150] },
+    organisationSize: {
+      type: String,
+      enum: ['Startup <4 yrs', 'SME', 'Large Enterprise', 'Government', 'Academic', ''],
+      default: '',
+    },
+    primaryContactName: { type: String, trim: true, maxlength: [150] },
+    primaryContactDesignation: { type: String, trim: true, maxlength: [150] },
+    primaryContactEmail: { type: String, trim: true, lowercase: true, maxlength: [200] },
+    primaryContactPhone: { type: String, trim: true, maxlength: [50] },
+    authorisedSignatory: { type: String, trim: true, maxlength: [150] },
+    websiteLinkedIn: { type: String, trim: true, maxlength: [500] },
+
     // Step 2: Eligibility
     eligibilityAnswers: [eligibilityAnswerSchema],
     isEligible: {
       type: Boolean,
       default: null, // null = not yet assessed
     },
+    categoryEligibilityConfirmed: {
+      type: Boolean,
+      default: false,
+    },
 
     // Step 3: Application Form
     problemStatement: {
       type: String,
-      maxlength: [2000, 'Problem statement cannot exceed 2000 characters'],
+      maxlength: [3000, 'Problem statement cannot exceed 3000 characters'],
     },
     solution: {
       type: String,
-      maxlength: [2000, 'Solution description cannot exceed 2000 characters'],
+      maxlength: [6000, 'Solution description cannot exceed 6000 characters'],
     },
     aiTechnologies: {
       type: String, // comma-separated or free text
-      maxlength: [500],
+      maxlength: [3000],
     },
     innovationDetails: {
       type: String,
-      maxlength: [2000],
+      maxlength: [3000],
     },
     impactDetails: {
       type: String,
-      maxlength: [2000],
+      maxlength: [3000],
     },
     teamSize: {
       type: Number,
@@ -112,6 +136,28 @@ const applicationSchema = new mongoose.Schema(
       trim: true,
       maxlength: [200],
     },
+    deploymentStatus: {
+      type: String,
+      enum: ['Pilot', 'Live in production', 'Scaling', ''],
+      default: '',
+    },
+    launchDate: { type: Date },
+    customerReferenceRevenue: { type: String, maxlength: [1000] },
+
+    // Section D: Evidence Against Judging Criteria
+    innovationOriginality: { type: String, maxlength: [3000] },
+    measurableImpact: { type: String, maxlength: [3000] },
+    technicalExcellence: { type: String, maxlength: [3000] },
+    responsibleAI: { type: String, maxlength: [3000] },
+    scalabilitySustainability: { type: String, maxlength: [3000] },
+    executionEvidence: { type: String, maxlength: [3000] },
+
+    // Section E/F: Supporting Materials and Sri Lanka relevance
+    demoVideoUrl: { type: String, trim: true, maxlength: [500] },
+    testimonialOne: { type: String, maxlength: [1000] },
+    testimonialTwo: { type: String, maxlength: [1000] },
+    nationalRelevance: { type: String, maxlength: [3000] },
+
     projectStartYear: {
       type: Number,
     },
@@ -124,6 +170,22 @@ const applicationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    verificationConsent: {
+      type: Boolean,
+      default: false,
+    },
+    promotionalConsent: {
+      type: Boolean,
+      default: false,
+    },
+    conflictDisclosure: {
+      type: String,
+      maxlength: [2000],
+    },
+    submissionFeeAcknowledged: {
+      type: Boolean,
+      default: false,
+    },
     declarationDate: {
       type: Date,
     },
@@ -133,7 +195,7 @@ const applicationSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: 0,
-      max: 5,
+      max: 7,
     },
 
     // Submission metadata
