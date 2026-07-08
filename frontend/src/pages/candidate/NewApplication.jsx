@@ -43,7 +43,6 @@ const defaults = {
   primaryContactDesignation: '',
   primaryContactEmail: '',
   primaryContactPhone: '',
-  authorisedSignatory: '',
   websiteLinkedIn: '',
   categoryId: '',
   categoryEligibilityConfirmed: false,
@@ -161,7 +160,6 @@ const NewApplication = () => {
           primaryContactDesignation: draft.primaryContactDesignation || '',
           primaryContactEmail: draft.primaryContactEmail || '',
           primaryContactPhone: draft.primaryContactPhone || '',
-          authorisedSignatory: draft.authorisedSignatory || '',
           websiteLinkedIn: draft.websiteLinkedIn || '',
           categoryId: draft.category?._id || draft.category || '',
           categoryEligibilityConfirmed: !!draft.categoryEligibilityConfirmed || draft.isEligible === true,
@@ -211,7 +209,6 @@ const NewApplication = () => {
     primaryContactDesignation: values.primaryContactDesignation,
     primaryContactEmail: values.primaryContactEmail,
     primaryContactPhone: values.primaryContactPhone,
-    authorisedSignatory: values.authorisedSignatory,
     websiteLinkedIn: values.websiteLinkedIn,
     categoryId: values.categoryId,
     projectTitle: values.projectTitle,
@@ -274,7 +271,6 @@ const NewApplication = () => {
         ['primaryContactDesignation', 'Designation'],
         ['primaryContactEmail', 'Email'],
         ['primaryContactPhone', 'Phone'],
-        ['authorisedSignatory', 'Authorised signatory'],
       ];
       const missing = required.find(([field]) => !values[field]);
       if (missing) return { field: missing[0], message: `Please fill in ${missing[1]}.` };
@@ -484,7 +480,6 @@ const NewApplication = () => {
                         <div><FieldLabel required>Designation</FieldLabel><input className={fieldClass('primaryContactDesignation')} {...register('primaryContactDesignation')} /><FieldError message={fieldErrors.primaryContactDesignation} /></div>
                         <div><FieldLabel required>Email</FieldLabel><input type="email" className={fieldClass('primaryContactEmail')} {...register('primaryContactEmail')} /><FieldError message={fieldErrors.primaryContactEmail} /></div>
                         <div><FieldLabel required>Phone</FieldLabel><input className={fieldClass('primaryContactPhone')} {...register('primaryContactPhone')} /><FieldError message={fieldErrors.primaryContactPhone} /></div>
-                        <div><FieldLabel required>Authorised signatory</FieldLabel><input className={fieldClass('authorisedSignatory')} {...register('authorisedSignatory')} /><FieldError message={fieldErrors.authorisedSignatory} /></div>
                         <div><FieldLabel>Website/LinkedIn</FieldLabel><input className={inputClass} placeholder="https://..." {...register('websiteLinkedIn')} /></div>
                       </div>
                     </div>

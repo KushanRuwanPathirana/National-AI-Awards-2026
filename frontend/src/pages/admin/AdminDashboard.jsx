@@ -22,6 +22,30 @@ import categoryService from '../../services/category.service';
 
 const COLORS = ['#0072ff', '#00ff87', '#ffc658', '#ff7300', '#d0ed57', '#a4de6c'];
 
+const STATUS_LABELS = {
+  draft: 'Draft',
+  submitted: 'Submitted',
+  under_review: 'Under Review',
+  eligible: 'Eligible',
+  ineligible: 'Ineligible',
+  shortlisted: 'Shortlisted',
+  finalist: 'Finalist',
+  winner: 'Winner',
+  runner_up: 'Runner-up',
+};
+
+const STATUS_TRANSITIONS = {
+  draft: ['submitted'],
+  submitted: ['under_review', 'draft'],
+  under_review: ['eligible', 'ineligible'],
+  eligible: ['shortlisted', 'under_review'],
+  ineligible: ['under_review'],
+  shortlisted: ['finalist', 'eligible'],
+  finalist: ['winner', 'runner_up', 'shortlisted'],
+  winner: [],
+  runner_up: [],
+};
+
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
@@ -170,6 +194,9 @@ const AdminDashboard = () => {
 
   // Status transitions
   const handleStatusChange = async (appId, newStatus) => {
+    const app = applications.find((item) => item._id === appId);
+    if (!app || app.status === newStatus) return;
+
     try {
       await applicationService.changeStatus(appId, { status: newStatus });
       toast.success('Application status updated.');
@@ -793,20 +820,24 @@ const AdminDashboard = () => {
                                 <div className="text-[10px] text-slate-500">{app.candidate?.organization}</div>
                               </td>
                               <td className="p-4">
+                                {(() => {
+                                  const nextStatuses = STATUS_TRANSITIONS[app.status] || [];
+                                  return (
                                 <select
                                   className="bg-navy-900 border border-white/10 rounded px-2 py-1 text-[10px]"
                                   value={app.status}
                                   onChange={(e) => handleStatusChange(app._id, e.target.value)}
+                                  disabled={nextStatuses.length === 0}
                                 >
-                                  <option value={app.status}>{app.statusLabel}</option>
-                                  {/* Render other options matching transition engine */}
-                                  <option value="under_review">Under Review</option>
-                                  <option value="eligible">Eligible</option>
-                                  <option value="ineligible">Ineligible</option>
-                                  <option value="shortlisted">Shortlisted</option>
-                                  <option value="finalist">Finalist</option>
-                                  <option value="winner">Winner</option>
+                                  <option value={app.status}>{app.statusLabel || STATUS_LABELS[app.status] || app.status}</option>
+                                  {nextStatuses.map(status => (
+                                    <option key={status} value={status}>
+                                      {STATUS_LABELS[status] || status}
+                                    </option>
+                                  ))}
                                 </select>
+                                  );
+                                })()}
                               </td>
                               <td className="p-4">
                                 <div className="space-y-1">
