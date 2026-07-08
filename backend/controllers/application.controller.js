@@ -65,6 +65,7 @@ const createApplication = async (req, res, next) => {
       tagline,
       organisationName: organisationName || organizationName,
       organizationName: organisationName || organizationName,
+      registrationNumber: req.user.registrationNumber || '',
       status: APPLICATION_STATUS.DRAFT,
       completedStep: 1,
       statusHistory: [{ status: APPLICATION_STATUS.DRAFT, changedBy: req.user._id, note: 'Application created' }],
@@ -103,7 +104,7 @@ const updateApplication = async (req, res, next) => {
       'problemStatement', 'solution', 'aiTechnologies', 'innovationDetails',
       'impactDetails', 'teamSize', 'teamMembers', 'projectUrl', 'organizationName',
       'projectStartYear', 'declarationAccepted', 'declarationDate', 'completedStep',
-      'organisationName', 'registrationNumber', 'sectorIndustry', 'organisationSize',
+      'organisationName', 'sectorIndustry', 'organisationSize',
       'primaryContactName', 'primaryContactDesignation', 'primaryContactEmail',
       'primaryContactPhone', 'authorisedSignatory', 'websiteLinkedIn',
       'categoryEligibilityConfirmed', 'deploymentStatus', 'launchDate',
@@ -117,6 +118,8 @@ const updateApplication = async (req, res, next) => {
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) application[field] = req.body[field];
     });
+
+    application.registrationNumber = req.user.registrationNumber || '';
 
     await application.save();
     return successResponse(res, { message: 'Application updated.', data: { application } });

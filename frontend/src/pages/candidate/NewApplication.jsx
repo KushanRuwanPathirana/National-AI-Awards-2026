@@ -10,6 +10,7 @@ import {
 import Button from '../../components/shared/Button';
 import categoryService from '../../services/category.service';
 import applicationService from '../../services/application.service';
+import { useAuth } from '../../context/AuthContext';
 
 const steps = [
   { label: 'Applicant' },
@@ -96,6 +97,7 @@ const FieldError = ({ message }) => (
 
 const NewApplication = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const draftQueryId = searchParams.get('draft');
   const [currentStep, setCurrentStep] = useState(0);
@@ -107,9 +109,14 @@ const NewApplication = () => {
   const [uploading, setUploading] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
-  const { register, handleSubmit, watch, reset, getValues } = useForm({ defaultValues: defaults });
+  const { register, handleSubmit, watch, reset, getValues, setValue } = useForm({ defaultValues: defaults });
   const categoryId = watch('categoryId');
   const watched = watch();
+  const candidateRegistrationNumber = user?.registrationNumber || '';
+
+  useEffect(() => {
+    setValue('registrationNumber', candidateRegistrationNumber, { shouldDirty: false });
+  }, [candidateRegistrationNumber, setValue]);
 
   useEffect(() => {
     const fetchCategories = async () => {
@@ -147,7 +154,7 @@ const NewApplication = () => {
         reset({
           ...defaults,
           organisationName: draft.organisationName || draft.organizationName || '',
-          registrationNumber: draft.registrationNumber || '',
+          registrationNumber: candidateRegistrationNumber,
           sectorIndustry: draft.sectorIndustry || '',
           organisationSize: draft.organisationSize || '',
           primaryContactName: draft.primaryContactName || '',
@@ -192,12 +199,12 @@ const NewApplication = () => {
     };
 
     fetchDraft();
-  }, [draftQueryId, navigate, reset]);
+  }, [candidateRegistrationNumber, draftQueryId, navigate, reset]);
 
   const buildPayload = (values) => ({
     organisationName: values.organisationName,
     organizationName: values.organisationName,
-    registrationNumber: values.registrationNumber,
+    registrationNumber: candidateRegistrationNumber,
     sectorIndustry: values.sectorIndustry,
     organisationSize: values.organisationSize,
     primaryContactName: values.primaryContactName,
@@ -454,7 +461,16 @@ const NewApplication = () => {
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                         <div><FieldLabel required>Organisation/Individual name</FieldLabel><input className={fieldClass('organisationName')} {...register('organisationName')} /><FieldError message={fieldErrors.organisationName} /></div>
-                        <div><FieldLabel>Registration number</FieldLabel><input className={inputClass} {...register('registrationNumber')} /></div>
+                        <div>
+                          <FieldLabel>Registration number</FieldLabel>
+                          <input
+                            className={`${inputClass} cursor-not-allowed bg-white/3 text-slate-300`}
+                            readOnly
+                            aria-readonly="true"
+                            {...register('registrationNumber')}
+                          />
+                          <p className="mt-1 text-[11px] text-slate-500">Automatically assigned to your candidate account.</p>
+                        </div>
                         <div><FieldLabel required>Sector/Industry</FieldLabel><input className={fieldClass('sectorIndustry')} {...register('sectorIndustry')} /><FieldError message={fieldErrors.sectorIndustry} /></div>
                         <div>
                           <FieldLabel required>Organisation size</FieldLabel>

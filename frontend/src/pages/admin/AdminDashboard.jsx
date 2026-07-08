@@ -660,6 +660,7 @@ const AdminDashboard = () => {
                               </div>
                             )}
                             <div className="mt-4 flex flex-wrap gap-2 text-[11px] text-slate-500">
+                              <span className="rounded-full bg-accent-500/10 px-2.5 py-1 font-mono text-accent-300">{candidate.registrationNumber || 'Registration pending'}</span>
                               <span className="rounded-full bg-white/5 px-2.5 py-1">Phone: {candidate.phone || 'Not provided'}</span>
                               <span className="rounded-full bg-white/5 px-2.5 py-1">Role: {candidate.role}</span>
                             </div>
@@ -917,6 +918,7 @@ const AdminDashboard = () => {
                         <thead className="bg-white/5 text-[10px] uppercase font-bold text-slate-400">
                           <tr>
                             <th className="p-4">Name</th>
+                            <th className="p-4">Registration No.</th>
                             <th className="p-4">Email</th>
                             <th className="p-4">Role</th>
                             <th className="p-4">Status</th>
@@ -928,6 +930,7 @@ const AdminDashboard = () => {
                           {users.map(u => (
                             <tr key={u._id} className="border-b border-white/5 hover:bg-white/5">
                               <td className="p-4 font-bold text-white">{u.firstName} {u.lastName}</td>
+                              <td className="p-4 font-mono text-accent-300">{u.role === 'candidate' ? (u.registrationNumber || 'Pending') : '—'}</td>
                               <td className="p-4 font-mono">{u.email}</td>
                               <td className="p-4 uppercase text-[10px] tracking-wider font-semibold font-mono text-accent-400">{u.role}</td>
                               <td className="p-4">

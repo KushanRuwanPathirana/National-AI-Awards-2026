@@ -370,6 +370,12 @@ const CandidateDashboard = () => {
             )}
             <h2 className="font-display font-bold text-white text-lg">{user?.fullName}</h2>
             <span className="badge-accent mt-2 text-[10px] uppercase font-mono">{user?.role}</span>
+            {user?.registrationNumber && (
+              <div className="mt-4 rounded-xl border border-accent-500/20 bg-accent-500/10 px-3 py-2">
+                <span className="block text-[10px] font-semibold uppercase tracking-wider text-slate-400">Registration No.</span>
+                <span className="mt-1 block font-mono text-xs font-semibold text-accent-300">{user.registrationNumber}</span>
+              </div>
+            )}
           </div>
 
           {/* Nav links */}
@@ -855,6 +861,7 @@ const CandidateDashboard = () => {
                 <h3 className="font-display font-bold text-white text-xl mb-6">Profile Details</h3>
                 <div className="grid sm:grid-cols-2 gap-5">
                   {[
+                    { label: 'Registration Number',   value: user?.registrationNumber },
                     { label: 'First Name',             value: user?.firstName },
                     { label: 'Last Name',              value: user?.lastName },
                     { label: 'Email Address',          value: user?.email },
