@@ -77,8 +77,6 @@ const AdminDashboard = () => {
   const [changeSuccess, setChangeSuccess] = useState('');
   const [changeError,   setChangeError]   = useState('');
   const [eligibilityReview, setEligibilityReview] = useState({ appId: null, isEligible: true, note: '' });
-  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', shortDescription: '', order: 0, maxApplications: '', isActive: true });
-  const [editingCategoryId, setEditingCategoryId] = useState(null);
   const { register: regPassword, handleSubmit: handlePassword, formState: { errors: passErrors, isSubmitting: passSubmitting }, watch, reset: resetPassword } = useForm();
   const newPassword = watch('newPassword');
   const passwordRules = [
@@ -247,41 +245,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleSubmitCategory = async (e) => {
-    e.preventDefault();
-    try {
-      const payload = {
-        ...categoryForm,
-        order: Number(categoryForm.order || 0),
-        maxApplications: categoryForm.maxApplications === '' ? null : Number(categoryForm.maxApplications),
-      };
-      if (editingCategoryId) {
-        await categoryService.updateCategory(editingCategoryId, payload);
-        toast.success('Category updated.');
-      } else {
-        await categoryService.createCategory(payload);
-        toast.success('Category created.');
-      }
-      setCategoryForm({ name: '', description: '', shortDescription: '', order: 0, maxApplications: '', isActive: true });
-      setEditingCategoryId(null);
-      fetchCategories();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save category.');
-    }
-  };
-
-  const handleEditCategory = (category) => {
-    setEditingCategoryId(category._id);
-    setCategoryForm({
-      name: category.name || '',
-      description: category.description || '',
-      shortDescription: category.shortDescription || '',
-      order: category.order || 0,
-      maxApplications: category.maxApplications ?? '',
-      isActive: category.isActive !== false,
-    });
-  };
-
   const handleDeleteCategory = async (id) => {
     if (!window.confirm('Delete this category?')) return;
     try {
@@ -412,26 +375,6 @@ const AdminDashboard = () => {
       fetchMonitoring();
     } catch {
       toast.error('Failed to publish winners.');
-    } finally {
-      setReportActionBusy(false);
-    }
-  };
-
-  const handleGenerateCertificates = async () => {
-    if (!selectedReportIds.length) {
-      toast.error('Select at least one application first.');
-      return;
-    }
-
-    setReportActionBusy(true);
-    try {
-      await applicationService.generateCertificates(selectedReportIds);
-      toast.success('Certificates generated.');
-      setSelectedReportIds([]);
-      fetchApps();
-      fetchMonitoring();
-    } catch {
-      toast.error('Failed to generate certificates.');
     } finally {
       setReportActionBusy(false);
     }
@@ -1022,29 +965,7 @@ const AdminDashboard = () => {
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
-                        <h4 className="font-display font-bold text-white text-base">{editingCategoryId ? 'Edit Category' : 'Create Category'}</h4>
-                        <form onSubmit={handleSubmitCategory} className="space-y-3">
-                          <input className="input-field" placeholder="Category name" value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} required />
-                          <textarea className="input-field h-24" placeholder="Description" value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} required />
-                          <input className="input-field" placeholder="Short description" value={categoryForm.shortDescription} onChange={(e) => setCategoryForm({ ...categoryForm, shortDescription: e.target.value })} />
-                          <div className="grid grid-cols-2 gap-3">
-                            <input type="number" className="input-field" placeholder="Order" value={categoryForm.order} onChange={(e) => setCategoryForm({ ...categoryForm, order: e.target.value })} />
-                            <input type="number" className="input-field" placeholder="Max applications" value={categoryForm.maxApplications} onChange={(e) => setCategoryForm({ ...categoryForm, maxApplications: e.target.value })} />
-                          </div>
-                          <label className="flex items-center gap-2 text-sm text-slate-300">
-                            <input type="checkbox" checked={categoryForm.isActive} onChange={(e) => setCategoryForm({ ...categoryForm, isActive: e.target.checked })} />
-                            Active
-                          </label>
-                          <div className="flex gap-3">
-                            <button type="submit" className="btn-primary text-xs">{editingCategoryId ? 'Save Category' : 'Create Category'}</button>
-                            {editingCategoryId && <button type="button" onClick={() => { setEditingCategoryId(null); setCategoryForm({ name: '', description: '', shortDescription: '', order: 0, maxApplications: '', isActive: true }); }} className="btn-ghost text-xs">Cancel</button>}
-                          </div>
-                        </form>
-                      </div>
-
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
+                    <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
                         <h4 className="font-display font-bold text-white text-base">Existing Categories</h4>
                         <div className="space-y-3 max-h-[420px] overflow-y-auto">
                           {categories.map(c => (
@@ -1055,7 +976,6 @@ const AdminDashboard = () => {
                                   <p className="text-slate-400 text-[11px] mt-1">{c.description}</p>
                                 </div>
                                 <div className="flex gap-2">
-                                  <button onClick={() => handleEditCategory(c)} className="text-accent-400 text-xs">Edit</button>
                                   <button onClick={() => handleDeleteCategory(c._id)} className="text-red-400 text-xs">Delete</button>
                                 </div>
                               </div>
@@ -1063,7 +983,6 @@ const AdminDashboard = () => {
                           ))}
                         </div>
                       </div>
-                    </div>
                   </div>
                 )}
 
@@ -1195,7 +1114,6 @@ const AdminDashboard = () => {
                       <div className="flex flex-wrap gap-2">
                         <button onClick={handlePublishFinalists} disabled={reportActionBusy} className="btn-primary text-xs disabled:opacity-50">Publish Finalists</button>
                         <button onClick={handlePublishWinners} disabled={reportActionBusy} className="btn-gold text-xs disabled:opacity-50">Publish Winners</button>
-                        <button onClick={handleGenerateCertificates} disabled={reportActionBusy} className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-xl text-xs text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50">Generate Certificates</button>
                       </div>
                     </div>
 
