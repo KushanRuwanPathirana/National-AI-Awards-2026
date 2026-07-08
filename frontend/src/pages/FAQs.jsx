@@ -18,7 +18,12 @@ const faqData = [
   {
     category: 'Application Process',
     faqs: [
-      { q: 'Is there an application fee?', a: 'No. Applying to the National AI Awards Sri Lanka is completely free of charge. We want to ensure every talented innovator can participate regardless of budget.' },
+      {
+        q: 'Is there an application fee?',
+        a: 'Yes. The National AI Awards Sri Lanka has an application fee of LKR 25,000. However, submissions under the University AI Innovation Category are completely free of charge.'
+      },
+
+
       { q: 'How do I submit my application?', a: 'Create an account on our portal, complete your applicant profile, choose up to 2 award categories, fill in the application form, and upload supporting documents. You can save drafts and return before the deadline.' },
       { q: 'Can I apply in more than one category?', a: 'Yes, you may apply in up to 2 award categories. Ensure your application is tailored to each category\'s specific criteria. A separate application form must be submitted for each category.' },
       { q: 'What documents do I need to submit?', a: 'Requirements include: a completed application form, a concise project description (max 1000 words), supporting evidence of AI implementation, proof of impact or traction, and optionally a pitch deck or demo video.' },
@@ -53,9 +58,8 @@ const FAQItem = ({ faq, isOpen, onToggle }) => (
       aria-expanded={isOpen}
     >
       <span className="font-display font-semibold text-white text-sm leading-snug pr-2">{faq.q}</span>
-      <span className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors duration-200 ${
-        isOpen ? 'bg-accent-500/30 text-accent-300' : 'bg-white/5 text-slate-400'
-      }`}>
+      <span className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors duration-200 ${isOpen ? 'bg-accent-500/30 text-accent-300' : 'bg-white/5 text-slate-400'
+        }`}>
         {isOpen ? <RiSubtractLine size={16} /> : <RiAddLine size={16} />}
       </span>
     </button>
