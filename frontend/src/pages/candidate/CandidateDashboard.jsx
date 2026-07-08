@@ -208,13 +208,14 @@ const CandidateDashboard = () => {
 
   const handleLogout = () => { logout(); navigate('/'); };
 
-  const handleDelete = async (id, title) => {
-    const ok = window.confirm(`Are you sure you want to delete the draft "${title || 'Untitled'}"? This action cannot be undone.`);
+  const handleDelete = async (app) => {
+    const type = app.status === 'draft' ? 'draft' : 'application';
+    const ok = window.confirm(`Are you sure you want to delete the ${type} "${app.projectTitle || 'Untitled'}"? This action cannot be undone.`);
     if (!ok) return;
 
     try {
-      await applicationService.deleteApplication(id);
-      toast.success('Application draft deleted successfully.');
+      await applicationService.deleteApplication(app._id);
+      toast.success('Application deleted successfully.');
       fetchApps();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to delete application.');
@@ -303,16 +304,24 @@ const CandidateDashboard = () => {
               <RiEditLine size={14} /> Edit
             </Link>
             <button
-              onClick={() => handleDelete(app._id, app.projectTitle)}
+              onClick={() => handleDelete(app)}
               className="btn-ghost !py-2 !px-4 text-xs flex items-center gap-1.5 text-red-400 border-red-500/30 hover:bg-red-500/10 hover:text-red-300 animate-fade-in"
             >
               <RiDeleteBinLine size={14} /> Delete
             </button>
           </>
         ) : (
-          <Link to={`/dashboard/applications/${app._id}`} className="btn-ghost !py-2 !px-4 text-xs">
-            View
-          </Link>
+          <>
+            <Link to={`/dashboard/applications/${app._id}`} className="btn-ghost !py-2 !px-4 text-xs">
+              View
+            </Link>
+            <button
+              onClick={() => handleDelete(app)}
+              className="btn-ghost !py-2 !px-4 text-xs flex items-center gap-1.5 text-red-400 border-red-500/30 hover:bg-red-500/10 hover:text-red-300 animate-fade-in"
+            >
+              <RiDeleteBinLine size={14} /> Delete
+            </button>
+          </>
         )}
       </div>
     </div>

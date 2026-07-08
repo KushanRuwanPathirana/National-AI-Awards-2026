@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const { APPLICATION_STATUS, AWARD_CATEGORIES } = require('../config/constants');
+const Counter = require('./Counter.model');
+const { APPLICATION_STATUS } = require('../config/constants');
 
 // ── Sub-schemas ────────────────────────────────────────────────────────────────
 
@@ -244,14 +245,53 @@ applicationSchema.virtual('statusLabel').get(function () {
   return labels[this.status] || this.status;
 });
 
+const REFERENCE_PREFIX = 'AIAW2026';
+const REFERENCE_COUNTER_KEY = 'application_reference_number';
+
+const buildReferenceNumber = (sequence) => `${REFERENCE_PREFIX}-${String(sequence).padStart(5, '0')}`;
+
+const getHighestExistingReferenceSequence = async () => {
+  const latestApplication = await mongoose.model('Application')
+    .findOne({ referenceNumber: { $regex: `^${REFERENCE_PREFIX}-\\d+$` } })
+    .sort({ referenceNumber: -1 })
+    .select('referenceNumber')
+    .lean();
+
+  if (!latestApplication?.referenceNumber) return 0;
+
+  const sequence = Number(latestApplication.referenceNumber.replace(`${REFERENCE_PREFIX}-`, ''));
+  return Number.isFinite(sequence) ? sequence : 0;
+};
+
+const generateReferenceNumber = async () => {
+  const highestExistingSequence = await getHighestExistingReferenceSequence();
+
+  await Counter.updateOne(
+    { key: REFERENCE_COUNTER_KEY },
+    { $max: { value: highestExistingSequence } },
+    { upsert: true }
+  );
+
+  const counter = await Counter.findOneAndUpdate(
+    { key: REFERENCE_COUNTER_KEY },
+    { $inc: { value: 1 } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+
+  return buildReferenceNumber(counter.value);
+};
+
 // ── Pre-save: generate reference number ────────────────────────────────────────
 
 applicationSchema.pre('save', async function (next) {
-  if (!this.referenceNumber && this.status !== 'draft') {
-    const count = await mongoose.model('Application').countDocuments();
-    this.referenceNumber = `AIAW2026-${String(count + 1).padStart(5, '0')}`;
+  try {
+    if (!this.referenceNumber && this.status !== APPLICATION_STATUS.DRAFT) {
+      this.referenceNumber = await generateReferenceNumber();
+    }
+    return next();
+  } catch (error) {
+    return next(error);
   }
-  next();
 });
 
 // ── Indexes ────────────────────────────────────────────────────────────────────

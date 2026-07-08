@@ -522,9 +522,6 @@ const deleteApplication = async (req, res, next) => {
     const application = await Application.findOne({ _id: id, candidate: req.user._id });
 
     if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
-    if (application.status !== APPLICATION_STATUS.DRAFT) {
-      return errorResponse(res, { statusCode: 400, message: 'Only draft applications can be deleted.' });
-    }
 
     // Delete associated files from disk
     if (application.documents && application.documents.length > 0) {
@@ -540,17 +537,21 @@ const deleteApplication = async (req, res, next) => {
       });
     }
 
-    await Application.deleteOne({ _id: id });
+    await Promise.all([
+      Evaluation.deleteMany({ application: id }),
+      Notification.deleteMany({ relatedApplication: id }),
+      Application.deleteOne({ _id: id }),
+    ]);
 
     await createAuditLog({
       action: 'application_deleted',
       performedBy: req.user._id,
       targetId: id,
-      description: `Draft deleted: ${application.projectTitle}`,
+      description: `Application deleted: ${application.projectTitle} (${application.status})`,
       req
     });
 
-    return successResponse(res, { message: 'Application draft deleted successfully.' });
+    return successResponse(res, { message: 'Application deleted successfully.' });
   } catch (error) { next(error); }
 };
 
