@@ -8,11 +8,11 @@ import SectionHeader from '../components/shared/SectionHeader';
 import Button from '../components/shared/Button';
 
 const steps = [
-  { step: '01', icon: RiUserLine,     title: 'Create an Account',         desc: 'Register on our portal with your email and create your applicant profile.' },
-  { step: '02', icon: RiLightbulbLine, title: 'Choose Your Category',      desc: 'Select up to 2 award categories that best match your AI innovation.' },
-  { step: '03', icon: RiFileTextLine,  title: 'Complete the Application',  desc: 'Fill in your project details, describe your AI solution, and demonstrate impact.' },
-  { step: '04', icon: RiUploadLine,    title: 'Upload Supporting Docs',    desc: 'Attach your pitch deck, demo video, impact report, and any relevant evidence.' },
-  { step: '05', icon: RiAwardLine,     title: 'Submit & Await Results',    desc: 'Review and submit before 31 March 2026. Our team will be in touch with next steps.' },
+  { step: '01', icon: RiUserLine, title: 'Create an Account', desc: 'Register on our portal with your email and create your applicant profile.' },
+  { step: '02', icon: RiLightbulbLine, title: 'Choose Your Category', desc: 'Select up to 2 award categories that best match your AI innovation.' },
+  { step: '03', icon: RiFileTextLine, title: 'Complete the Application', desc: 'Fill in your project details, describe your AI solution, and demonstrate impact.' },
+  { step: '04', icon: RiUploadLine, title: 'Upload Supporting Docs', desc: 'Attach your pitch deck, demo video, impact report, and any relevant evidence.' },
+  { step: '05', icon: RiAwardLine, title: 'Submit & Await Results', desc: 'Review and submit before 31 March 2026. Our team will be in touch with next steps.' },
 ];
 
 const requirements = [
@@ -25,17 +25,17 @@ const requirements = [
 ];
 
 const benefits = [
-  { icon: '🏆', title: 'Cash Prizes',        desc: 'Substantial prize pool with awards for winners and runners-up in each category.' },
-  { icon: '📡', title: 'Media Coverage',      desc: 'Featured in national media, tech publications, and our digital channels.' },
-  { icon: '🤝', title: 'Investor Access',     desc: 'Exclusive networking with investors, VCs, and industry partners.' },
-  { icon: '🎓', title: 'Mentorship',          desc: 'One-year mentorship package with senior technology and business leaders.' },
-  { icon: '🌍', title: 'Global Exposure',     desc: 'Represent Sri Lanka at international AI forums and events.' },
-  { icon: '🚀', title: 'Accelerator Access',  desc: 'Fast-track access to startup accelerator programmes and incubators.' },
+  { icon: '🏆', title: 'Cash Prizes', desc: 'Substantial prize pool with awards for winners and runners-up in each category.' },
+  { icon: '📡', title: 'Media Coverage', desc: 'Featured in national media, tech publications, and our digital channels.' },
+  { icon: '🤝', title: 'Investor Access', desc: 'Exclusive networking with investors, VCs, and industry partners.' },
+  { icon: '🎓', title: 'Mentorship', desc: 'One-year mentorship package with senior technology and business leaders.' },
+  { icon: '🌍', title: 'Global Exposure', desc: 'Represent Sri Lanka at international AI forums and events.' },
+  { icon: '🚀', title: 'Accelerator Access', desc: 'Fast-track access to startup accelerator programmes and incubators.' },
 ];
 
 const fadeUp = {
   hidden: { opacity: 0, y: 24 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.6 } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6 } },
 };
 const stagger = { show: { transition: { staggerChildren: 0.1 } } };
 
@@ -81,7 +81,7 @@ const ApplyNow = () => (
           </Link>
           <div className="flex items-center gap-2 text-sm text-slate-400">
             <RiCalendarLine className="text-accent-400" />
-            Deadline: 31 March 2026
+            Deadline: 15 August 2026
           </div>
         </motion.div>
       </div>
@@ -182,7 +182,7 @@ const ApplyNow = () => (
           <span className="badge-gold mb-6 inline-flex">Limited Time</span>
           <h2 className="font-display font-black text-4xl sm:text-5xl text-white mb-4">
             Applications Close{' '}
-            <span className="gradient-text-gold">31 March 2026</span>
+            <br /> <span className="gradient-text-gold">15 August 2026</span>
           </h2>
           <p className="text-slate-400 text-base mb-8">
             Don't let your AI innovation go unrecognised. Apply today.

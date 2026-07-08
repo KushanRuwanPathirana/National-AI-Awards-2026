@@ -8,6 +8,7 @@ import {
   RiTeamLine, RiAwardLine, RiShieldUserLine, RiArrowDownSLine
 } from 'react-icons/ri';
 import Button from '../components/shared/Button';
+import JudgeAvatar from '../components/judge/JudgeAvatar';
 
 const judgesData = [
   // Core National Awards & Women in AI Leadership
@@ -17,6 +18,8 @@ const judgesData = [
     designation: 'VP – Public & Government Affairs',
     organization: 'Huawei Technologies / FITIS / CSSL',
     category: 'Core National Awards & Women in AI Leadership',
+    description: 'Senior industry leader driving national digital transformation and public-sector AI adoption.',
+    linkedin: '',
   },
   {
     id: 'ruvan-weerasinghe',
@@ -24,6 +27,8 @@ const judgesData = [
     designation: 'Academic Dean, IIT | Former Senior Lecturer, UCSC',
     organization: 'University of Colombo',
     category: 'Core National Awards & Women in AI Leadership',
+    description: 'Veteran academic and AI researcher contributing to national AI education and policy.',
+    linkedin: '',
   },
   {
     id: 'waruna-sri-dhanapala',
@@ -31,6 +36,8 @@ const judgesData = [
     designation: 'Secretary',
     organization: 'Ministry of Digital Economy',
     category: 'Core National Awards & Women in AI Leadership',
+    description: 'Government leader overseeing digital economy initiatives and AI-driven national development.',
+    linkedin: '',
   },
   {
     id: 'lakmini-wijesundara',
@@ -38,9 +45,27 @@ const judgesData = [
     designation: 'Co-Founder & CEO',
     organization: 'BOARDPAC',
     category: 'Core National Awards & Women in AI Leadership',
+    description: 'Tech entrepreneur pioneering digital governance platforms with global impact.',
+    linkedin: '',
   },
-  { id: 'international-judge-core', name: 'International Judge', designation: 'TBI', organization: 'TBI', category: 'Core National Awards & Women in AI Leadership' },
-  { id: 'sltmobitel-core', name: 'SLTMOBITEL Member', designation: 'TBI', organization: 'TBI', category: 'Core National Awards & Women in AI Leadership' },
+  {
+    id: 'international-judge-core',
+    name: 'International Judge',
+    designation: 'TBI',
+    organization: 'TBI',
+    category: 'Core National Awards & Women in AI Leadership',
+    description: 'International expert contributing global perspectives on AI governance and innovation.',
+    linkedin: '',
+  },
+  {
+    id: 'sltmobitel-core',
+    name: 'SLTMOBITEL Member',
+    designation: 'TBI',
+    organization: 'TBI',
+    category: 'Core National Awards & Women in AI Leadership',
+    description: 'Industry representative supporting national AI excellence and digital innovation.',
+    linkedin: '',
+  },
 
   // AI in Agriculture
   {
@@ -49,6 +74,8 @@ const judgesData = [
     designation: 'Founder & CEO',
     organization: 'CodeGen',
     category: 'AI in Agriculture',
+    description: 'Tech innovator driving AI-powered solutions across agriculture and sustainability sectors.',
+    linkedin: '',
   },
   {
     id: 'heminda-jayaweera',
@@ -56,6 +83,8 @@ const judgesData = [
     designation: 'Executive Director',
     organization: 'TRACE Sri Lanka',
     category: 'AI in Agriculture',
+    description: 'Innovation leader fostering AI-driven agritech and startup ecosystem growth.',
+    linkedin: '',
   },
   {
     id: 'buddhi-marambe',
@@ -63,6 +92,8 @@ const judgesData = [
     designation: 'Professor, Faculty of Agriculture',
     organization: 'University of Peradeniya',
     category: 'AI in Agriculture',
+    description: 'Renowned agriculture expert advocating scientific and AI-enabled farming practices.',
+    linkedin: '',
   },
 
   // AI in Banking, Finance & Insurance
@@ -72,6 +103,8 @@ const judgesData = [
     designation: 'Chairperson, SLASSCOM (2025/26) | COO',
     organization: '99x',
     category: 'AI in Banking, Finance & Insurance',
+    description: 'Tech industry leader shaping AI adoption in financial services and digital product innovation.',
+    linkedin: '',
   },
   {
     id: 'dhananath-fernando',
@@ -79,6 +112,8 @@ const judgesData = [
     designation: 'Chief Executive Officer',
     organization: 'Advocata Institute',
     category: 'AI in Banking, Finance & Insurance',
+    description: 'Policy and economic analyst promoting responsible AI-driven financial modernization.',
+    linkedin: '',
   },
   {
     id: 'channa-de-silva',
@@ -86,6 +121,8 @@ const judgesData = [
     designation: 'CEO',
     organization: 'LankaPay',
     category: 'AI in Banking, Finance & Insurance',
+    description: 'Fintech leader driving digital payments and AI-enabled financial infrastructure.',
+    linkedin: '',
   },
 
   // AI in Healthcare & Life Sciences
@@ -95,6 +132,8 @@ const judgesData = [
     designation: 'Dean, Faculty of Medicine',
     organization: 'University of Colombo',
     category: 'AI in Healthcare & Life Sciences',
+    description: 'Medical informatics pioneer advancing AI in healthcare, genomics, and clinical systems.',
+    linkedin: '',
   },
   {
     id: 'nishan-siriwardhana',
@@ -102,6 +141,8 @@ const judgesData = [
     designation: 'President / Specialist Health Informatics',
     organization: 'Sri Lanka College of Health Informatics',
     category: 'AI in Healthcare & Life Sciences',
+    description: 'Health informatics specialist leading AI integration in medical workflows and public health.',
+    linkedin: '',
   },
   {
     id: 'chitranganie-mubarak',
@@ -109,6 +150,8 @@ const judgesData = [
     designation: 'Former Chairperson',
     organization: 'ICTA',
     category: 'AI in Healthcare & Life Sciences',
+    description: 'Digital transformation advocate with experience in national ICT and health-tech initiatives.',
+    linkedin: '',
   },
 
   // AI in Manufacturing & Industry 5.0
@@ -118,6 +161,8 @@ const judgesData = [
     designation: 'Director',
     organization: 'Brandix',
     category: 'AI in Manufacturing & Industry 5.0',
+    description: 'Industry leader driving smart manufacturing and AI-enabled operational excellence.',
+    linkedin: '',
   },
   {
     id: 'ajith-madurapperuma',
@@ -125,9 +170,27 @@ const judgesData = [
     designation: 'Deputy Vice-Chancellor',
     organization: 'Open University of Sri Lanka',
     category: 'AI in Manufacturing & Industry 5.0',
+    description: 'Academic expert contributing to AI research, automation, and Industry 5.0 innovation.',
+    linkedin: '',
   },
-  { id: 'international-judge-manufacturing', name: 'International Judge', designation: 'TBI', organization: 'TBI', category: 'AI in Manufacturing & Industry 5.0' },
-  { id: 'sltmobitel-manufacturing', name: 'SLTMOBITEL Member', designation: 'TBI', organization: 'TBI', category: 'AI in Manufacturing & Industry 5.0' },
+  {
+    id: 'international-judge-manufacturing',
+    name: 'International Judge',
+    designation: 'TBI',
+    organization: 'TBI',
+    category: 'AI in Manufacturing & Industry 5.0',
+    description: 'Global specialist in Industry 5.0, automation, and AI-driven industrial transformation.',
+    linkedin: '',
+  },
+  {
+    id: 'sltmobitel-manufacturing',
+    name: 'SLTMOBITEL Member',
+    designation: 'TBI',
+    organization: 'TBI',
+    category: 'AI in Manufacturing & Industry 5.0',
+    description: 'Industry representative supporting AI adoption in manufacturing and industrial innovation.',
+    linkedin: '',
+  },
 
   // AI in Education
   {
@@ -136,6 +199,8 @@ const judgesData = [
     designation: 'Professor, Dept. of Computer Engineering',
     organization: 'University of Peradeniya',
     category: 'AI in Education',
+    description: 'Academic leader advancing AI-driven education, computing research, and digital learning.',
+    linkedin: '',
   },
   {
     id: 'sampath-jayasundara',
@@ -143,8 +208,18 @@ const judgesData = [
     designation: 'Vice Chairman 1, SLASSCOM | Director/CEO',
     organization: 'hSenid Business Solutions',
     category: 'AI in Education',
+    description: 'Tech executive promoting AI-powered HR solutions and digital education initiatives.',
+    linkedin: '',
   },
-  { id: 'international-judge-education', name: 'International Judge', designation: 'TBI', organization: 'TBI', category: 'AI in Education' },
+  {
+    id: 'international-judge-education',
+    name: 'International Judge',
+    designation: 'TBI',
+    organization: 'TBI',
+    category: 'AI in Education',
+    description: 'International expert in AI-enabled learning systems and education technology.',
+    linkedin: '',
+  },
 
   // AI in Media
   {
@@ -153,6 +228,8 @@ const judgesData = [
     designation: 'Former Chairman',
     organization: 'SLASSCOM (2024/25)',
     category: 'AI in Media',
+    description: 'Tech leader with expertise in digital media transformation and AI-driven content innovation.',
+    linkedin: '',
   },
   {
     id: 'vajeeendra-kandegamage',
@@ -160,9 +237,27 @@ const judgesData = [
     designation: 'Former Chairman',
     organization: 'NBQSA',
     category: 'AI in Media',
+    description: 'Industry veteran contributing to digital media standards and technology excellence.',
+    linkedin: '',
   },
-  { id: 'international-judge-media', name: 'International Judge', designation: 'TBI', organization: 'TBI', category: 'AI in Media' },
-  { id: 'sltmobitel-media', name: 'SLTMOBITEL Member', designation: 'TBI', organization: 'TBI', category: 'AI in Media' },
+  {
+    id: 'international-judge-media',
+    name: 'International Judge',
+    designation: 'TBI',
+    organization: 'TBI',
+    category: 'AI in Media',
+    description: 'Global media-tech expert evaluating AI innovation in content and communications.',
+    linkedin: '',
+  },
+  {
+    id: 'sltmobitel-media',
+    name: 'SLTMOBITEL Member',
+    designation: 'TBI',
+    organization: 'TBI',
+    category: 'AI in Media',
+    description: 'Industry representative supporting AI adoption in media and digital communications.',
+    linkedin: '',
+  },
 
   // Innovation & Future-Focused Awards
   {
@@ -171,6 +266,8 @@ const judgesData = [
     designation: 'Managing Partner',
     organization: 'nVentures',
     category: 'Innovation & Future-Focused Awards',
+    description: 'Startup ecosystem leader fostering AI innovation and venture-backed technology growth.',
+    linkedin: '',
   },
   {
     id: 'asela-gunawardana',
@@ -178,6 +275,8 @@ const judgesData = [
     designation: 'Head of Operations',
     organization: 'Lankan Angel Network',
     category: 'Innovation & Future-Focused Awards',
+    description: 'Angel investment leader supporting emerging AI startups and future-focused innovation.',
+    linkedin: '',
   },
   {
     id: 'madu-ratnayake',
@@ -185,6 +284,8 @@ const judgesData = [
     designation: 'Co-Founder & President',
     organization: 'Scybers | Founder President TiE Colombo',
     category: 'Innovation & Future-Focused Awards',
+    description: 'Tech visionary driving cybersecurity, AI innovation, and startup ecosystem development.',
+    linkedin: '',
   },
   {
     id: 'irfan-ahamed',
@@ -192,6 +293,8 @@ const judgesData = [
     designation: 'COO – Wearables and Growth Platforms',
     organization: 'MAS Holdings',
     category: 'Innovation & Future-Focused Awards',
+    description: 'Industry leader advancing AI-driven wearable technology and next-gen product innovation.',
+    linkedin: '',
   },
   {
     id: 'jiffry-zulfer',
@@ -199,8 +302,11 @@ const judgesData = [
     designation: 'Founder & CEO',
     organization: 'PickMe',
     category: 'Innovation & Future-Focused Awards',
+    description: 'Tech entrepreneur transforming mobility and logistics through AI-powered platforms.',
+    linkedin: '',
   },
 ];
+
 
 
 // All available expertise options
@@ -284,16 +390,6 @@ const JudgePortal = () => {
   const grandJuryJudges = useMemo(() => {
     return judgesData.filter(judge => judge.isGrandJury);
   }, []);
-
-  // Helper to extract initials
-  const getInitials = (name) => {
-    const clean = name.replace(/^(Mr\.|Dr\.|Ms\.|Mrs\.|Prof\.)\s+/i, '');
-    const parts = clean.split(' ');
-    if (parts.length >= 2) {
-      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
-    }
-    return parts[0] ? parts[0][0].toUpperCase() : 'AI';
-  };
 
   return (
     <div className="min-h-screen bg-navy-950 text-slate-200 overflow-x-hidden font-sans relative selection:bg-accent-500/30 selection:text-white">
@@ -537,14 +633,7 @@ const JudgePortal = () => {
                   className="glass-card p-6 flex flex-col items-center text-center cursor-pointer border border-white/10 hover:border-accent-500/50 hover:shadow-glow transition-all duration-300 group"
                 >
                   {/* Circular Portrait with Glowing Border */}
-                  <div className="relative">
-                    <div className={`w-24 h-24 rounded-full bg-gradient-to-br from-surface-50 to-surface-100 flex items-center justify-center font-display font-black text-white text-2xl shadow-inner border-2 ${judge.isGrandJury
-                      ? 'border-gold-400 shadow-[0_0_15px_rgba(0,255,135,0.4)]'
-                      : 'border-cyan-400/80 shadow-[0_0_15px_rgba(34,211,238,0.4)]'
-                      } group-hover:scale-105 transition-transform duration-300`}>
-                      {getInitials(judge.name)}
-                    </div>
-                  </div>
+                  <JudgeAvatar judge={judge} variant="card" />
 
                   {/* Name */}
                   <h3 className="font-display font-bold text-white text-lg mt-5 group-hover:text-accent-400 transition-colors duration-300 leading-tight">
@@ -631,10 +720,7 @@ const JudgePortal = () => {
 
               {/* Header profile details */}
               <div className="flex flex-col sm:flex-row gap-6 items-start">
-                <div className={`w-20 h-20 rounded-full bg-gradient-to-br from-surface-50 to-surface-100 flex items-center justify-center font-display font-black text-white text-3xl shadow-inner border-2 ${activeModalJudge.isGrandJury ? 'border-gold-500 shadow-[0_0_15px_rgba(0,255,135,0.4)]' : 'border-cyan-400 shadow-[0_0_15px_rgba(34,211,238,0.4)]'
-                  } flex-shrink-0`}>
-                  {getInitials(activeModalJudge.name)}
-                </div>
+                <JudgeAvatar judge={activeModalJudge} variant="modal" />
                 <div className="space-y-2">
                   <div className="flex flex-wrap items-center gap-2">
                     <h2 className="font-display font-extrabold text-2xl text-white leading-tight">
