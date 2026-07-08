@@ -49,14 +49,21 @@ const JWT = {
 };
 
 const AWARD_CATEGORIES = [
-  'Core National Awards',
-  'Women in AI Leadership Award',
-  'Innovation & Future-Focused Awards',
-  'AI in Agriculture',
-  'AI in Banking, Finance & Insurance',
-  'AI in Healthcare & Life Sciences',
-  'AI in Export Development',
-  'AI in Education',
+  'National AI Excellence Award',
+  'National AI Leadership Excellence Award',
+  'National AI Impact Excellence Award',
+  'National AI Export Excellence Award',
+  'Best AI Solution in Agriculture',
+  'Best AI Solution in Banking, Finance & Insurance',
+  'Best AI Solution in Healthcare & Life Sciences',
+  'Best AI Solution in Export Development',
+  'Best AI Solution in Education',
+  'Best AI Solution in Manufacturing & Industry 5.0',
+  'Best AI Startup / MSME Innovation',
+  'Best Agentic AI Solution',
+  'Best Sinhala/Tamil AI & Localisation Innovation',
+  'University AI Innovation',
+  'Women in AI Leadership',
 ];
 
 module.exports = {
@@ -68,4 +75,3 @@ module.exports = {
   JWT,
   AWARD_CATEGORIES,
 };
-
