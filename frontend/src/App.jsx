@@ -17,6 +17,7 @@ import NotFound    from './pages/NotFound';
 import VerifyOTP   from './pages/VerifyOTP';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword  from './pages/ResetPassword';
+import ScrollToTop   from './components/shared/ScrollToTop';
 
 // Dashboards & Wizards
 import CandidateDashboard from './pages/candidate/CandidateDashboard';
@@ -53,6 +54,7 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
 const App = () => (
   <AuthProvider>
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
         {/* Public routes */}
         <Route element={<PublicLayout />}>

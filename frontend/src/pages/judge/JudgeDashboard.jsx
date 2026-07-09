@@ -71,6 +71,13 @@ const JudgeDashboard = () => {
   const [changeError, setChangeError]     = useState('');
   const { register, handleSubmit, formState: { errors, isSubmitting }, watch, reset } = useForm();
   const newPassword = watch('newPassword');
+  const passwordRules = [
+    { label: 'At least 8 characters', passed: (newPassword || '').length >= 8 },
+    { label: 'Includes an uppercase letter', passed: /[A-Z]/.test(newPassword || '') },
+    { label: 'Includes a number', passed: /\d/.test(newPassword || '') },
+    { label: 'Includes a symbol', passed: /[^A-Za-z0-9]/.test(newPassword || '') },
+  ];
+  const passwordStrength = passwordRules.filter((rule) => rule.passed).length;
 
   /* ── fetch ─────────────────────────────────────────────────────────────── */
   const fetchAll = async () => {
@@ -747,79 +754,127 @@ const JudgeDashboard = () => {
               {/* CHANGE PASSWORD TAB                                         */}
               {/* ════════════════════════════════════════════════════════════ */}
               {activeTab === 'password' && (
-                <div
-                  className="rounded-2xl border border-white/8 p-7"
-                  style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(16px)' }}
-                >
-                  <div className="flex items-center gap-3 mb-7">
-                    <div className="w-10 h-10 rounded-xl bg-accent-500/15 border border-accent-500/20 flex items-center justify-center">
-                      <RiLockPasswordLine className="text-accent-400 text-lg" />
-                    </div>
+                <div className="space-y-6">
+                  <div className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
                     <div>
-                      <h3 className="font-display font-bold text-white text-lg">Change Password</h3>
-                      <p className="text-slate-500 text-xs">Ensure your account uses a strong, unique password.</p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-accent-300">Account Security</p>
+                      <h3 className="mt-1 font-display text-2xl font-black text-white">Change Password</h3>
+                      <p className="mt-1 max-w-2xl text-sm text-slate-400">Update your judge portal credentials and keep evaluation access protected.</p>
+                    </div>
+                    <div className="rounded-xl border border-accent-500/20 bg-accent-500/10 px-4 py-3">
+                      <div className="text-[10px] font-bold uppercase tracking-wider text-accent-300">Signed In As</div>
+                      <div className="mt-1 max-w-[220px] truncate text-sm font-semibold text-white">{user?.email}</div>
                     </div>
                   </div>
 
-                  {changeError && (
-                    <div className="mb-5 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">{changeError}</div>
-                  )}
-                  {changeSuccess && (
-                    <div className="mb-5 p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-sm">{changeSuccess}</div>
-                  )}
+                  <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
+                    <form onSubmit={handleSubmit(onChangePasswordSubmit)} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6 space-y-4">
+                      {(changeError || changeSuccess) && (
+                        <div className={`p-4 rounded-xl border text-sm ${
+                          changeError
+                            ? 'border-red-500/30 bg-red-500/10 text-red-400'
+                            : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
+                        }`}>
+                          {changeError || changeSuccess}
+                        </div>
+                      )}
 
-                  <form onSubmit={handleSubmit(onChangePasswordSubmit)} className="space-y-4 max-w-md">
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1.5 font-medium">Current Password *</label>
-                      <input
-                        id="judge-oldpassword"
-                        type="password"
-                        className="input-field"
-                        placeholder="Enter current password"
-                        {...register('oldPassword', { required: 'Current password is required' })}
-                      />
-                      {errors.oldPassword && <p className="text-red-400 text-xs mt-1">{errors.oldPassword.message}</p>}
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1.5 font-medium">Current Password *</label>
+                        <input
+                          id="judge-oldpassword"
+                          type="password"
+                          className="input-field"
+                          placeholder="Enter current password"
+                          {...register('oldPassword', { required: 'Current password is required' })}
+                        />
+                        {errors.oldPassword && <p className="text-red-400 text-xs mt-1">{errors.oldPassword.message}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1.5 font-medium">New Password *</label>
+                        <input
+                          id="judge-newpassword"
+                          type="password"
+                          className="input-field"
+                          placeholder="At least 8 characters"
+                          {...register('newPassword', {
+                            required: 'New password is required',
+                            minLength: { value: 8, message: 'Password must be at least 8 characters' },
+                          })}
+                        />
+                        {errors.newPassword && <p className="text-red-400 text-xs mt-1">{errors.newPassword.message}</p>}
+                      </div>
+                      <div>
+                        <label className="block text-xs text-slate-400 mb-1.5 font-medium">Confirm New Password *</label>
+                        <input
+                          id="judge-confirm"
+                          type="password"
+                          className="input-field"
+                          placeholder="Re-enter new password"
+                          {...register('confirmPassword', {
+                            validate: v => v === newPassword || 'Passwords do not match',
+                          })}
+                        />
+                        {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword.message}</p>}
+                      </div>
+                      <button
+                        id="judge-change-submit"
+                        type="submit"
+                        disabled={isSubmitting}
+                        className="btn-primary w-full mt-2"
+                        style={isSubmitting ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
+                      >
+                        {isSubmitting
+                          ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Updating...</>
+                          : <><RiCheckDoubleLine /> Update Password</>
+                        }
+                      </button>
+                    </form>
+
+                    <div className="space-y-5">
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                        <div className="flex items-center gap-3">
+                          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent-500/15 text-accent-300">
+                            <RiLockPasswordLine size={20} />
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-bold text-white">Password Strength</h4>
+                            <p className="text-xs text-slate-500">{passwordStrength} of {passwordRules.length} checks passed</p>
+                          </div>
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-4 gap-2">
+                          {passwordRules.map((rule, index) => (
+                            <div key={rule.label} className={`h-2 rounded-full ${index < passwordStrength ? 'bg-emerald-400' : 'bg-white/10'}`} />
+                          ))}
+                        </div>
+
+                        <div className="mt-4 space-y-3">
+                          {passwordRules.map((rule) => (
+                            <div key={rule.label} className="flex items-center gap-2 text-sm">
+                              <span className={`flex h-5 w-5 items-center justify-center rounded-full border text-[10px] ${
+                                rule.passed
+                                  ? 'border-emerald-500/30 bg-emerald-500/15 text-emerald-300'
+                                  : 'border-white/10 bg-white/5 text-slate-500'
+                              }`}>
+                                {rule.passed ? '✓' : ''}
+                              </span>
+                              <span className={rule.passed ? 'text-slate-200' : 'text-slate-500'}>{rule.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-5">
+                        <h4 className="text-sm font-bold text-white">Security Notes</h4>
+                        <div className="mt-4 space-y-3 text-sm text-slate-400">
+                          <div className="rounded-xl bg-navy-950/40 px-3 py-3">Use a password that is unique to this awards portal.</div>
+                          <div className="rounded-xl bg-navy-950/40 px-3 py-3">Keep your evaluation portal access private and secure.</div>
+                          <div className="rounded-xl bg-navy-950/40 px-3 py-3">After updating, use the new password on your next sign-in.</div>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1.5 font-medium">New Password *</label>
-                      <input
-                        id="judge-newpassword"
-                        type="password"
-                        className="input-field"
-                        placeholder="At least 8 characters"
-                        {...register('newPassword', {
-                          required: 'New password is required',
-                          minLength: { value: 8, message: 'Password must be at least 8 characters' },
-                        })}
-                      />
-                      {errors.newPassword && <p className="text-red-400 text-xs mt-1">{errors.newPassword.message}</p>}
-                    </div>
-                    <div>
-                      <label className="block text-xs text-slate-400 mb-1.5 font-medium">Confirm New Password *</label>
-                      <input
-                        id="judge-confirm"
-                        type="password"
-                        className="input-field"
-                        placeholder="Re-enter new password"
-                        {...register('confirmPassword', {
-                          validate: v => v === newPassword || 'Passwords do not match',
-                        })}
-                      />
-                      {errors.confirmPassword && <p className="text-red-400 text-xs mt-1">{errors.confirmPassword.message}</p>}
-                    </div>
-                    <button
-                      id="judge-change-submit"
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="btn-primary w-full mt-2"
-                      style={isSubmitting ? { opacity: 0.7, cursor: 'not-allowed' } : {}}
-                    >
-                      {isSubmitting
-                        ? <><span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> Updating...</>
-                        : <><RiCheckDoubleLine /> Update Password</>
-                      }
-                    </button>
-                  </form>
+                  </div>
                 </div>
               )}
 

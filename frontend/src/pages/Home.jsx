@@ -98,7 +98,7 @@ const testimonials = [
 
 const faqs = [
   { q: 'Who can apply for the AI Awards?', a: 'Any Sri Lankan individual, startup, SME, corporate, or research institution with an AI-driven solution is eligible to apply.' },
-  { q: 'Is there an application fee?', a: 'No. All applications to the National AI Awards Sri Lanka are completely free of charge.' },
+  { q: 'Is there an application fee?', a: 'Yes. The National AI Awards Sri Lanka has an application fee of LKR 25,000. However, submissions under the University AI Innovation Category are completely free of charge.' },
   { q: 'Can I apply in multiple categories?', a: 'Yes, you may apply in up to 2 categories if your solution genuinely qualifies for both.' },
   { q: 'How are winners selected?', a: 'A panel of independent expert judges evaluates each submission based on innovation, impact, scalability, and technical excellence.' },
   { q: 'When will winners be announced?', a: 'Finalists will be announced in June 2026, with winners revealed at the Awards Ceremony on 25 July 2026.' },
