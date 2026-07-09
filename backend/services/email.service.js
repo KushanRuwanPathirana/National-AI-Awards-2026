@@ -169,8 +169,8 @@ const sendApplicationStatusUpdate = async (user, application, newStatus) => {
   const statusLabels = {
     draft: 'Draft', submitted: 'Submitted', under_review: 'Under Review',
     eligible: 'Eligible', ineligible: 'Ineligible',
-    initial_stage: 'Initial Stage', f2f_stage: 'Face-to-Face Stage',
-    finalist: 'Finalist', winner: '🏆 Winner', runner_up: '🥈 Runner-up',
+    initial_stage: 'Initial State', f2f_stage: 'Selected to Face-to-Face',
+    finalist: 'Finalist', winner: '🏆 Winner', runner_up: '🥈 1st Runner-up',
   };
   const label = statusLabels[newStatus] || newStatus;
   const html = `

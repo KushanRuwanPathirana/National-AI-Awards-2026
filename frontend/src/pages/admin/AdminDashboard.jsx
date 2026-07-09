@@ -1661,6 +1661,16 @@ const BROADCAST_STATUS_AUDIENCES = [
   { value: 'status:winner', status: 'winner', label: 'Winner' },
 ];
 
+const ADMIN_STATUS_OPTIONS = [
+  { value: 'eligible', label: 'Eligible' },
+  { value: 'ineligible', label: 'Ineligible' },
+  { value: 'initial_stage', label: 'Initial State' },
+  { value: 'f2f_stage', label: 'Selected to Face-to-Face' },
+  { value: 'finalist', label: 'Finalist' },
+  { value: 'winner', label: 'Winner' },
+  { value: 'runner_up', label: '1st Runner-up' },
+];
+
 const getIntegerTicks = (values = []) => {
   const maxValue = Math.max(1, ...values.map((value) => Math.ceil(Number(value) || 0)));
   if (maxValue <= 5) return Array.from({ length: maxValue + 1 }, (_, index) => index);
@@ -2590,11 +2600,11 @@ const AdminDashboard = () => {
                           <option value="">All Statuses</option>
                           <option value="submitted">Submitted</option>
                           <option value="under_review">Under Review</option>
-                          <option value="eligible">Eligible</option>
-                          <option value="initial_stage">Initial Stage</option>
-                          <option value="f2f_stage">Face-to-Face Stage</option>
-                          <option value="finalist">Finalist</option>
-                          <option value="winner">Winner</option>
+                          {ADMIN_STATUS_OPTIONS.map((statusOption) => (
+                            <option key={statusOption.value} value={statusOption.value}>
+                              {statusOption.label}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -2634,15 +2644,14 @@ const AdminDashboard = () => {
                                   value={app.status}
                                   onChange={(e) => handleStatusChange(app._id, e.target.value)}
                                 >
-                                  <option value={app.status}>{app.statusLabel}</option>
-                                  {/* Render other options matching transition engine */}
-                                  <option value="under_review">Under Review</option>
-                                  <option value="eligible">Eligible</option>
-                                  <option value="ineligible">Ineligible</option>
-                                  <option value="initial_stage">Initial Stage</option>
-                                  <option value="f2f_stage">Face-to-Face Stage</option>
-                                  <option value="finalist">Finalist</option>
-                                  <option value="winner">Winner</option>
+                                  {!ADMIN_STATUS_OPTIONS.some((statusOption) => statusOption.value === app.status) && (
+                                    <option value={app.status}>{app.statusLabel}</option>
+                                  )}
+                                  {ADMIN_STATUS_OPTIONS.map((statusOption) => (
+                                    <option key={statusOption.value} value={statusOption.value}>
+                                      {statusOption.label}
+                                    </option>
+                                  ))}
                                 </select>
                               </td>
                               <td className="p-4">
