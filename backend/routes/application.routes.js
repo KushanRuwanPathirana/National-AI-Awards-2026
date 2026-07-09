@@ -13,6 +13,8 @@ const {
   getMonitoringOverview, getJudgeProgress, exportApplications,
   publishFinalists, publishWinners, generateCertificates,
   uploadDocuments, deleteDocument, deleteApplication, deleteApplicationByAdmin,
+  uploadDocuments, deleteDocument, deleteApplication,
+  downloadDocument,
 } = require('../controllers/application.controller');
 
 // ── Multer Config ──────────────────────────────────────────────────────────────
@@ -75,5 +77,6 @@ router.delete('/admin/:id',       authenticate, requireRole('admin'), deleteAppl
 
 // Shared (admin/judge/candidate own)
 router.get('/:id',                authenticate, getApplicationById);
+router.get('/:id/documents/:docId/download', authenticate, downloadDocument);
 
 module.exports = router;

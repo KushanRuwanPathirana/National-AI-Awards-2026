@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const scoreSchema = new mongoose.Schema({
   criteria:   { type: mongoose.Schema.Types.ObjectId, ref: 'EvaluationCriteria', required: true },
-  score:      { type: Number, required: true, min: 0, max: 10 },
+  score:      { type: Number, required: true, min: 0, max: 25 },
   comment:    { type: String, maxlength: 500 },
 }, { _id: false });
 
