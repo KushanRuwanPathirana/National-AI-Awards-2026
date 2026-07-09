@@ -624,6 +624,5 @@ module.exports = {
   getMonitoringOverview, getJudgeProgress, exportApplications,
   publishFinalists, publishWinners, generateCertificates,
   uploadDocuments, deleteDocument, deleteApplication, deleteApplicationByAdmin,
-  uploadDocuments, deleteDocument, deleteApplication,
   downloadDocument,
 };
