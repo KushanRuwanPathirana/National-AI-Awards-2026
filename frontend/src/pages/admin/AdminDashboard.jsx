@@ -2295,9 +2295,9 @@ const AdminDashboard = () => {
                       </div>
 
                       {/* Category Breakdown chart */}
-                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5 h-80">
+                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5 min-h-80">
                         <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-1.5"><RiAwardLine className="text-gold-400" /> Category Breakdown</h4>
-                        <ResponsiveContainer width="100%" height="85%">
+                        <ResponsiveContainer width="100%" height={210}>
                           <BarChart data={stats.categoryBreakdown}>
                             <XAxis dataKey="name" stroke="#475569" fontSize={8} tickFormatter={(val) => val.split(' ').slice(2).join(' ')} />
                             <YAxis stroke="#475569" fontSize={10} />
@@ -2309,6 +2309,20 @@ const AdminDashboard = () => {
                             </Bar>
                           </BarChart>
                         </ResponsiveContainer>
+                        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {stats.categoryBreakdown.map((entry, index) => (
+                            <div key={entry.name || index} className="flex items-center justify-between gap-3 rounded-lg bg-navy-950/35 px-3 py-2">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <span
+                                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                                  style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                                />
+                                <span className="truncate text-[11px] font-medium text-slate-300">{entry.name}</span>
+                              </div>
+                              <span className="shrink-0 font-mono text-[11px] font-semibold text-white">{entry.count}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
