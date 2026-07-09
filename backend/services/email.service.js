@@ -216,7 +216,10 @@ const sendJudgeInvitation = async (judge, application) => {
 /**
  * Send daily reminder email to judges with pending evaluations
  */
-const sendJudgeReminder = async (judge, pendingCount, deadlineStr) => {
+const sendJudgeReminder = async (judge, pendingCount, deadlineStr, projectTitle = null) => {
+  const deadlineDate = deadlineStr ? new Date(deadlineStr) : null;
+  const formattedDeadline = deadlineDate ? deadlineDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+  
   const html = `
     <div style="font-family:'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:30px;background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:16px;color:#e2e8f0;">
       <div style="text-align:center;margin-bottom:24px;">
@@ -224,9 +227,16 @@ const sendJudgeReminder = async (judge, pendingCount, deadlineStr) => {
       </div>
       <p>Hi <strong>${judge.firstName}</strong>,</p>
       <p>This is a friendly reminder that you have <strong>${pendingCount}</strong> pending application evaluation(s) assigned to you.</p>
-      <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin:16px 0;text-align:center;">
-        <p style="margin:4px 0;font-size:14px;color:#f59e0b;"><strong>Deadline:</strong> ${deadlineStr ? new Date(deadlineStr).toLocaleDateString() : 'N/A'}</p>
+      ${projectTitle ? `
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin:16px 0;">
+        <p style="margin:4px 0;"><strong>Closest Deadline:</strong> ${projectTitle}</p>
+        <p style="margin:4px 0;font-size:14px;color:#f59e0b;"><strong>Due:</strong> ${formattedDeadline}</p>
       </div>
+      ` : `
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin:16px 0;text-align:center;">
+        <p style="margin:4px 0;font-size:14px;color:#f59e0b;"><strong>Deadline:</strong> ${formattedDeadline}</p>
+      </div>
+      `}
       <p style="color:#94a3b8;font-size:13px;">Please log in to the Judge Portal to review the criteria and submit your scorecards.</p>
       <hr style="border:1px solid #334155;margin:24px 0;">
       <p style="color:#64748b;font-size:11px;text-align:center;">National AI Awards Sri Lanka 2026</p>

@@ -652,11 +652,12 @@ const JudgeDashboard = () => {
                       style={{ background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(16px)' }}
                     >
                       {/* Table header */}
-                      <div className="hidden sm:grid grid-cols-[1fr_auto_auto_auto] gap-4 px-5 py-3 border-b border-white/5 bg-white/2">
+                      <div className="hidden sm:grid grid-cols-[2fr_140px_140px_100px_120px] gap-4 px-5 py-3 border-b border-white/5 bg-white/2">
                         <span className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold flex items-center gap-1">
                           <RiSortAsc className="text-xs" /> Project
                         </span>
                         <span className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold">Category</span>
+                        <span className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold">Deadline</span>
                         <span className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold">Status</span>
                         <span className="text-slate-500 text-[10px] uppercase tracking-wider font-semibold">Actions</span>
                       </div>
@@ -672,7 +673,7 @@ const JudgeDashboard = () => {
                               initial={{ opacity: 0, x: -10 }}
                               animate={{ opacity: 1, x: 0 }}
                               transition={{ delay: i * 0.04 }}
-                              className="grid grid-cols-1 sm:grid-cols-[1fr_auto_auto_auto] gap-3 sm:gap-4 px-5 py-4 border-b border-white/5 last:border-0 hover:bg-white/2 transition-all group items-center"
+                              className="grid grid-cols-1 sm:grid-cols-[2fr_140px_140px_100px_120px] gap-3 sm:gap-4 px-5 py-4 border-b border-white/5 last:border-0 hover:bg-white/2 transition-all group items-center"
                             >
                               {/* Project info */}
                               <div className="min-w-0">
@@ -696,6 +697,22 @@ const JudgeDashboard = () => {
                                 </span>
                               </div>
 
+                              {/* Deadline */}
+                              <div className="hidden sm:block">
+                                {app.deadline && new Date(app.deadline) < new Date() ? (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+                                    <span className="text-[10px] font-mono text-red-400 font-semibold">
+                                      Overdue
+                                    </span>
+                                  </div>
+                                ) : (
+                                  <span className={`text-[10px] font-mono ${app.deadline ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    {app.deadline ? new Date(app.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Not set'}
+                                  </span>
+                                )}
+                              </div>
+
                               {/* Status */}
                               <div>
                                 <StatusBadge status={status} />
@@ -703,21 +720,31 @@ const JudgeDashboard = () => {
 
                               {/* Actions */}
                               <div className="flex items-center gap-2">
-                                <Link
-                                  to={`/judge-dashboard/evaluate/${app._id}?stage=${selectedStage}`}
-                                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                                    isSubmitted
-                                      ? 'bg-white/5 border border-white/10 text-slate-300 hover:border-accent-500/40 hover:text-white'
-                                      : 'btn-primary !py-1.5 !px-3 !text-xs'
-                                  }`}
-                                >
-                                  {isSubmitted
-                                    ? <><RiEyeLine /> View</>
-                                    : status === 'draft'
-                                      ? <><RiEditLine /> Continue</>
-                                      : <><RiStarLine /> Evaluate</>
-                                  }
-                                </Link>
+                                {app.deadline && new Date(app.deadline) < new Date() && !isSubmitted ? (
+                                  <button
+                                    disabled
+                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700/50 border border-slate-600/50 text-slate-400 cursor-not-allowed"
+                                    title="Evaluation deadline has passed"
+                                  >
+                                    <RiTimeLine /> Closed
+                                  </button>
+                                ) : (
+                                  <Link
+                                    to={`/judge-dashboard/evaluate/${app._id}?stage=${selectedStage}`}
+                                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                                      isSubmitted
+                                        ? 'bg-white/5 border border-white/10 text-slate-300 hover:border-accent-500/40 hover:text-white'
+                                        : 'btn-primary !py-1.5 !px-3 !text-xs'
+                                    }`}
+                                  >
+                                    {isSubmitted
+                                      ? <><RiEyeLine /> View</>
+                                      : status === 'draft'
+                                        ? <><RiEditLine /> Continue</>
+                                        : <><RiStarLine /> Evaluate</>
+                                    }
+                                  </Link>
+                                )}
                               </div>
                             </motion.div>
                           );

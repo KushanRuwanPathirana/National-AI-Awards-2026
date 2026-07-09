@@ -28,6 +28,7 @@ const applicationService = {
   changeStatus: (id, data) => api.patch(`/applications/${id}/status`, data),
   assignJudges: (id, judgeIds) => api.patch(`/applications/${id}/assign-judges`, { judgeIds }),
   reviewEligibility: (id, data) => api.patch(`/applications/${id}/review-eligibility`, data),
+  updateApplicationDeadline: (id, deadline) => api.patch(`/applications/${id}/deadline`, { deadline }),
   deleteApplicationAsAdmin: (id) => api.delete(`/applications/admin/${id}`),
 };
 

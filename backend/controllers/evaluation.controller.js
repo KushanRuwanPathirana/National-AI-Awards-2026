@@ -84,6 +84,11 @@ const saveEvaluation = async (req, res, next) => {
     const application = await Application.findOne({ _id: applicationId, assignedJudges: req.user._id });
     if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not assigned to you.' });
 
+    // Check if deadline has passed
+    if (application.deadline && new Date(application.deadline) < new Date()) {
+      return errorResponse(res, { statusCode: 403, message: 'The evaluation deadline for this application has passed. Evaluations can no longer be submitted.' });
+    }
+
     let evaluation = await Evaluation.findOne({ application: applicationId, judge: req.user._id, stage });
     if (!evaluation) evaluation = new Evaluation({ application: applicationId, judge: req.user._id, stage });
 

@@ -274,48 +274,7 @@ const createUser = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-// ── Settings (Evaluation Deadline) ─────────────────────────────────────────────
-const Setting = require('../models/Setting.model');
-
-const getEvaluationDeadline = async (req, res, next) => {
-  try {
-    let setting = await Setting.findOne({ key: 'evaluation_deadline' });
-    if (!setting) {
-      setting = {
-        key: 'evaluation_deadline',
-        value: '2026-08-31T23:59:59+05:30',
-        description: 'Deadline for the evaluation process'
-      };
-    }
-    return successResponse(res, { data: { deadline: setting.value } });
-  } catch (error) { next(error); }
-};
-
-const updateEvaluationDeadline = async (req, res, next) => {
-  try {
-    const { deadline } = req.body;
-    if (!deadline) {
-      return errorResponse(res, { statusCode: 400, message: 'Deadline is required.' });
-    }
-
-    let setting = await Setting.findOne({ key: 'evaluation_deadline' });
-    if (!setting) {
-      setting = new Setting({
-        key: 'evaluation_deadline',
-        value: deadline,
-        description: 'Deadline for the evaluation process'
-      });
-    } else {
-      setting.value = deadline;
-    }
-    await setting.save();
-
-    return successResponse(res, { message: 'Evaluation deadline updated successfully.', data: { deadline: setting.value } });
-  } catch (error) { next(error); }
-};
-
 module.exports = {
   getDashboardStats, getUsers, createUser, toggleUserStatus, deleteUser,
-  updateUserRole, getReports, getAuditLogs, broadcastNotification,
-  getEvaluationDeadline, updateEvaluationDeadline
+  updateUserRole, getReports, getAuditLogs, broadcastNotification
 };

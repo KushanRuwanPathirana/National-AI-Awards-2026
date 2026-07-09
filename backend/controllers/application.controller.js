@@ -698,6 +698,34 @@ const deleteApplicationByAdmin = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// ── Update Application Deadline ─────────────────────────────────────────────────
+const updateApplicationDeadline = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { deadline } = req.body;
+
+    if (!deadline) {
+      return errorResponse(res, { statusCode: 400, message: 'Deadline is required.' });
+    }
+
+    const application = await Application.findById(id);
+    if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+
+    application.deadline = new Date(deadline);
+    await application.save();
+
+    await createAuditLog({
+      action: 'deadline_updated',
+      performedBy: req.user._id,
+      targetId: application._id,
+      description: `Deadline updated to: ${application.deadline.toISOString()}`,
+      req
+    });
+
+    return successResponse(res, { message: 'Application deadline updated successfully.', data: { application } });
+  } catch (error) { next(error); }
+};
+
 // ── Download Document (judges/admin) ───────────────────────────────────────────
 const downloadDocument = async (req, res, next) => {
   try {
@@ -724,5 +752,5 @@ module.exports = {
   getMonitoringOverview, getJudgeProgress, exportApplications,
   publishFinalists, publishWinners, generateCertificates,
   uploadDocuments, deleteDocument, deleteApplication, deleteApplicationByAdmin,
-  downloadDocument, uploadPaymentSlip, deletePaymentSlip,
+  downloadDocument, uploadPaymentSlip, deletePaymentSlip, updateApplicationDeadline,
 };

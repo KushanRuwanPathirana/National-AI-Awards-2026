@@ -8,65 +8,84 @@ const logger = require('../utils/logger');
 
 /**
  * Checks all judges and sends reminders to those with uncompleted assignments
+ * Uses per-application deadlines instead of global deadline
  */
 const sendDailyJudgeReminders = async () => {
   try {
-    // 1. Fetch the evaluation deadline
-    const deadlineSetting = await Setting.findOne({ key: 'evaluation_deadline' });
-    const deadlineStr = deadlineSetting ? deadlineSetting.value : '2026-08-31T23:59:59+05:30';
-
-    // 2. Fetch all verified judges
+    // 1. Fetch all verified judges
     const judges = await User.find({ role: 'judge', isEmailVerified: true });
     
-    // 3. Fetch all active applications
-    const apps = await Application.find({ status: { $ne: 'draft' } }).select('assignedJudges');
+    // 2. Fetch all active applications with deadlines
+    const apps = await Application.find({ 
+      status: { $ne: 'draft' },
+      deadline: { $exists: true, $ne: null }
+    }).populate('assignedJudges', 'firstName lastName email').select('assignedJudges deadline projectTitle');
 
-    // 4. Fetch all submitted evaluations
-    const evaluations = await Evaluation.find({ isSubmitted: true }).select('judge');
+    // 3. Fetch all submitted evaluations
+    const evaluations = await Evaluation.find({ isSubmitted: true }).select('judge application');
 
-    logger.info(`Checking reminders for ${judges.length} judges...`);
+    logger.info(`Checking reminders for ${judges.length} judges with ${apps.length} applications having deadlines...`);
 
     let reminderCount = 0;
 
     for (const judge of judges) {
       const judgeIdStr = judge._id.toString();
 
-      // Count assignments
+      // Get applications assigned to this judge with deadlines
       const assignedApps = apps.filter(app =>
-        app.assignedJudges.some(jId => jId.toString() === judgeIdStr)
+        app.assignedJudges.some(jId => jId._id.toString() === judgeIdStr)
       );
-      const assignedCount = assignedApps.length;
 
-      if (assignedCount === 0) continue; // No assignments, no reminder needed
+      if (assignedApps.length === 0) continue; // No assignments, no reminder needed
 
-      // Count completed
-      const completedCount = evaluations.filter(e => e.judge?.toString() === judgeIdStr).length;
-
-      const pendingCount = assignedCount - completedCount;
-
-      if (pendingCount > 0) {
-        // This judge has pending/uncompleted evaluations!
-        reminderCount++;
-        logger.info(`Sending reminder to Judge: ${judge.firstName} ${judge.lastName} (${pendingCount} pending)`);
-
-        // Send database notification
-        try {
-          await Notification.create({
-            recipient: judge._id,
-            type: 'evaluation_reminder',
-            title: 'Action Required: Pending Evaluations Reminder',
-            message: `You have ${pendingCount} pending application evaluation(s) assigned to you. Please complete them before the evaluation deadline.`,
-            link: '/dashboard',
-          });
-        } catch (notifErr) {
-          logger.error(`Failed to create database notification for ${judge.email}: ${notifErr.message}`);
+      // Check which applications have pending evaluations
+      const pendingApps = [];
+      for (const app of assignedApps) {
+        const isCompleted = evaluations.some(e => 
+          e.judge?.toString() === judgeIdStr && 
+          e.application?.toString() === app._id.toString()
+        );
+        if (!isCompleted) {
+          pendingApps.push(app);
         }
+      }
 
-        // Send email reminder
-        try {
-          await sendJudgeReminder(judge, pendingCount, deadlineStr);
-        } catch (emailErr) {
-          logger.error(`Failed to send email reminder to ${judge.email}: ${emailErr.message}`);
+      if (pendingApps.length > 0) {
+        // Find the closest upcoming deadline
+        const now = new Date();
+        const upcomingDeadlines = pendingApps
+          .map(app => ({
+            app,
+            deadline: new Date(app.deadline),
+            daysUntil: Math.ceil((new Date(app.deadline) - now) / (1000 * 60 * 60 * 24))
+          }))
+          .filter(item => item.daysUntil >= 0)
+          .sort((a, b) => a.daysUntil - b.daysUntil);
+
+        if (upcomingDeadlines.length > 0) {
+          const closest = upcomingDeadlines[0];
+          reminderCount++;
+          logger.info(`Sending reminder to Judge: ${judge.firstName} ${judge.lastName} (${pendingApps.length} pending, closest deadline: ${closest.daysUntil} days)`);
+
+          // Send database notification
+          try {
+            await Notification.create({
+              recipient: judge._id,
+              type: 'evaluation_reminder',
+              title: 'Action Required: Pending Evaluations Reminder',
+              message: `You have ${pendingApps.length} pending application evaluation(s). The closest deadline is ${closest.app.projectTitle} due in ${closest.daysUntil} day(s).`,
+              link: '/dashboard',
+            });
+          } catch (notifErr) {
+            logger.error(`Failed to create database notification for ${judge.email}: ${notifErr.message}`);
+          }
+
+          // Send email reminder with closest deadline info
+          try {
+            await sendJudgeReminder(judge, pendingApps.length, closest.deadline.toISOString(), closest.app.projectTitle);
+          } catch (emailErr) {
+            logger.error(`Failed to send email reminder to ${judge.email}: ${emailErr.message}`);
+          }
         }
       }
     }
