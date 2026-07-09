@@ -1628,6 +1628,15 @@ import evaluationCriteriaService from '../../services/evaluationCriteria.service
 
 const COLORS = ['#0072ff', '#00ff87', '#ffc658', '#ff7300', '#d0ed57', '#a4de6c'];
 
+const BROADCAST_STATUS_AUDIENCES = [
+  { value: 'status:submitted', status: 'submitted', label: 'Submitted' },
+  { value: 'status:under_review', status: 'under_review', label: 'Under Review' },
+  { value: 'status:eligible', status: 'eligible', label: 'Eligible' },
+  { value: 'status:shortlisted', status: 'shortlisted', label: 'Shortlisted' },
+  { value: 'status:finalist', status: 'finalist', label: 'Finalist' },
+  { value: 'status:winner', status: 'winner', label: 'Winner' },
+];
+
 const AdminDashboard = () => {
   const { user, logout, updateUserLocal } = useAuth();
   const navigate = useNavigate();
@@ -1838,11 +1847,25 @@ const AdminDashboard = () => {
   const broadcastRole = watchBroadcast('role') || 'all';
   const broadcastTitle = watchBroadcast('title') || '';
   const broadcastMessage = watchBroadcast('message') || '';
-  const broadcastAudienceCount = broadcastRole === 'judge'
-    ? judgesList.length
-    : broadcastRole === 'candidate'
-      ? candidatesList.length
-      : users.length;
+  const getStatusAudienceCount = (status) => {
+    const candidateIds = new Set(
+      applications
+        .filter((app) => app.status === status)
+        .map((app) => app.candidate?._id || app.candidate)
+        .filter(Boolean)
+    );
+    return candidateIds.size;
+  };
+  const broadcastStatusAudience = BROADCAST_STATUS_AUDIENCES.find((audience) => audience.value === broadcastRole);
+  const broadcastAudienceLabel = broadcastStatusAudience?.label
+    || (broadcastRole === 'all' ? 'All users' : broadcastRole === 'candidate' ? 'Candidates' : 'Judges');
+  const broadcastAudienceCount = broadcastStatusAudience
+    ? getStatusAudienceCount(broadcastStatusAudience.status)
+    : broadcastRole === 'judge'
+      ? judgesList.length
+      : broadcastRole === 'candidate'
+        ? candidatesList.length
+        : users.length;
 
   // Change Password submit
   const onChangePasswordSubmit = async (data) => {
@@ -1983,7 +2006,12 @@ const AdminDashboard = () => {
   // Broadcast submit
   const onBroadcastSubmit = async (data) => {
     try {
-      await adminService.broadcastNotification(data);
+      const statusAudience = BROADCAST_STATUS_AUDIENCES.find((audience) => audience.value === data.role);
+      const payload = statusAudience
+        ? { ...data, role: 'candidate', status: statusAudience.status }
+        : data;
+
+      await adminService.broadcastNotification(payload);
       toast.success('Broadcast notification sent successfully.');
       resetBroadcast();
     } catch {
@@ -2944,7 +2972,7 @@ const AdminDashboard = () => {
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-accent-300">Communication Center</p>
                         <h3 className="mt-1 font-display text-2xl font-black text-white">Send Broadcast Alert</h3>
-                        <p className="mt-1 max-w-2xl text-sm text-slate-400">Dispatch a targeted system notification to candidates, judges, or every registered user.</p>
+                        <p className="mt-1 max-w-2xl text-sm text-slate-400">Dispatch a targeted system notification to candidates, judges, every user, or a selected application status list.</p>
                       </div>
                       <div className="rounded-xl border border-accent-500/20 bg-accent-500/10 px-4 py-3">
                         <div className="text-[10px] font-bold uppercase tracking-wider text-accent-300">Estimated Reach</div>
@@ -2954,28 +2982,23 @@ const AdminDashboard = () => {
 
                     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
                       <form onSubmit={handleBroadcast(onBroadcastSubmit)} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
-                        <div className="grid gap-4 sm:grid-cols-3">
-                          {[
-                            { value: 'all', label: 'All Users', count: users.length, helper: 'Full platform notice' },
-                            { value: 'candidate', label: 'Candidates', count: candidatesList.length, helper: 'Applicants only' },
-                            { value: 'judge', label: 'Judges', count: judgesList.length, helper: 'Evaluation panel' },
-                          ].map((audience) => (
-                            <label
-                              key={audience.value}
-                              className={`cursor-pointer rounded-xl border p-4 transition-all ${
-                                broadcastRole === audience.value
-                                  ? 'border-accent-500 bg-accent-500/10 shadow-glow'
-                                  : 'border-white/10 bg-navy-950/30 hover:border-white/20 hover:bg-white/5'
-                              }`}
-                            >
-                              <input type="radio" value={audience.value} className="sr-only" {...regBroadcast('role')} />
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-sm font-bold text-white">{audience.label}</span>
-                                <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold text-slate-300">{audience.count}</span>
-                              </div>
-                              <p className="mt-2 text-xs text-slate-500">{audience.helper}</p>
-                            </label>
-                          ))}
+                        <div>
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Audience</label>
+                          <select className="input-field" {...regBroadcast('role')}>
+                            <optgroup label="General">
+                              <option value="all">All Users ({users.length})</option>
+                              <option value="candidate">Candidates ({candidatesList.length})</option>
+                              <option value="judge">Judges ({judgesList.length})</option>
+                            </optgroup>
+                            <optgroup label="Application Status">
+                              {BROADCAST_STATUS_AUDIENCES.map((audience) => (
+                                <option key={audience.value} value={audience.value}>
+                                  {audience.label} ({getStatusAudienceCount(audience.status)})
+                                </option>
+                              ))}
+                            </optgroup>
+                          </select>
+                          <p className="mt-2 text-xs text-slate-500">Use the status list to message candidates whose applications are currently in that stage.</p>
                         </div>
 
                         <div className="mt-6 space-y-4">
@@ -3030,7 +3053,7 @@ const AdminDashboard = () => {
                           <div className="mt-4 space-y-3 text-sm">
                             <div className="flex justify-between rounded-xl bg-navy-950/40 px-3 py-2">
                               <span className="text-slate-400">Audience</span>
-                              <span className="font-semibold text-white">{broadcastRole === 'all' ? 'All users' : broadcastRole === 'candidate' ? 'Candidates' : 'Judges'}</span>
+                              <span className="font-semibold text-white">{broadcastAudienceLabel}</span>
                             </div>
                             <div className="flex justify-between rounded-xl bg-navy-950/40 px-3 py-2">
                               <span className="text-slate-400">Recipients</span>
