@@ -11,10 +11,11 @@ const ALLOWED_TRANSITIONS = {
   draft:        ['submitted'],
   submitted:    ['under_review', 'draft'],
   under_review: ['eligible', 'ineligible'],
-  eligible:     ['shortlisted', 'under_review'],
+  eligible:     ['initial_stage', 'under_review'],
   ineligible:   ['under_review'],
-  shortlisted:  ['finalist', 'eligible'],
-  finalist:     ['winner', 'runner_up', 'shortlisted'],
+  initial_stage: ['f2f_stage', 'eligible'],
+  f2f_stage:    ['finalist', 'initial_stage'],
+  finalist:     ['winner', 'runner_up', 'f2f_stage'],
   winner:       [],
   runner_up:    [],
 };
@@ -25,7 +26,8 @@ const APPLICATION_STATUS = {
   UNDER_REVIEW: 'under_review',
   ELIGIBLE:     'eligible',
   INELIGIBLE:   'ineligible',
-  SHORTLISTED:  'shortlisted',
+  INITIAL_STAGE: 'initial_stage',
+  F2F_STAGE:    'f2f_stage',
   FINALIST:     'finalist',
   WINNER:       'winner',
   RUNNER_UP:    'runner_up',
@@ -77,6 +79,30 @@ const INDIVIDUAL_CATEGORIES = [
   'Women in AI Leadership',
 ];
 
+const MAIN_CATEGORIES_MAP = {
+  'National AI Trailblazer Awards': [
+    'National AI Excellence Award',
+    'National AI Leadership Excellence Award',
+    'National AI Impact Excellence Award',
+    'National AI Export Excellence Award',
+    'Women in AI Leadership',
+  ],
+  'Industry & Sector Excellence Awards': [
+    'Best AI Solution in Agriculture',
+    'Best AI Solution in Banking, Finance & Insurance',
+    'Best AI Solution in Healthcare & Life Sciences',
+    'Best AI Solution in Export Development',
+    'Best AI Solution in Education',
+    'Best AI Solution in Manufacturing & Industry 5.0',
+  ],
+  'Innovation & Future-Focused Awards': [
+    'Best AI Startup / MSME Innovation',
+    'Best Agentic AI Solution',
+    'Best Sinhala/Tamil AI & Localisation Innovation',
+    'University AI Innovation',
+  ],
+};
+
 module.exports = {
   ROLES,
   APPLICATION_STATUS,
@@ -87,4 +113,5 @@ module.exports = {
   APPLICATION_DEADLINE,
   AWARD_CATEGORIES,
   INDIVIDUAL_CATEGORIES,
+  MAIN_CATEGORIES_MAP,
 };

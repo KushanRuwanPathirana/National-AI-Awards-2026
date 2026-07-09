@@ -5,7 +5,7 @@ const { requireRole } = require('../middleware/role.middleware');
 const {
   getAssignedApplications, getOrCreateEvaluation,
   saveEvaluation, getEvaluationsByApplication,
-  getJudgeDashboardStats,
+  getJudgeDashboardStats, getEvaluationTracker,
 } = require('../controllers/evaluation.controller');
 
 // Judge
@@ -15,6 +15,7 @@ router.get('/application/:applicationId', authenticate, requireRole('judge'), ge
 router.post('/application/:applicationId', authenticate, requireRole('judge'), saveEvaluation);
 
 // Admin
+router.get('/admin/tracker',         authenticate, requireRole('admin'), getEvaluationTracker);
 router.get('/admin/application/:applicationId', authenticate, requireRole('admin'), getEvaluationsByApplication);
 
 module.exports = router;

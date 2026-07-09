@@ -14,7 +14,8 @@ const statusWorkflow = [
   'submitted',
   'under_review',
   'eligible',
-  'shortlisted',
+  'initial_stage',
+  'f2f_stage',
   'finalist',
   'winner',
 ];

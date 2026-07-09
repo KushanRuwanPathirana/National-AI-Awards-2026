@@ -1628,6 +1628,30 @@ import evaluationCriteriaService from '../../services/evaluationCriteria.service
 
 const COLORS = ['#0072ff', '#00ff87', '#ffc658', '#ff7300', '#d0ed57', '#a4de6c'];
 
+const MAIN_CATEGORIES_MAP = {
+  'National AI Trailblazer Awards': [
+    'National AI Excellence Award',
+    'National AI Leadership Excellence Award',
+    'National AI Impact Excellence Award',
+    'National AI Export Excellence Award',
+    'Women in AI Leadership',
+  ],
+  'Industry & Sector Excellence Awards': [
+    'Best AI Solution in Agriculture',
+    'Best AI Solution in Banking, Finance & Insurance',
+    'Best AI Solution in Healthcare & Life Sciences',
+    'Best AI Solution in Export Development',
+    'Best AI Solution in Education',
+    'Best AI Solution in Manufacturing & Industry 5.0',
+  ],
+  'Innovation & Future-Focused Awards': [
+    'Best AI Startup / MSME Innovation',
+    'Best Agentic AI Solution',
+    'Best Sinhala/Tamil AI & Localisation Innovation',
+    'University AI Innovation',
+  ],
+};
+
 const AdminDashboard = () => {
   const { user, logout, updateUserLocal } = useAuth();
   const navigate = useNavigate();
@@ -1637,6 +1661,16 @@ const AdminDashboard = () => {
   const [evaluationsApp, setEvaluationsApp] = useState(null);
   const [evalsLoading, setEvalsLoading] = useState(false);
 
+  // Evaluation Tracker state
+  const [trackerStage, setTrackerStage] = useState('initial');
+  const [trackerMainCategory, setTrackerMainCategory] = useState('all');
+  const [trackerSubCategory, setTrackerSubCategory] = useState('all');
+  const [trackerSearch, setTrackerSearch] = useState('');
+  const [trackerApps, setTrackerApps] = useState([]);
+  const [trackerStats, setTrackerStats] = useState(null);
+  const [trackerLoading, setTrackerLoading] = useState(false);
+  const [selectedJudgeEval, setSelectedJudgeEval] = useState(null);
+
   // Stats & listings
   const [stats, setStats] = useState(null);
   const [applications, setApplications] = useState([]);
@@ -1645,6 +1679,8 @@ const AdminDashboard = () => {
   const [categories, setCategories] = useState([]);
   const [monitoring, setMonitoring] = useState(null);
   const [judgeProgress, setJudgeProgress] = useState([]);
+  const [evaluationDeadline, setEvaluationDeadline] = useState('');
+  const [savingDeadline, setSavingDeadline] = useState(false);
   const [criteria, setCriteria] = useState([]);
   const [imageUploading, setImageUploading] = useState(false);
   const [profileForm, setProfileForm] = useState({
@@ -1759,6 +1795,61 @@ const AdminDashboard = () => {
     } catch { toast.error('Failed to load evaluation criteria.'); }
   };
 
+  const fetchTracker = async () => {
+    try {
+      setTrackerLoading(true);
+      const params = {
+        stage: trackerStage,
+        mainCategory: trackerMainCategory !== 'all' ? trackerMainCategory : undefined,
+        subCategory: trackerSubCategory !== 'all' ? trackerSubCategory : undefined,
+        search: trackerSearch || undefined,
+      };
+      const { data } = await evaluationService.getEvaluationTracker(params);
+      setTrackerApps(data.data.applications || []);
+      setTrackerStats(data.data.stats || null);
+    } catch {
+      toast.error('Failed to load evaluation tracker details.');
+    } finally {
+      setTrackerLoading(false);
+    }
+  };
+
+  const fetchDeadline = async () => {
+    try {
+      const { data } = await adminService.getEvaluationDeadline();
+      if (data.data.deadline) {
+        const date = new Date(data.data.deadline);
+        const tzOffset = date.getTimezoneOffset() * 60000;
+        const localISOTime = (new Date(date - tzOffset)).toISOString().slice(0, 16);
+        setEvaluationDeadline(localISOTime);
+      }
+    } catch (err) {
+      console.error('Failed to fetch evaluation deadline:', err);
+    }
+  };
+
+  const saveEvaluationDeadline = async () => {
+    if (!evaluationDeadline) {
+      return toast.error('Please select a valid deadline.');
+    }
+    try {
+      setSavingDeadline(true);
+      const isoString = new Date(evaluationDeadline).toISOString();
+      await adminService.updateEvaluationDeadline(isoString);
+      toast.success('Evaluation deadline saved successfully!');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save evaluation deadline.');
+    } finally {
+      setSavingDeadline(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'monitoring') {
+      fetchTracker();
+    }
+  }, [trackerStage, trackerMainCategory, trackerSubCategory, trackerSearch, activeTab]);
+
   const loadAll = async () => {
     setLoading(true);
     await Promise.all([
@@ -1769,6 +1860,7 @@ const AdminDashboard = () => {
       fetchCategories(),
       fetchMonitoring(),
       fetchCriteria(),
+      fetchDeadline(),
     ]);
     setLoading(false);
   };
@@ -2469,7 +2561,8 @@ const AdminDashboard = () => {
                           <option value="submitted">Submitted</option>
                           <option value="under_review">Under Review</option>
                           <option value="eligible">Eligible</option>
-                          <option value="shortlisted">Shortlisted</option>
+                          <option value="initial_stage">Initial Stage</option>
+                          <option value="f2f_stage">Face-to-Face Stage</option>
                           <option value="finalist">Finalist</option>
                           <option value="winner">Winner</option>
                         </select>
@@ -2512,7 +2605,8 @@ const AdminDashboard = () => {
                                   <option value="under_review">Under Review</option>
                                   <option value="eligible">Eligible</option>
                                   <option value="ineligible">Ineligible</option>
-                                  <option value="shortlisted">Shortlisted</option>
+                                  <option value="initial_stage">Initial Stage</option>
+                                  <option value="f2f_stage">Face-to-Face Stage</option>
                                   <option value="finalist">Finalist</option>
                                   <option value="winner">Winner</option>
                                 </select>
@@ -2557,26 +2651,138 @@ const AdminDashboard = () => {
                 {/* 3. APPLICATION MONITORING TAB */}
                 {activeTab === 'monitoring' && (
                   <div className="space-y-8">
-                    <div>
-                      <h3 className="font-display font-bold text-white text-xl">Application Monitoring</h3>
-                      <p className="text-slate-400 text-xs mt-1">Review submissions, screen eligibility, manage judge assignment, and track evaluation progress.</p>
+                    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-white/5 pb-5">
+                      <div>
+                        <h3 className="font-display font-bold text-white text-xl">Application Monitoring</h3>
+                        <p className="text-slate-400 text-xs mt-1">Review submissions, screen eligibility, manage judge assignment, and track evaluation progress.</p>
+                      </div>
+                      <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-3.5 rounded-xl shrink-0">
+                        <div>
+                          <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">Evaluation Process Deadline</label>
+                          <input
+                            type="datetime-local"
+                            className="bg-navy-900 border border-white/10 rounded px-3 py-1.5 text-xs text-white outline-none focus:border-accent-500"
+                            value={evaluationDeadline}
+                            onChange={(e) => setEvaluationDeadline(e.target.value)}
+                          />
+                        </div>
+                        <button
+                          type="button"
+                          onClick={saveEvaluationDeadline}
+                          disabled={savingDeadline}
+                          className="btn-primary text-xs !py-2 !px-4 self-end h-[34px] flex items-center justify-center shrink-0"
+                        >
+                          {savingDeadline ? 'Saving...' : 'Set Deadline'}
+                        </button>
+                      </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {monitoring && [
-                        { label: 'Total Applications', value: monitoring.total },
-                        { label: 'Pending Review', value: monitoring.pending },
-                        { label: 'Screened', value: monitoring.screened },
-                        { label: 'Assigned to Judges', value: monitoring.assigned },
-                        { label: 'Completed Evaluations', value: monitoring.completedEvaluation },
-                        { label: 'Pending Evaluations', value: monitoring.pendingEvaluation },
-                      ].map((item) => (
-                        <div key={item.label} className="p-4 rounded-2xl bg-white/5 border border-white/5">
-                          <div className="text-slate-400 text-[10px] uppercase tracking-wider">{item.label}</div>
-                          <div className="text-white text-2xl font-black mt-2 font-display">{item.value}</div>
-                        </div>
-                      ))}
+                    {/* Filter Controls Panel */}
+                    <div className="p-5 rounded-2xl bg-white/5 border border-white/5 grid grid-cols-1 sm:grid-cols-4 gap-4">
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">Evaluation Stage</label>
+                        <select
+                          className="input-field"
+                          value={trackerStage}
+                          onChange={(e) => {
+                            setTrackerStage(e.target.value);
+                          }}
+                        >
+                          <option value="initial">Initial Stage</option>
+                          <option value="f2f">Face-to-Face Stage</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">Main Category</label>
+                        <select
+                          className="input-field"
+                          value={trackerMainCategory}
+                          onChange={(e) => {
+                            setTrackerMainCategory(e.target.value);
+                            setTrackerSubCategory('all'); // Reset subcategory when main changes
+                          }}
+                        >
+                          <option value="all">All Main Categories</option>
+                          <option value="National AI Trailblazer Awards">National AI Trailblazer Awards</option>
+                          <option value="Industry & Sector Excellence Awards">Industry & Sector Excellence Awards</option>
+                          <option value="Innovation & Future-Focused Awards">Innovation & Future-Focused Awards</option>
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">Sub Category</label>
+                        <select
+                          className="input-field"
+                          value={trackerSubCategory}
+                          onChange={(e) => setTrackerSubCategory(e.target.value)}
+                        >
+                          <option value="all">All Sub Categories</option>
+                          {Object.entries(MAIN_CATEGORIES_MAP)
+                            .filter(([main]) => trackerMainCategory === 'all' || main === trackerMainCategory)
+                            .flatMap(([, subs]) => subs)
+                            .map((subName) => (
+                              <option key={subName} value={subName}>
+                                {subName}
+                              </option>
+                            ))}
+                        </select>
+                      </div>
+
+                      <div>
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-400 block mb-2">Search</label>
+                        <input
+                          type="text"
+                          className="input-field"
+                          placeholder="Project title or reference..."
+                          value={trackerSearch}
+                          onChange={(e) => setTrackerSearch(e.target.value)}
+                        />
+                      </div>
                     </div>
+
+                    {/* Summary Statistics Cards */}
+                    {trackerLoading ? (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        {[1, 2, 3, 4, 5, 6].map((i) => (
+                          <div key={i} className="p-4 rounded-2xl bg-white/5 border border-white/5 h-20 animate-pulse" />
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                        {[
+                          { label: 'Total Applications', value: trackerStats?.totalApplications ?? 0, color: 'text-white' },
+                          { label: 'Completed Evaluations', value: trackerStats?.completedEvaluations ?? 0, color: 'text-emerald-400' },
+                          { label: 'Pending Evaluations', value: trackerStats?.pendingEvaluations ?? 0, color: 'text-amber-400' },
+                          {
+                            label: 'Average Score',
+                            value: trackerStats?.averageScore !== undefined && trackerStats?.averageScore !== null && trackerStats?.averageScore > 0
+                              ? trackerStats.averageScore.toFixed(2)
+                              : '—',
+                            color: 'text-accent-400'
+                          },
+                          {
+                            label: 'Highest Avg Score',
+                            value: trackerStats?.highestAverageScore !== undefined && trackerStats?.highestAverageScore !== null && trackerStats?.highestAverageScore > 0
+                              ? trackerStats.highestAverageScore.toFixed(2)
+                              : '—',
+                            color: 'text-gold-400'
+                          },
+                          {
+                            label: 'Lowest Avg Score',
+                            value: trackerStats?.lowestAverageScore !== undefined && trackerStats?.lowestAverageScore !== null && trackerStats?.lowestAverageScore > 0
+                              ? trackerStats.lowestAverageScore.toFixed(2)
+                              : '—',
+                            color: 'text-red-400'
+                          },
+                        ].map((item) => (
+                          <div key={item.label} className="p-4 rounded-2xl bg-white/5 border border-white/5 flex flex-col justify-between">
+                            <span className="text-slate-400 text-[9px] uppercase tracking-wider font-bold leading-tight">{item.label}</span>
+                            <span className={`text-xl font-black mt-2 font-display ${item.color}`}>{item.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                       <div className="p-5 rounded-2xl bg-white/5 border border-white/5">
@@ -2617,8 +2823,9 @@ const AdminDashboard = () => {
                                   <div className="text-[11px] text-slate-400">{entry.email}</div>
                                 </div>
                                 <div className="text-right text-[11px] text-slate-400">
-                                  <div>Submitted: {entry.submitted}</div>
-                                  <div>Pending: {entry.pending}</div>
+                                  <div>Assigned: {entry.assigned || 0}</div>
+                                  <div>Completed: {entry.completed || 0}</div>
+                                  <div>Uncompleted: {entry.pending || 0}</div>
                                 </div>
                               </div>
                               <div className="mt-2 text-[11px] text-accent-400">Average score: {entry.avgScore ?? '—'}</div>
@@ -2635,56 +2842,81 @@ const AdminDashboard = () => {
                         <p className="text-slate-400 text-xs mt-0.5">Track live average scores and view judge evaluation sheets for each nominee.</p>
                       </div>
 
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs text-left text-slate-300">
-                          <thead className="bg-white/5 text-[10px] uppercase font-bold text-slate-400">
-                            <tr>
-                              <th className="p-3">Title/Nominee</th>
-                              <th className="p-3">Award Category</th>
-                              <th className="p-3 text-center">Judges assigned</th>
-                              <th className="p-3 text-center">Evaluations Completed</th>
-                              <th className="p-3 text-center">Average Score</th>
-                              <th className="p-3 text-right">Details</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {applications.filter(app => app.status !== 'draft').map(app => {
-                              const completedEvals = app.evaluationCount || 0;
-                              const totalAssigned = app.assignedJudges?.length || 0;
-                              return (
-                                <tr key={app._id} className="border-b border-white/5 hover:bg-white/5 transition-all">
-                                  <td className="p-3 font-semibold text-white">{app.projectTitle}</td>
-                                  <td className="p-3 text-slate-400">{app.category?.name}</td>
-                                  <td className="p-3 text-center font-mono">{totalAssigned}</td>
-                                  <td className="p-3 text-center font-mono">
-                                    <span className={completedEvals === totalAssigned && totalAssigned > 0 ? 'text-emerald-400 font-bold' : 'text-amber-400'}>
-                                      {completedEvals} / {totalAssigned}
-                                    </span>
-                                  </td>
-                                  <td className="p-3 text-center">
-                                    <span className="font-mono font-bold text-white bg-white/5 px-2 py-0.5 rounded">
-                                      {app.averageScore !== undefined && app.averageScore !== null ? app.averageScore.toFixed(1) : '-'}
-                                    </span>
-                                  </td>
-                                  <td className="p-3 text-right">
-                                    <button
-                                      onClick={() => openEvaluationsModal(app)}
-                                      className="text-accent-400 hover:text-accent-300 font-bold hover:underline"
-                                    >
-                                      View scorecards
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
-                            {applications.filter(app => app.status !== 'draft').length === 0 && (
+                      {trackerLoading ? (
+                        <div className="space-y-3 py-6">
+                          {[1, 2, 3].map((i) => (
+                            <div key={i} className="h-10 bg-white/5 rounded-xl animate-pulse" />
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs text-left text-slate-300">
+                            <thead className="bg-white/5 text-[10px] uppercase font-bold text-slate-400">
                               <tr>
-                                <td colSpan="6" className="p-4 text-center text-slate-500">No nominated applications available for tracking.</td>
+                                <th className="p-3">Title/Nominee</th>
+                                <th className="p-3">Award Category</th>
+                                <th className="p-3 text-center">Stage</th>
+                                <th className="p-3 text-center">Judges assigned</th>
+                                <th className="p-3 text-center">Evaluations Completed</th>
+                                <th className="p-3 text-center">Average Score</th>
+                                <th className="p-3 text-center">Status</th>
+                                <th className="p-3 text-right">Details</th>
                               </tr>
-                            )}
-                          </tbody>
-                        </table>
-                      </div>
+                            </thead>
+                            <tbody>
+                              {trackerApps.map(app => {
+                                const completedEvals = app.completedJudges || 0;
+                                const totalAssigned = app.assignedJudges?.length || 0;
+                                return (
+                                  <tr key={app._id} className="border-b border-white/5 hover:bg-white/5 transition-all">
+                                    <td className="p-3 font-semibold text-white">
+                                      <div>{app.projectTitle}</div>
+                                      <div className="text-[10px] text-slate-500 font-mono font-medium">{app.referenceNumber}</div>
+                                    </td>
+                                    <td className="p-3 text-slate-400">{app.category?.name}</td>
+                                    <td className="p-3 text-center capitalize">{app.stage === 'f2f' ? 'Face-to-Face' : 'Initial'}</td>
+                                    <td className="p-3 text-center font-mono">{totalAssigned}</td>
+                                    <td className="p-3 text-center font-mono">
+                                      <span className={completedEvals === totalAssigned && totalAssigned > 0 ? 'text-emerald-400 font-bold' : 'text-amber-400'}>
+                                        {completedEvals} / {totalAssigned}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      <span className="font-mono font-bold text-white bg-white/5 px-2 py-0.5 rounded">
+                                        {app.averageScore !== undefined && app.averageScore !== null ? app.averageScore.toFixed(2) : 'Pending Evaluation'}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 text-center">
+                                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                                        app.overallStatus === 'Completed'
+                                          ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
+                                          : app.overallStatus === 'In Progress'
+                                            ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                                            : 'bg-slate-500/10 text-slate-400 border border-white/5'
+                                      }`}>
+                                        {app.overallStatus}
+                                      </span>
+                                    </td>
+                                    <td className="p-3 text-right">
+                                      <button
+                                        onClick={() => openEvaluationsModal(app)}
+                                        className="text-accent-400 hover:text-accent-300 font-bold hover:underline"
+                                      >
+                                        View scorecards
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
+                              {trackerApps.length === 0 && (
+                                <tr>
+                                  <td colSpan="8" className="p-8 text-center text-slate-500">No applications matching the criteria are available.</td>
+                                </tr>
+                              )}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -3390,99 +3622,212 @@ const AdminDashboard = () => {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/80 backdrop-blur-md">
           <div className="relative max-w-4xl w-full p-8 bg-surface-200 rounded-[32px] shadow-2xl border border-white/10 max-h-[85vh] overflow-y-auto z-10">
             <button
-              onClick={() => setEvaluationsModalOpen(false)}
+              onClick={() => {
+                setEvaluationsModalOpen(false);
+                setSelectedJudgeEval(null);
+              }}
               className="absolute right-6 top-6 w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
             >
               ✕
             </button>
 
-            <div className="border-b border-white/10 pb-4 mb-6">
-              <span className="text-[10px] font-mono uppercase tracking-wider text-accent-400">Scorecard Review</span>
-              <h3 className="font-display font-extrabold text-white text-2xl mt-1">{evaluationsApp.projectTitle}</h3>
-              <p className="text-slate-400 text-xs mt-1">Submitted by: <strong className="text-white">{evaluationsApp.candidate?.firstName} {evaluationsApp.candidate?.lastName}</strong> ({evaluationsApp.candidate?.organization || 'Individual'})</p>
-            </div>
+            {selectedJudgeEval ? (
+              // Sub-view: Individual Judge Scorecard
+              <div className="space-y-6 animate-fadeIn">
+                <button
+                  type="button"
+                  onClick={() => setSelectedJudgeEval(null)}
+                  className="flex items-center gap-2 text-xs font-bold text-accent-400 hover:text-accent-300 hover:underline mb-2"
+                >
+                  ← Back to Evaluation Summary
+                </button>
 
-            {evalsLoading ? (
-              <div className="flex flex-col items-center justify-center py-16 gap-3">
-                <div className="w-10 h-10 border-3 border-accent-500 border-t-transparent rounded-full animate-spin" />
-                <span className="text-xs text-slate-400">Loading judge evaluations...</span>
-              </div>
-            ) : (
-              <div className="space-y-8">
-                {evaluationsList.length === 0 ? (
-                  <div className="text-center py-12 rounded-2xl bg-white/5 border border-white/5">
-                    <p className="text-slate-400 text-sm">No judge has submitted an evaluation for this nomination yet.</p>
+                <div className="border-b border-white/10 pb-4">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-accent-400">Individual Evaluator Sheet</span>
+                  <h3 className="font-display font-extrabold text-white text-xl mt-1">{selectedJudgeEval.judge?.firstName} {selectedJudgeEval.judge?.lastName}</h3>
+                  <p className="text-slate-400 text-xs mt-0.5">{selectedJudgeEval.judge?.email} | {selectedJudgeEval.judge?.organization || 'Independent Evaluator'}</p>
+                </div>
+
+                <div className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] space-y-6">
+                  {/* Score & Status */}
+                  <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Submitted At</span>
+                      <strong className="text-white text-xs font-mono">{selectedJudgeEval.submittedAt ? new Date(selectedJudgeEval.submittedAt).toLocaleString() : 'Draft Mode'}</strong>
+                    </div>
+                    <div className="text-right">
+                      <span className="inline-block px-3.5 py-1.5 rounded-xl bg-accent-500/10 border border-accent-500/25 font-mono text-lg font-black text-accent-400">
+                        Score: {selectedJudgeEval.totalScore || 0}/100
+                      </span>
+                    </div>
                   </div>
-                ) : (
-                  <div className="grid gap-6">
-                    {evaluationsList.map((evaluationItem) => (
-                      <div
-                        key={evaluationItem._id}
-                        className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] space-y-5"
-                      >
-                        {/* Header: Judge & Score */}
-                        <div className="flex justify-between items-start gap-4 flex-wrap border-b border-white/5 pb-4">
-                          <div>
-                            <h4 className="text-white font-bold text-base">{evaluationItem.judge?.firstName} {evaluationItem.judge?.lastName}</h4>
-                            <p className="text-slate-500 text-xs mt-0.5">{evaluationItem.judge?.email}</p>
-                          </div>
-                          <div className="text-right">
-                            <span className="inline-block px-3.5 py-1.5 rounded-xl bg-accent-500/10 border border-accent-500/25 font-mono text-base font-black text-accent-400">
-                              Score: {evaluationItem.weightedScore?.toFixed(1) || '0'}/100
-                            </span>
-                            <div className="text-[10px] text-slate-500 font-mono mt-1">
-                              Status: {evaluationItem.isSubmitted ? (
-                                <strong className="text-emerald-400">SUBMITTED</strong>
-                              ) : (
-                                <strong className="text-amber-400">DRAFT</strong>
-                              )}
+
+                  {/* Strengths & Weaknesses */}
+                  <div className="grid md:grid-cols-2 gap-4 text-xs">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Strengths Identified</span>
+                      <p className="text-slate-300 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5 whitespace-pre-line">
+                        {selectedJudgeEval.strengths || 'None specified'}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Weaknesses / Areas of Improvement</span>
+                      <p className="text-slate-300 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5 whitespace-pre-line">
+                        {selectedJudgeEval.weaknesses || 'None specified'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Overall Comments */}
+                  <div className="text-xs space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Overall Comments</span>
+                    <p className="text-slate-300 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5 whitespace-pre-line">
+                      {selectedJudgeEval.overallComments || 'No overall comments provided.'}
+                    </p>
+                  </div>
+
+                  {/* Criteria Scores breakdown */}
+                  <div className="space-y-2.5 pt-3">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Criteria Breakdown</span>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {selectedJudgeEval.scores?.map((s) => {
+                        const crit = s.criteria;
+                        return (
+                          <div key={s._id || (crit && crit._id)} className="p-3 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center text-xs">
+                            <div className="min-w-0 pr-2">
+                              <p className="text-white font-semibold truncate">{crit?.name || 'Criterion score'}</p>
+                              {s.comment && <p className="text-[10px] text-slate-400 mt-1 italic leading-relaxed truncate" title={s.comment}>"{s.comment}"</p>}
                             </div>
+                            <span className="font-mono font-bold text-accent-300 shrink-0 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                              {s.score} / {crit?.weight || 10}
+                            </span>
                           </div>
-                        </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (() => {
+              const completedReviewsCount = evaluationsList.filter(e => e.isSubmitted && (e.stage || 'initial') === trackerStage).length;
+              const totalAssignedJudges = evaluationsApp.assignedJudges?.length || 0;
+              const activeEvals = evaluationsList.filter(e => e.isSubmitted && (e.stage || 'initial') === trackerStage);
+              const calculatedAverage = activeEvals.length > 0 
+                ? activeEvals.reduce((s, e) => s + (e.totalScore || 0), 0) / activeEvals.length 
+                : null;
 
-                        {/* Category Comments */}
-                        <div className="grid md:grid-cols-2 gap-4 text-xs">
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Strengths Identified</span>
-                            <p className="text-slate-300 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5 whitespace-pre-line">{evaluationItem.strengths || 'None specified'}</p>
-                          </div>
-                          <div className="space-y-1">
-                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Weaknesses / Areas of Improvement</span>
-                            <p className="text-slate-300 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5 whitespace-pre-line">{evaluationItem.weaknesses || 'None specified'}</p>
-                          </div>
-                        </div>
+              return (
+                // Sub-view: Evaluation Summary & Judge List
+                <div className="space-y-6 animate-fadeIn">
+                  <div className="border-b border-white/10 pb-4">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-accent-400">Scorecard Tracker & Summary</span>
+                    <h3 className="font-display font-extrabold text-white text-2xl mt-1">{evaluationsApp.projectTitle}</h3>
+                    <p className="text-slate-400 text-xs mt-1">Submitted by: <strong className="text-white">{evaluationsApp.candidate?.firstName} {evaluationsApp.candidate?.lastName}</strong> ({evaluationsApp.candidate?.organization || 'Individual'})</p>
+                  </div>
 
-                        <div className="text-xs space-y-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Overall Comments</span>
-                          <p className="text-slate-300 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5 whitespace-pre-line">{evaluationItem.overallComments || 'No overall critique comment provided.'}</p>
+                  {evalsLoading ? (
+                    <div className="flex flex-col items-center justify-center py-16 gap-3">
+                      <div className="w-10 h-10 border-3 border-accent-500 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-xs text-slate-400">Loading scorecard summary...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Evaluation Summary Card */}
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/10 grid grid-cols-1 sm:grid-cols-4 gap-4 text-center">
+                        <div className="p-3 rounded-xl bg-white/[0.02]">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Evaluation Stage</span>
+                          <strong className="block text-white text-sm mt-1 capitalize">{trackerStage === 'f2f' ? 'Face-to-Face' : 'Initial'}</strong>
                         </div>
-
-                        {/* Score breakdown by criteria */}
-                        <div className="space-y-2.5 pt-3">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Criteria Breakdown</span>
-                          <div className="grid sm:grid-cols-2 gap-3">
-                            {evaluationItem.scores?.map((s) => {
-                              const crit = s.criteria;
-                              return (
-                                <div key={s._id || crit._id} className="p-3 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center text-xs">
-                                  <div className="min-w-0 pr-2">
-                                    <p className="text-white font-semibold truncate">{crit?.name || 'Criterion score'}</p>
-                                    {s.comment && <p className="text-[10px] text-slate-400 mt-1 italic leading-relaxed truncate" title={s.comment}>"{s.comment}"</p>}
-                                  </div>
-                                  <span className="font-mono font-bold text-accent-300 shrink-0 bg-white/5 px-2 py-0.5 rounded border border-white/5">
-                                    {s.score} / {crit?.weight || 10}
-                                  </span>
-                                </div>
-                              );
-                            })}
-                          </div>
+                        <div className="p-3 rounded-xl bg-white/[0.02]">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Average Score</span>
+                          <strong className="block text-accent-400 text-sm font-mono mt-1">
+                            {calculatedAverage !== null ? calculatedAverage.toFixed(2) : 'Pending'}
+                          </strong>
+                        </div>
+                        <div className="p-3 rounded-xl bg-white/[0.02]">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Completed Reviews</span>
+                          <strong className="block text-emerald-400 text-sm font-mono mt-1">
+                            {completedReviewsCount} / {totalAssignedJudges}
+                          </strong>
+                        </div>
+                        <div className="p-3 rounded-xl bg-white/[0.02]">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Assigned Judges</span>
+                          <strong className="block text-white text-sm font-mono mt-1">
+                            {totalAssignedJudges}
+                          </strong>
                         </div>
                       </div>
-                    ))}
+
+                      {/* Assigned Judges List */}
+                      <div className="space-y-3">
+                        <h4 className="text-white font-bold text-sm tracking-wide">Evaluator Status & Scorecards</h4>
+                        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                          {evaluationsApp.assignedJudges?.map((judge, idx) => {
+                            // Find corresponding submitted evaluation in evaluationsList matching the current stage
+                            const judgeEval = evaluationsList.find(e => 
+                              e.judge?._id?.toString() === judge._id.toString() &&
+                              (e.stage || 'initial') === trackerStage
+                            );
+                            const isSubmitted = judgeEval ? judgeEval.isSubmitted : false;
+
+                            return (
+                              <div
+                                key={judge._id}
+                                className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex justify-between items-center gap-4 flex-wrap"
+                              >
+                                <div>
+                                  <h5 className="text-white text-xs font-bold">Judge {idx + 1}: {judge.firstName} {judge.lastName}</h5>
+                                  <p className="text-[10px] text-slate-400 mt-0.5">{judge.organization || 'Independent'} — {judge.designation || 'Specialist'}</p>
+                                </div>
+
+                                <div className="flex items-center gap-5">
+                                  <div className="text-right">
+                                    <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Evaluation State</div>
+                                    <span className={`text-[10px] font-bold ${
+                                      isSubmitted ? 'text-emerald-400' : judgeEval ? 'text-amber-400' : 'text-slate-500'
+                                    }`}>
+                                      {isSubmitted ? 'Completed' : judgeEval ? 'Draft Mode' : 'Not Started'}
+                                    </span>
+                                  </div>
+
+                                  <div className="text-right font-mono min-w-[70px]">
+                                    <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Total Score</div>
+                                    <span className="text-xs text-white font-bold">
+                                      {isSubmitted && judgeEval ? `${judgeEval.totalScore}/100` : '—'}
+                                    </span>
+                                  </div>
+
+                                  <div>
+                                    {isSubmitted && judgeEval ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedJudgeEval(judgeEval)}
+                                        className="btn-primary text-[10px] !py-1 !px-3 font-semibold"
+                                      >
+                                        View Individual Scorecard
+                                      </button>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-500 italic bg-white/5 px-2 py-1 rounded">
+                                        Not Available
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        {(!evaluationsApp.assignedJudges || evaluationsApp.assignedJudges.length === 0) && (
+                          <div className="p-8 text-center bg-white/5 border border-dashed border-white/10 rounded-xl">
+                            <p className="text-xs text-slate-500">No judges assigned to this application panel yet.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                )}
-              </div>
-            )}
+                  )}
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

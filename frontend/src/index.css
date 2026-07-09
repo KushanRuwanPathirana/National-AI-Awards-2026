@@ -165,6 +165,10 @@
     border-color: rgba(0,114,255,0.6);
     box-shadow: 0 0 0 3px rgba(0,114,255,0.15);
   }
+  .input-field option {
+    background-color: #0f1e35;
+    color: #e2e8f0;
+  }
 
   /* Badge */
   .badge {

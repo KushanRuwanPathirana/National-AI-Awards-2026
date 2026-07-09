@@ -24,6 +24,9 @@ connectDB().then(async () => {
   seedCriteriaOnStartup().catch((error) => {
     logger.error(`Criteria seeding skipped due to error: ${error.message}`);
   });
+  // Start the daily reminder service
+  const { startReminderScheduler } = require('./services/reminder.service');
+  startReminderScheduler();
 }).catch(() => {
   // Database connection errors are already logged by connectDB
 });

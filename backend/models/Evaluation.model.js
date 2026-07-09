@@ -58,6 +58,12 @@ const evaluationSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    stage: {
+      type: String,
+      enum: ['initial', 'f2f'],
+      default: 'initial',
+      index: true,
+    },
   },
   {
     timestamps: true,
@@ -66,8 +72,8 @@ const evaluationSchema = new mongoose.Schema(
   }
 );
 
-// Unique constraint: one evaluation per judge per application
-evaluationSchema.index({ application: 1, judge: 1 }, { unique: true });
+// Unique constraint: one evaluation per judge per application per stage
+evaluationSchema.index({ application: 1, judge: 1, stage: 1 }, { unique: true });
 evaluationSchema.index({ judge: 1, isSubmitted: 1 });
 
 const Evaluation = mongoose.model('Evaluation', evaluationSchema);

@@ -12,7 +12,7 @@ const getDashboardStats = async (req, res, next) => {
   try {
     const [
       totalApplications, totalCandidates, totalJudges,
-      submittedApps, shortlistedApps, finalistApps, winnerApps,
+      submittedApps, initialStageApps, f2fStageApps, finalistApps, winnerApps,
       pendingEvaluations, completedEvaluations,
       recentApplications, categoryBreakdown, submissionTrend,
       recentActivities, notifications,
@@ -21,7 +21,8 @@ const getDashboardStats = async (req, res, next) => {
       User.countDocuments({ role: 'candidate' }),
       User.countDocuments({ role: 'judge' }),
       Application.countDocuments({ status: 'submitted' }),
-      Application.countDocuments({ status: 'shortlisted' }),
+      Application.countDocuments({ status: 'initial_stage' }),
+      Application.countDocuments({ status: 'f2f_stage' }),
       Application.countDocuments({ status: 'finalist' }),
       Application.countDocuments({ status: 'winner' }),
       Evaluation.countDocuments({ isSubmitted: false }),
@@ -61,7 +62,7 @@ const getDashboardStats = async (req, res, next) => {
       data: {
         stats: {
           totalApplications, totalCandidates, totalJudges,
-          submittedApps, shortlistedApps, finalistApps, winnerApps,
+          submittedApps, initialStageApps, f2fStageApps, finalistApps, winnerApps,
           pendingEvaluations, completedEvaluations,
         },
         recentApplications,
@@ -168,7 +169,7 @@ const getReports = async (req, res, next) => {
         { $group: { _id: '$status', count: { $sum: 1 } } },
         { $project: { status: '$_id', count: 1, _id: 0 } },
       ]),
-      Application.find({ status: { $in: ['shortlisted','finalist','winner','runner_up'] } })
+      Application.find({ status: { $in: ['initial_stage','f2f_stage','finalist','winner','runner_up'] } })
         .select('projectTitle averageScore status')
         .populate('category', 'name')
         .sort({ averageScore: -1 })
@@ -243,4 +244,48 @@ const createUser = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { getDashboardStats, getUsers, createUser, toggleUserStatus, deleteUser, updateUserRole, getReports, getAuditLogs, broadcastNotification };
+// ── Settings (Evaluation Deadline) ─────────────────────────────────────────────
+const Setting = require('../models/Setting.model');
+
+const getEvaluationDeadline = async (req, res, next) => {
+  try {
+    let setting = await Setting.findOne({ key: 'evaluation_deadline' });
+    if (!setting) {
+      setting = {
+        key: 'evaluation_deadline',
+        value: '2026-08-31T23:59:59+05:30',
+        description: 'Deadline for the evaluation process'
+      };
+    }
+    return successResponse(res, { data: { deadline: setting.value } });
+  } catch (error) { next(error); }
+};
+
+const updateEvaluationDeadline = async (req, res, next) => {
+  try {
+    const { deadline } = req.body;
+    if (!deadline) {
+      return errorResponse(res, { statusCode: 400, message: 'Deadline is required.' });
+    }
+
+    let setting = await Setting.findOne({ key: 'evaluation_deadline' });
+    if (!setting) {
+      setting = new Setting({
+        key: 'evaluation_deadline',
+        value: deadline,
+        description: 'Deadline for the evaluation process'
+      });
+    } else {
+      setting.value = deadline;
+    }
+    await setting.save();
+
+    return successResponse(res, { message: 'Evaluation deadline updated successfully.', data: { deadline: setting.value } });
+  } catch (error) { next(error); }
+};
+
+module.exports = {
+  getDashboardStats, getUsers, createUser, toggleUserStatus, deleteUser,
+  updateUserRole, getReports, getAuditLogs, broadcastNotification,
+  getEvaluationDeadline, updateEvaluationDeadline
+};
