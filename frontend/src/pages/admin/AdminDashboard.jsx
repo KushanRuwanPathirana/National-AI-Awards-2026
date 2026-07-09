@@ -1968,6 +1968,17 @@ const AdminDashboard = () => {
       : broadcastRole === 'candidate'
         ? candidatesList.length
         : users.length;
+  const overviewCards = stats ? [
+    { label: 'Total Applications', value: stats.stats.totalApplications, color: 'text-white' },
+    { label: 'Draft Applications', value: stats.stats.draftApps || 0, color: 'text-slate-200' },
+    { label: 'Submitted', value: stats.stats.submittedApps, color: 'text-accent-400' },
+    { label: 'Selected to Next Round', value: stats.stats.selectedToNextRoundApps || 0, color: 'text-cyan-400' },
+    { label: 'Finalists', value: stats.stats.finalistApps, color: 'text-gold-400' },
+    { label: 'Winners', value: stats.stats.winnerApps || 0, color: 'text-emerald-400' },
+    { label: 'Judges', value: stats.stats.totalJudges, color: 'text-white' },
+    { label: 'Pending Evaluations', value: stats.stats.pendingEvaluations, color: 'text-amber-400' },
+    { label: 'Completed Evaluations', value: stats.stats.completedEvaluations, color: 'text-emerald-400' },
+  ] : [];
 
   // Change Password submit
   const onChangePasswordSubmit = async (data) => {
@@ -2323,31 +2334,13 @@ const AdminDashboard = () => {
                       </button>
                     </h3>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Applications</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display">{stats.stats.totalApplications}</p>
-                      </div>
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Submitted</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display text-accent-400">{stats.stats.submittedApps}</p>
-                      </div>
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Finalists</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display text-gold-400">{stats.stats.finalistApps}</p>
-                      </div>
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Judges</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display">{stats.stats.totalJudges}</p>
-                      </div>
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Pending Evaluations</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display text-amber-400">{stats.stats.pendingEvaluations}</p>
-                      </div>
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Completed Evaluations</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display text-emerald-400">{stats.stats.completedEvaluations}</p>
-                      </div>
+                    <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-3">
+                      {overviewCards.map((card) => (
+                        <div key={card.label} className="min-h-[110px] rounded-xl bg-white/5 border border-white/5 px-3 py-4 text-center">
+                          <span className="block min-h-[30px] text-slate-400 text-[10px] font-bold uppercase tracking-wider leading-4">{card.label}</span>
+                          <p className={`text-2xl font-black mt-2 font-display ${card.color}`}>{card.value}</p>
+                        </div>
+                      ))}
                     </div>
 
                     <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
@@ -2431,28 +2424,6 @@ const AdminDashboard = () => {
                               <span className="shrink-0 font-mono text-[11px] font-semibold text-white">{entry.count}</span>
                             </div>
                           ))}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
-                        <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-1.5"><RiMailSendLine className="text-accent-400" /> Notifications</h4>
-                        <div className="space-y-3">
-                          {(stats.notifications || []).slice(0, 5).map((notification) => (
-                            <div key={notification._id} className="border-b border-white/5 pb-2.5 last:border-0 last:pb-0 text-slate-300">
-                              <div className="flex justify-between items-start gap-3">
-                                <div>
-                                  <div className="text-white text-xs font-semibold">{notification.title}</div>
-                                  <div className="text-[11px] text-slate-400 mt-1">{notification.message}</div>
-                                </div>
-                                <span className="text-[10px] text-slate-500 font-mono whitespace-nowrap">{new Date(notification.createdAt).toLocaleTimeString()}</span>
-                              </div>
-                            </div>
-                          ))}
-                          {(!stats.notifications || stats.notifications.length === 0) && (
-                            <div className="text-sm text-slate-500">No notifications yet.</div>
-                          )}
                         </div>
                       </div>
                     </div>
