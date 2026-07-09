@@ -80,24 +80,17 @@ const seedCriteriaOnStartup = async () => {
     }
   }
 
-  // Tag any old criteria that don't have criteriaType set
+  // Deactivate old criteria that don't have the proper stage prefix
+  // This prevents old criteria like "Innovation & Originality" from appearing alongside new "Screening - Innovation & Originality"
   await EvaluationCriteria.updateMany(
-    { criteriaType: { $exists: false } },
-    { $set: { criteriaType: 'organizational' } }
-  );
-  await EvaluationCriteria.updateMany(
-    { criteriaType: null },
-    { $set: { criteriaType: 'organizational' } }
-  );
-
-  // Tag any old criteria that don't have stage set
-  await EvaluationCriteria.updateMany(
-    { stage: { $exists: false } },
-    { $set: { stage: 'initial' } }
-  );
-  await EvaluationCriteria.updateMany(
-    { stage: null },
-    { $set: { stage: 'initial' } }
+    { 
+      $or: [
+        { stage: { $exists: false } },
+        { stage: null },
+        { name: { $not: /^(Screening - |Viva - )/ } }
+      ]
+    },
+    { $set: { isActive: false } }
   );
 
   if (created > 0 || updated > 0) {

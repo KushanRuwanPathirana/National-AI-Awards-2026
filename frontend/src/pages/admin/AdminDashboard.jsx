@@ -1698,6 +1698,7 @@ const AdminDashboard = () => {
   const [monitoring, setMonitoring] = useState(null);
   const [judgeProgress, setJudgeProgress] = useState([]);
   const [criteria, setCriteria] = useState([]);
+  const [criteriaStageFilter, setCriteriaStageFilter] = useState('initial');
   const [imageUploading, setImageUploading] = useState(false);
   const [profileForm, setProfileForm] = useState({
     firstName: '',
@@ -1736,6 +1737,11 @@ const AdminDashboard = () => {
   const [editingDeadlineAppId, setEditingDeadlineAppId] = useState(null);
   const [deadlineValue, setDeadlineValue] = useState('');
   const [savingDeadline, setSavingDeadline] = useState(false);
+
+  // Multi-stage nominations management state
+  const [nominationsStageTab, setNominationsStageTab] = useState('initial');
+  const [editingDeadlineIsF2F, setEditingDeadlineIsF2F] = useState(false);
+  const [assignModalStage, setAssignModalStage] = useState('initial');
 
   // Change Password form
   const [changeSuccess, setChangeSuccess] = useState('');
@@ -1812,7 +1818,7 @@ const AdminDashboard = () => {
 
   const fetchCriteria = async () => {
     try {
-      const { data } = await evaluationCriteriaService.getAllCriteria();
+      const { data } = await evaluationCriteriaService.getAllCriteria({ stage: criteriaStageFilter });
       setCriteria(data.data.criteria);
     } catch { toast.error('Failed to load evaluation criteria.'); }
   };
@@ -1842,6 +1848,12 @@ const AdminDashboard = () => {
       fetchTracker();
     }
   }, [trackerStage, trackerMainCategory, trackerSubCategory, trackerSearch, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'criteria') {
+      fetchCriteria();
+    }
+  }, [criteriaStageFilter, activeTab]);
 
   const loadAll = async () => {
     setLoading(true);
@@ -1973,10 +1985,12 @@ const AdminDashboard = () => {
   };
 
   // Deadline editing
-  const handleEditDeadline = (app) => {
+  const handleEditDeadline = (app, isF2F = false) => {
     setEditingDeadlineAppId(app._id);
-    if (app.deadline) {
-      const date = new Date(app.deadline);
+    setEditingDeadlineIsF2F(isF2F);
+    const targetDeadline = isF2F ? app.deadlineF2F : app.deadline;
+    if (targetDeadline) {
+      const date = new Date(targetDeadline);
       const tzOffset = date.getTimezoneOffset() * 60000;
       const localISOTime = (new Date(date - tzOffset)).toISOString().slice(0, 16);
       setDeadlineValue(localISOTime);
@@ -1992,8 +2006,13 @@ const AdminDashboard = () => {
     try {
       setSavingDeadline(true);
       const isoString = new Date(deadlineValue).toISOString();
-      await applicationService.updateApplicationDeadline(editingDeadlineAppId, isoString);
-      toast.success('Application deadline updated successfully.');
+      if (editingDeadlineIsF2F) {
+        await applicationService.updateApplicationDeadlineF2F(editingDeadlineAppId, isoString);
+        toast.success('Stage 2 evaluation deadline updated successfully.');
+      } else {
+        await applicationService.updateApplicationDeadline(editingDeadlineAppId, isoString);
+        toast.success('Application deadline updated successfully.');
+      }
       setEditingDeadlineAppId(null);
       setDeadlineValue('');
       fetchApps();
@@ -2073,7 +2092,7 @@ const AdminDashboard = () => {
         await evaluationCriteriaService.createCriteria(payload);
         toast.success('Evaluation criteria created.');
       }
-      setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, criteriaType: 'organizational', stage: 'initial', order: 0, isActive: true });
+      setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, criteriaType: 'organizational', stage: criteriaStageFilter, order: 0, isActive: true });
       setEditingCriteriaId(null);
       fetchCriteria();
     } catch (err) {
@@ -2089,7 +2108,7 @@ const AdminDashboard = () => {
       weight: c.weight || 10,
       maxScore: c.maxScore || 10,
       criteriaType: c.criteriaType || 'organizational',
-      stage: c.stage || 'initial',
+      stage: c.stage || criteriaStageFilter,
       order: c.order || 0,
       isActive: c.isActive !== false,
     });
@@ -2149,16 +2168,23 @@ const AdminDashboard = () => {
   };
 
   // Open Judge Assignment
-  const openAssignModal = (app) => {
+  const openAssignModal = (app, stage = 'initial') => {
     setSelectedApp(app);
-    setSelectedJudges(app.assignedJudges?.map(j => j._id || j) || []);
+    setAssignModalStage(stage);
+    const targetJudges = stage === 'f2f' ? app.assignedJudgesF2F : app.assignedJudges;
+    setSelectedJudges(targetJudges?.map(j => j._id || j) || []);
     setAssignModalOpen(true);
   };
 
   const handleAssignSubmit = async () => {
     try {
-      await applicationService.assignJudges(selectedApp._id, selectedJudges);
-      toast.success('Judges assigned successfully.');
+      if (assignModalStage === 'f2f') {
+        await applicationService.assignJudgesF2F(selectedApp._id, selectedJudges);
+        toast.success('Stage 2 judges assigned successfully.');
+      } else {
+        await applicationService.assignJudges(selectedApp._id, selectedJudges);
+        toast.success('Judges assigned successfully.');
+      }
       setAssignModalOpen(false);
       fetchApps();
       fetchMonitoring();
@@ -2606,167 +2632,238 @@ const AdminDashboard = () => {
                 )}
 
                 {/* 3. APPLICATIONS TAB */}
-                {activeTab === 'applications' && (
-                  <div>
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                      <div>
-                        <h3 className="font-display font-bold text-white text-xl">Manage Nominations</h3>
-                        <p className="text-slate-400 text-xs mt-1">Audit statuses and assign judges panels.</p>
+                {activeTab === 'applications' && (() => {
+                  const filteredApps = applications.filter(app => {
+                    if (nominationsStageTab === 'f2f') {
+                      return app.status === 'f2f_stage';
+                    } else {
+                      return app.status !== 'f2f_stage' && app.status !== 'draft';
+                    }
+                  });
+                  return (
+                    <div>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                          <h3 className="font-display font-bold text-white text-xl">Manage Nominations</h3>
+                          <p className="text-slate-400 text-xs mt-1">Audit statuses and assign judges panels.</p>
+                        </div>
+
+                        <div className="flex gap-3 w-full sm:w-auto">
+                          <input
+                            className="input-field max-w-[200px]"
+                            placeholder="Search title/ref..."
+                            value={appSearch}
+                            onChange={(e) => setAppSearch(e.target.value)}
+                          />
+                          <select
+                            className="input-field max-w-[150px]"
+                            value={appStatusFilter}
+                            onChange={(e) => setAppStatusFilter(e.target.value)}
+                          >
+                            <option value="">All Statuses</option>
+                            <option value="submitted">Submitted</option>
+                            <option value="under_review">Under Review</option>
+                            <option value="eligible">Eligible</option>
+                            <option value="initial_stage">Initial Stage</option>
+                            <option value="f2f_stage">Face-to-Face Stage</option>
+                            <option value="finalist">Finalist</option>
+                            <option value="winner">Winner</option>
+                          </select>
+                        </div>
                       </div>
 
-                      <div className="flex gap-3 w-full sm:w-auto">
-                        <input
-                          className="input-field max-w-[200px]"
-                          placeholder="Search title/ref..."
-                          value={appSearch}
-                          onChange={(e) => setAppSearch(e.target.value)}
-                        />
-                        <select
-                          className="input-field max-w-[150px]"
-                          value={appStatusFilter}
-                          onChange={(e) => setAppStatusFilter(e.target.value)}
+                      {/* Stage Tabs */}
+                      <div className="flex border-b border-white/10 mb-6 gap-6">
+                        <button
+                          onClick={() => setNominationsStageTab('initial')}
+                          className={`pb-3 text-sm font-semibold transition-all relative ${
+                            nominationsStageTab === 'initial'
+                              ? 'text-accent-400 border-b-2 border-accent-400'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
                         >
-                          <option value="">All Statuses</option>
-                          <option value="submitted">Submitted</option>
-                          <option value="under_review">Under Review</option>
-                          <option value="eligible">Eligible</option>
-                          <option value="initial_stage">Initial Stage</option>
-                          <option value="f2f_stage">Face-to-Face Stage</option>
-                          <option value="finalist">Finalist</option>
-                          <option value="winner">Winner</option>
-                        </select>
+                          Initial Stage
+                        </button>
+                        <button
+                          onClick={() => setNominationsStageTab('f2f')}
+                          className={`pb-3 text-sm font-semibold transition-all relative ${
+                            nominationsStageTab === 'f2f'
+                              ? 'text-accent-400 border-b-2 border-accent-400'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Face-to-Face Stage
+                        </button>
                       </div>
-                    </div>
 
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs text-left text-slate-300">
-                        <thead className="bg-white/5 text-[10px] uppercase font-bold text-slate-400">
-                          <tr>
-                            <th className="p-4 text-left">Ref/Title</th>
-                            <th className="p-4 text-left">Category</th>
-                            <th className="p-4 text-left">Candidate</th>
-                            <th className="p-4 text-left">Phone</th>
-                            <th className="p-4 text-left">Status</th>
-                            <th className="p-4 text-left">Deadline</th>
-                            <th className="p-4 text-left">Judges Panel</th>
-                            <th className="p-4 text-center">Score</th>
-                            <th className="p-4 text-left">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {applications.map(app => (
-                            <tr key={app._id} className="border-b border-white/5 hover:bg-white/5">
-                              <td className="p-4">
-                                <div className="font-bold text-white truncate max-w-[150px]">{app.projectTitle}</div>
-                                <div className="text-[10px] font-mono text-slate-500">{app.referenceNumber || 'Draft'}</div>
-                              </td>
-                              <td className="p-4 truncate max-w-[120px]">{app.category?.name}</td>
-                              <td className="p-4">
-                                <div>{app.candidate?.firstName} {app.candidate?.lastName}</div>
-                                <div className="text-[10px] text-slate-500">{app.candidate?.organization}</div>
-                              </td>
-                              <td className="p-4 font-mono text-[11px] text-slate-300">
-                                {app.primaryContactPhone || app.candidate?.phone || 'Not provided'}
-                              </td>
-                              <td className="p-4">
-                                <select
-                                  className="bg-navy-900 border border-white/10 rounded px-2 py-1 text-[10px]"
-                                  value={app.status}
-                                  onChange={(e) => handleStatusChange(app._id, e.target.value)}
-                                >
-                                  <option value={app.status}>{app.statusLabel}</option>
-                                  {/* Render other options matching transition engine */}
-                                  <option value="under_review">Under Review</option>
-                                  <option value="eligible">Eligible</option>
-                                  <option value="ineligible">Ineligible</option>
-                                  <option value="initial_stage">Initial Stage</option>
-                                  <option value="f2f_stage">Face-to-Face Stage</option>
-                                  <option value="finalist">Finalist</option>
-                                  <option value="winner">Winner</option>
-                                </select>
-                              </td>
-                              <td className="p-4">
-                                {editingDeadlineAppId === app._id ? (
-                                  <div className="flex items-center gap-2">
-                                    <input
-                                      type="datetime-local"
-                                      className="bg-navy-900 border border-white/10 rounded-lg px-3 py-2 text-[11px] text-white outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
-                                      value={deadlineValue}
-                                      onChange={(e) => setDeadlineValue(e.target.value)}
-                                    />
-                                    <button
-                                      onClick={handleSaveDeadline}
-                                      disabled={savingDeadline}
-                                      className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-[11px] font-bold transition-colors disabled:opacity-50"
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs text-left text-slate-300">
+                          <thead className="bg-white/5 text-[10px] uppercase font-bold text-slate-400">
+                            {nominationsStageTab === 'f2f' ? (
+                              <tr>
+                                <th className="p-4 text-left">Ref/Title</th>
+                                <th className="p-4 text-left">Category</th>
+                                <th className="p-4 text-left">Candidate</th>
+                                <th className="p-4 text-left">Phone</th>
+                                <th className="p-4 text-left">Status</th>
+                                <th className="p-4 text-left">Stage 2 Deadline</th>
+                                <th className="p-4 text-left">Stage 2 Judges Panel</th>
+                                <th className="p-4 text-center">Round 1 Score</th>
+                                <th className="p-4 text-center">Stage 2 Score</th>
+                                <th className="p-4 text-left">Actions</th>
+                              </tr>
+                            ) : (
+                              <tr>
+                                <th className="p-4 text-left">Ref/Title</th>
+                                <th className="p-4 text-left">Category</th>
+                                <th className="p-4 text-left">Candidate</th>
+                                <th className="p-4 text-left">Phone</th>
+                                <th className="p-4 text-left">Status</th>
+                                <th className="p-4 text-left">Deadline</th>
+                                <th className="p-4 text-left">Judges Panel</th>
+                                <th className="p-4 text-center">Score</th>
+                                <th className="p-4 text-left">Actions</th>
+                              </tr>
+                            )}
+                          </thead>
+                          <tbody>
+                            {filteredApps.map(app => {
+                              const isF2F = nominationsStageTab === 'f2f';
+                              return (
+                                <tr key={app._id} className="border-b border-white/5 hover:bg-white/5">
+                                  <td className="p-4">
+                                    <div className="font-bold text-white truncate max-w-[150px]">{app.projectTitle}</div>
+                                    <div className="text-[10px] font-mono text-slate-500">{app.referenceNumber || 'Draft'}</div>
+                                  </td>
+                                  <td className="p-4 truncate max-w-[120px]">{app.category?.name}</td>
+                                  <td className="p-4">
+                                    <div>{app.candidate?.firstName} {app.candidate?.lastName}</div>
+                                    <div className="text-[10px] text-slate-500">{app.candidate?.organization}</div>
+                                  </td>
+                                  <td className="p-4 font-mono text-[11px] text-slate-300">
+                                    {app.primaryContactPhone || app.candidate?.phone || 'Not provided'}
+                                  </td>
+                                  <td className="p-4">
+                                    <select
+                                      className="bg-navy-900 border border-white/10 rounded px-2 py-1 text-[10px]"
+                                      value={app.status}
+                                      onChange={(e) => handleStatusChange(app._id, e.target.value)}
                                     >
-                                      {savingDeadline ? '...' : '✓'}
-                                    </button>
-                                    <button
-                                      onClick={handleCancelDeadlineEdit}
-                                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-[11px] font-bold transition-colors"
-                                    >
-                                      ✗
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-3">
-                                    {app.deadline ? (
-                                      <div className="flex flex-col">
-                                        <span className="text-[11px] font-mono text-white">
-                                          {new Date(app.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                                        </span>
-                                        <span className="text-[10px] font-mono text-slate-400">
-                                          {new Date(app.deadline).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
+                                      <option value={app.status}>{app.statusLabel}</option>
+                                      <option value="under_review">Under Review</option>
+                                      <option value="eligible">Eligible</option>
+                                      <option value="ineligible">Ineligible</option>
+                                      <option value="initial_stage">Initial Stage</option>
+                                      <option value="f2f_stage">Face-to-Face Stage</option>
+                                      <option value="finalist">Finalist</option>
+                                      <option value="winner">Winner</option>
+                                    </select>
+                                  </td>
+                                  <td className="p-4">
+                                    {editingDeadlineAppId === app._id && editingDeadlineIsF2F === isF2F ? (
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="datetime-local"
+                                          className="bg-navy-900 border border-white/10 rounded-lg px-3 py-2 text-[11px] text-white outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
+                                          value={deadlineValue}
+                                          onChange={(e) => setDeadlineValue(e.target.value)}
+                                        />
+                                        <button
+                                          onClick={handleSaveDeadline}
+                                          disabled={savingDeadline}
+                                          className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-[11px] font-bold transition-colors disabled:opacity-50"
+                                        >
+                                          {savingDeadline ? '...' : '✓'}
+                                        </button>
+                                        <button
+                                          onClick={handleCancelDeadlineEdit}
+                                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-[11px] font-bold transition-colors"
+                                        >
+                                          ✗
+                                        </button>
                                       </div>
                                     ) : (
-                                      <span className="text-[11px] text-slate-500 italic">No deadline set</span>
+                                      <div className="flex items-center gap-3">
+                                        {(isF2F ? app.deadlineF2F : app.deadline) ? (
+                                          <div className="flex flex-col">
+                                            <span className="text-[11px] font-mono text-white">
+                                              {new Date(isF2F ? app.deadlineF2F : app.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            </span>
+                                            <span className="text-[10px] font-mono text-slate-400">
+                                              {new Date(isF2F ? app.deadlineF2F : app.deadline).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-[11px] text-slate-500 italic">No deadline set</span>
+                                        )}
+                                        <button
+                                          onClick={() => handleEditDeadline(app, isF2F)}
+                                          className="bg-accent-500 hover:bg-accent-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
+                                        >
+                                          {(isF2F ? app.deadlineF2F : app.deadline) ? 'Edit' : 'Set'}
+                                        </button>
+                                      </div>
                                     )}
-                                    <button
-                                      onClick={() => handleEditDeadline(app)}
-                                      className="bg-accent-500 hover:bg-accent-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
-                                    >
-                                      {app.deadline ? 'Edit' : 'Set'}
-                                    </button>
-                                  </div>
-                                )}
-                              </td>
-                              <td className="p-4">
-                                <div className="space-y-1">
-                                  {app.assignedJudges?.map(j => (
-                                    <div key={j._id} className="text-[10px] bg-white/5 px-1.5 py-0.5 rounded w-fit">{j.firstName}</div>
-                                  ))}
-                                  <button
-                                    onClick={() => openAssignModal(app)}
-                                    className="text-accent-400 hover:text-accent-300 font-bold block"
-                                  >
-                                    + Assign Panel
-                                  </button>
-                                </div>
-                              </td>
-                               <td className="p-4 text-center">
-                                {app.averageScore !== undefined && app.averageScore !== null ? (
-                                  <button
-                                    onClick={() => openEvaluationsModal(app)}
-                                    className="font-bold text-accent-400 hover:text-accent-300 hover:underline bg-accent-500/10 px-2.5 py-1 rounded border border-accent-500/20 font-mono transition-all"
-                                    title="Click to view detailed evaluations"
-                                  >
-                                    {app.averageScore?.toFixed(1)}
-                                  </button>
-                                ) : (
-                                  <span className="text-slate-500">-</span>
-                                )}
-                              </td>
-                              <td className="p-4">
-                                <Link to={`/dashboard/applications/${app._id}`} className="text-accent-400 hover:underline">View</Link>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                                  </td>
+                                  <td className="p-4">
+                                    <div className="space-y-1">
+                                      {(isF2F ? app.assignedJudgesF2F : app.assignedJudges)?.map(j => (
+                                        <div key={j._id} className="text-[10px] bg-white/5 px-1.5 py-0.5 rounded w-fit">{j.firstName}</div>
+                                      ))}
+                                      <button
+                                        onClick={() => openAssignModal(app, isF2F ? 'f2f' : 'initial')}
+                                        className="text-accent-400 hover:text-accent-300 font-bold block"
+                                      >
+                                        + Assign Panel
+                                      </button>
+                                    </div>
+                                  </td>
+                                  {isF2F ? (
+                                    <>
+                                      <td className="p-4 text-center font-mono font-bold text-slate-400">
+                                        {app.averageScore !== undefined && app.averageScore !== null ? app.averageScore.toFixed(1) : '-'}
+                                      </td>
+                                      <td className="p-4 text-center">
+                                        {app.averageScoreF2F !== undefined && app.averageScoreF2F !== null && app.evaluationCountF2F > 0 ? (
+                                          <button
+                                            onClick={() => openEvaluationsModal(app)}
+                                            className="font-bold text-accent-400 hover:text-accent-300 hover:underline bg-accent-500/10 px-2.5 py-1 rounded border border-accent-500/20 font-mono transition-all"
+                                            title="Click to view detailed evaluations"
+                                          >
+                                            {app.averageScoreF2F?.toFixed(1)}
+                                          </button>
+                                        ) : (
+                                          <span className="text-slate-500">-</span>
+                                        )}
+                                      </td>
+                                    </>
+                                  ) : (
+                                    <td className="p-4 text-center">
+                                      {app.averageScore !== undefined && app.averageScore !== null && app.evaluationCount > 0 ? (
+                                        <button
+                                          onClick={() => openEvaluationsModal(app)}
+                                          className="font-bold text-accent-400 hover:text-accent-300 hover:underline bg-accent-500/10 px-2.5 py-1 rounded border border-accent-500/20 font-mono transition-all"
+                                          title="Click to view detailed evaluations"
+                                        >
+                                          {app.averageScore?.toFixed(1)}
+                                        </button>
+                                      ) : (
+                                        <span className="text-slate-500">-</span>
+                                      )}
+                                    </td>
+                                  )}
+                                  <td className="p-4">
+                                    <Link to={`/dashboard/applications/${app._id}`} className="text-accent-400 hover:underline">View</Link>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
                     </div>
-                  </div>
-                )}
+                  );
+                })()}
 
                 {/* 3. APPLICATION MONITORING TAB */}
                 {activeTab === 'monitoring' && (
@@ -3119,14 +3216,24 @@ const AdminDashboard = () => {
                 {/* EVALUATION CRITERIA TAB */}
                 {activeTab === 'criteria' && (
                   <div className="space-y-8">
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
                         <h3 className="font-display font-bold text-white text-xl">Evaluation Criteria</h3>
                         <p className="text-slate-400 text-xs mt-1">Manage criteria sets and weight distributions for evaluation scorecards.</p>
                       </div>
-                      <button onClick={handleSeedCriteria} className="btn-primary text-xs">
-                        Seed Default Criteria
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <select
+                          className="bg-navy-900 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white"
+                          value={criteriaStageFilter}
+                          onChange={(e) => setCriteriaStageFilter(e.target.value)}
+                        >
+                          <option value="initial">Screening Stage (Initial)</option>
+                          <option value="f2f">Face-to-Face Stage (Viva)</option>
+                        </select>
+                        <button onClick={handleSeedCriteria} className="btn-primary text-xs">
+                          Seed Default Criteria
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -3229,7 +3336,7 @@ const AdminDashboard = () => {
                                 type="button"
                                 onClick={() => {
                                   setEditingCriteriaId(null);
-                                  setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, criteriaType: 'organizational', stage: 'initial', order: 0, isActive: true });
+                                  setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, criteriaType: 'organizational', stage: criteriaStageFilter, order: 0, isActive: true });
                                 }}
                                 className="btn-ghost text-xs"
                               >

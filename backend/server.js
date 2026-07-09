@@ -11,6 +11,7 @@ const errorHandler = require('./middleware/error.middleware');
 const logger = require('./utils/logger');
 const { seedDefaultAdmin } = require('./scripts/seedAdmin');
 const { seedCriteriaOnStartup } = require('./scripts/seedCriteria');
+const EvaluationCriteria = require('./models/EvaluationCriteria.model');
 
 // ─── App Initialization ────────────────────────────────────────────────────────
 const app = express();
@@ -24,6 +25,42 @@ connectDB().then(async () => {
   seedCriteriaOnStartup().catch((error) => {
     logger.error(`Criteria seeding skipped due to error: ${error.message}`);
   });
+
+  // Drop stale unique index that blocks multi-stage evaluations
+  try {
+    const mongoose = require('mongoose');
+    const col = mongoose.connection.collection('evaluations');
+    const indexes = await col.indexes();
+    const staleIndex = indexes.find(i => i.name === 'application_1_judge_1');
+    if (staleIndex) {
+      await col.dropIndex('application_1_judge_1');
+      logger.info('✅ Dropped stale index application_1_judge_1 on evaluations');
+    }
+  } catch (indexErr) {
+    if (indexErr.codeName !== 'IndexNotFound' && indexErr.codeName !== 'NamespaceNotFound') {
+      logger.error(`Stale index cleanup failed: ${indexErr.message}`);
+    }
+  }
+  
+  // Cleanup old criteria that don't have proper stage prefix
+  try {
+    const result = await EvaluationCriteria.updateMany(
+      { 
+        $or: [
+          { stage: { $exists: false } },
+          { stage: null },
+          { name: { $not: /^(Screening - |Viva - )/ } }
+        ]
+      },
+      { $set: { isActive: false } }
+    );
+    if (result.modifiedCount > 0) {
+      logger.info(`✅ Deactivated ${result.modifiedCount} old evaluation criteria`);
+    }
+  } catch (error) {
+    logger.error(`Old criteria cleanup failed: ${error.message}`);
+  }
+  
   // Start the daily reminder service
   const { startReminderScheduler } = require('./services/reminder.service');
   startReminderScheduler();

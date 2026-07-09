@@ -9,11 +9,11 @@ const { requireRole } = require('../middleware/role.middleware');
 const {
   createApplication, updateApplication, submitApplication,
   getMyApplications, getApplicationById, getAllApplications,
-  changeApplicationStatus, assignJudges, reviewEligibility,
+  changeApplicationStatus, assignJudges, assignJudgesF2F, reviewEligibility,
   getMonitoringOverview, getJudgeProgress, exportApplications,
   publishFinalists, publishWinners, generateCertificates,
   uploadDocuments, deleteDocument, deleteApplication, deleteApplicationByAdmin,
-  downloadDocument, uploadPaymentSlip, deletePaymentSlip, updateApplicationDeadline,
+  downloadDocument, uploadPaymentSlip, deletePaymentSlip, updateApplicationDeadline, updateApplicationDeadlineF2F,
 } = require('../controllers/application.controller');
 
 // ── Multer Config ──────────────────────────────────────────────────────────────
@@ -87,8 +87,10 @@ router.post('/publish-winners',  authenticate, requireRole('admin'), publishWinn
 router.post('/generate-certificates', authenticate, requireRole('admin'), generateCertificates);
 router.patch('/:id/status',       authenticate, requireRole('admin'), changeApplicationStatus);
 router.patch('/:id/assign-judges', authenticate, requireRole('admin'), assignJudges);
+router.patch('/:id/assign-judges-f2f', authenticate, requireRole('admin'), assignJudgesF2F);
 router.patch('/:id/review-eligibility', authenticate, requireRole('admin'), reviewEligibility);
 router.patch('/:id/deadline',     authenticate, requireRole('admin'), updateApplicationDeadline);
+router.patch('/:id/deadline-f2f', authenticate, requireRole('admin'), updateApplicationDeadlineF2F);
 router.delete('/admin/:id',       authenticate, requireRole('admin'), deleteApplicationByAdmin);
 
 // Shared (admin/judge/candidate own)

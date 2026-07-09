@@ -43,6 +43,10 @@ const applicationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     }],
+    assignedJudgesF2F: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    }],
 
     // Status & Workflow
     status: {
@@ -224,10 +228,13 @@ const applicationSchema = new mongoose.Schema(
 
     // Per-application deadline
     deadline: { type: Date },
+    deadlineF2F: { type: Date },
 
     // Scores (aggregated from evaluations)
     averageScore: { type: Number, default: 0 },
     evaluationCount: { type: Number, default: 0 },
+    averageScoreF2F: { type: Number, default: 0 },
+    evaluationCountF2F: { type: Number, default: 0 },
 
     // Awards & publishing
     publishedAsFinalist: { type: Boolean, default: false },

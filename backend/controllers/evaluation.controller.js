@@ -13,8 +13,15 @@ const logger = require('../utils/logger');
 const getAssignedApplications = async (req, res, next) => {
   try {
     const { status, stage = 'initial' } = req.query;
-    const filter = { assignedJudges: req.user._id };
-    if (status) filter.status = status;
+    const filter = {};
+    if (stage === 'f2f') {
+      filter.assignedJudgesF2F = req.user._id;
+      filter.status = 'f2f_stage';
+    } else {
+      filter.assignedJudges = req.user._id;
+      filter.status = { $ne: 'f2f_stage' };
+      if (status) filter.status = status;
+    }
 
     const applications = await Application.find(filter)
       .populate('category', 'name slug icon color')
@@ -38,7 +45,15 @@ const getOrCreateEvaluation = async (req, res, next) => {
     const { applicationId } = req.params;
     const stage = req.query.stage || 'initial';
 
-    const application = await Application.findOne({ _id: applicationId, assignedJudges: req.user._id })
+    const checkQuery = { _id: applicationId };
+    if (stage === 'f2f') {
+      checkQuery.assignedJudgesF2F = req.user._id;
+      checkQuery.status = 'f2f_stage';
+    } else {
+      checkQuery.assignedJudges = req.user._id;
+    }
+
+    const application = await Application.findOne(checkQuery)
       .populate('category', 'name evaluationCriteria')
       .populate('candidate', 'firstName lastName organization');
 
@@ -56,17 +71,12 @@ const getOrCreateEvaluation = async (req, res, next) => {
     const isIndividual = categoryDoc && INDIVIDUAL_CATEGORIES.includes(categoryDoc.name);
     const criteriaType = isIndividual ? 'individual' : 'organizational';
 
-    // Get criteria matching the category type
-    // For organizational: also match criteria without criteriaType set (backward compat)
+    // Get criteria matching the category type and stage
     const criteriaFilter = { isActive: true, stage: stage };
     if (criteriaType === 'individual') {
       criteriaFilter.criteriaType = 'individual';
     } else {
-      criteriaFilter.$or = [
-        { criteriaType: 'organizational', stage: stage },
-        { criteriaType: { $exists: false }, stage: stage },
-        { criteriaType: null, stage: stage }
-      ];
+      criteriaFilter.criteriaType = 'organizational';
     }
     const criteria = await EvaluationCriteria.find(criteriaFilter).sort({ order: 1 });
 
@@ -81,11 +91,20 @@ const saveEvaluation = async (req, res, next) => {
     const { scores, overallComments, strengths, weaknesses, recommendation, confidentialityAccepted, submit } = req.body;
     const stage = req.query.stage || req.body.stage || 'initial';
 
-    const application = await Application.findOne({ _id: applicationId, assignedJudges: req.user._id });
+    const checkQuery = { _id: applicationId };
+    if (stage === 'f2f') {
+      checkQuery.assignedJudgesF2F = req.user._id;
+      checkQuery.status = 'f2f_stage';
+    } else {
+      checkQuery.assignedJudges = req.user._id;
+    }
+
+    const application = await Application.findOne(checkQuery);
     if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not assigned to you.' });
 
     // Check if deadline has passed
-    if (application.deadline && new Date(application.deadline) < new Date()) {
+    const activeDeadline = stage === 'f2f' ? application.deadlineF2F : application.deadline;
+    if (activeDeadline && new Date(activeDeadline) < new Date()) {
       return errorResponse(res, { statusCode: 403, message: 'The evaluation deadline for this application has passed. Evaluations can no longer be submitted.' });
     }
 
@@ -122,8 +141,13 @@ const saveEvaluation = async (req, res, next) => {
       // Update application's average score
       const allEvals = await Evaluation.find({ application: applicationId, isSubmitted: true, stage });
       const totalWeighted = allEvals.reduce((s, e) => s + (e.weightedScore || 0), 0);
-      application.averageScore = allEvals.length > 0 ? totalWeighted / allEvals.length : 0;
-      application.evaluationCount = allEvals.length;
+      if (stage === 'f2f') {
+        application.averageScoreF2F = allEvals.length > 0 ? totalWeighted / allEvals.length : 0;
+        application.evaluationCountF2F = allEvals.length;
+      } else {
+        application.averageScore = allEvals.length > 0 ? totalWeighted / allEvals.length : 0;
+        application.evaluationCount = allEvals.length;
+      }
 
       // Auto-allocate to initial stage on first evaluation submission
       if (stage === 'initial' && allEvals.length === 1) {
@@ -177,47 +201,80 @@ const getEvaluationsByApplication = async (req, res, next) => {
 const getJudgeDashboardStats = async (req, res, next) => {
   try {
     const judgeId = req.user._id;
-    const { stage = 'initial' } = req.query;
 
-    // Fetch all assigned applications
-    const applications = await Application.find({ assignedJudges: judgeId })
+    // Fetch initial stage assignments & evaluations
+    const initialApps = await Application.find({ assignedJudges: judgeId, status: { $ne: 'f2f_stage' } })
       .populate('category', 'name')
-      .sort({ updatedAt: -1 })
-      .select('projectTitle category status updatedAt submittedAt');
+      .select('projectTitle category status updatedAt submittedAt deadline');
+    const initialEvals = await Evaluation.find({ judge: judgeId, stage: 'initial' });
 
-    // Fetch all evaluations by this judge
-    const evaluations = await Evaluation.find({ judge: judgeId, stage })
-      .populate('application', 'projectTitle')
-      .sort({ updatedAt: -1 });
+    const initialTotal = initialApps.length;
+    const initialCompleted = initialEvals.filter(e => e.isSubmitted).length;
+    const initialPending = initialTotal - initialCompleted;
+    const initialDrafted = initialEvals.filter(e => e.isDraft && !e.isSubmitted).length;
+    
+    const initialSubmittedEvals = initialEvals.filter(e => e.isSubmitted && e.weightedScore > 0);
+    const initialAvgScore = initialSubmittedEvals.length > 0
+      ? initialSubmittedEvals.reduce((s, e) => s + (e.weightedScore || 0), 0) / initialSubmittedEvals.length
+      : 0;
 
-    const total = applications.length;
-    const completed = evaluations.filter(e => e.isSubmitted).length;
-    const drafted = evaluations.filter(e => e.isDraft && !e.isSubmitted).length;
-    const pending = total - completed;
+    // Fetch f2f stage assignments & evaluations
+    const f2fApps = await Application.find({ assignedJudgesF2F: judgeId, status: 'f2f_stage' })
+      .populate('category', 'name')
+      .select('projectTitle category status updatedAt submittedAt deadlineF2F');
+    const f2fEvals = await Evaluation.find({ judge: judgeId, stage: 'f2f' });
 
-    const submittedEvals = evaluations.filter(e => e.isSubmitted && e.weightedScore > 0);
-    const avgScore =
-      submittedEvals.length > 0
-        ? submittedEvals.reduce((s, e) => s + (e.weightedScore || 0), 0) / submittedEvals.length
-        : 0;
+    const f2fTotal = f2fApps.length;
+    const f2fCompleted = f2fEvals.filter(e => e.isSubmitted).length;
+    const f2fPending = f2fTotal - f2fCompleted;
+    const f2fDrafted = f2fEvals.filter(e => e.isDraft && !e.isSubmitted).length;
 
-    // Recent activity: last 5 touched evaluations
-    const recentActivity = evaluations.slice(0, 5).map(e => ({
-      applicationId: e.application?._id,
-      projectTitle: e.application?.projectTitle,
-      status: e.isSubmitted ? 'submitted' : e.isDraft ? 'draft' : 'not_started',
-      score: e.weightedScore,
-      updatedAt: e.updatedAt,
-    }));
+    const f2fSubmittedEvals = f2fEvals.filter(e => e.isSubmitted && e.weightedScore > 0);
+    const f2fAvgScore = f2fSubmittedEvals.length > 0
+      ? f2fSubmittedEvals.reduce((s, e) => s + (e.weightedScore || 0), 0) / f2fSubmittedEvals.length
+      : 0;
 
-    // Assigned categories (unique)
+    // Deadlines
+    // Find closest upcoming deadline for initial stage
+    const initialUpcoming = initialApps
+      .map(a => a.deadline)
+      .filter(d => d && new Date(d) > new Date())
+      .sort((a, b) => new Date(a) - new Date(b))[0] || null;
+
+    // Find closest upcoming deadline for f2f stage
+    const f2fUpcoming = f2fApps
+      .map(a => a.deadlineF2F)
+      .filter(d => d && new Date(d) > new Date())
+      .sort((a, b) => new Date(a) - new Date(b))[0] || null;
+
+    // Assigned categories (unique across both stages)
+    const allApps = [...initialApps, ...f2fApps];
     const categories = [...new Map(
-      applications.map(a => [a.category?._id?.toString(), a.category?.name])
+      allApps.map(a => [a.category?._id?.toString(), a.category?.name])
     ).entries()].map(([, name]) => name).filter(Boolean);
+
+    // Recent activity combining both
+    const combinedEvals = [...initialEvals, ...f2fEvals]
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
+    const recentActivity = await Promise.all(combinedEvals.slice(0, 5).map(async e => {
+      const app = await Application.findById(e.application).select('projectTitle');
+      return {
+        applicationId: e.application,
+        projectTitle: app?.projectTitle || 'Application',
+        status: e.isSubmitted ? 'submitted' : e.isDraft ? 'draft' : 'not_started',
+        score: e.weightedScore,
+        stage: e.stage,
+        updatedAt: e.updatedAt,
+      };
+    }));
 
     return successResponse(res, {
       data: {
-        stats: { total, completed, pending, drafted, avgScore },
+        stats: {
+          initial: { total: initialTotal, completed: initialCompleted, pending: initialPending, drafted: initialDrafted, avgScore: initialAvgScore, deadline: initialUpcoming },
+          f2f: { total: f2fTotal, completed: f2fCompleted, pending: f2fPending, drafted: f2fDrafted, avgScore: f2fAvgScore, deadline: f2fUpcoming }
+        },
         recentActivity,
         categories,
       },
@@ -257,9 +314,10 @@ const getEvaluationTracker = async (req, res, next) => {
     }
 
     const apps = await Application.find(appFilter)
-      .populate('candidate', 'firstName lastName email organization')
+      .populate('candidate', 'firstName lastName email organization phone')
       .populate('category', 'name slug icon')
-      .populate('assignedJudges', 'firstName lastName email');
+      .populate('assignedJudges', 'firstName lastName email')
+      .populate('assignedJudgesF2F', 'firstName lastName email');
 
     const appIds = apps.map(a => a._id);
 
@@ -287,7 +345,9 @@ const getEvaluationTracker = async (req, res, next) => {
         averageScore = totalSum / completedEvals.length;
       }
 
-      const allJudgeResults = app.assignedJudges.map(judge => {
+      const activeJudges = stage === 'f2f' ? (app.assignedJudgesF2F || []) : (app.assignedJudges || []);
+
+      const allJudgeResults = activeJudges.map(judge => {
         const judgeEval = appEvals.find(e => e.judge?._id?.toString() === judge._id.toString());
         return {
           judgeId: judge._id,
@@ -302,7 +362,7 @@ const getEvaluationTracker = async (req, res, next) => {
       });
 
       const completedCount = completedEvals.length;
-      const totalAssigned = app.assignedJudges.length;
+      const totalAssigned = activeJudges.length;
       let overallStatus = 'Pending';
       if (totalAssigned > 0) {
         if (completedCount === totalAssigned) {
@@ -321,9 +381,11 @@ const getEvaluationTracker = async (req, res, next) => {
         subCategory: app.category?.name || '',
         category: app.category,
         candidate: app.candidate,
-        assignedJudges: app.assignedJudges,
+        assignedJudges: activeJudges,
+        assignedJudgesF2F: app.assignedJudgesF2F || [],
         completedJudges: completedCount,
         averageScore: averageScore,
+        round1Score: app.averageScore || 0,
         allJudgeResults: allJudgeResults,
         overallStatus: overallStatus,
         status: app.status

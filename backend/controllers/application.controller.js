@@ -287,7 +287,8 @@ const getApplicationById = async (req, res, next) => {
     const application = await Application.findOne(filter)
       .populate('candidate', 'firstName lastName email organization')
       .populate('category', 'name slug icon color description')
-      .populate('assignedJudges', 'firstName lastName email');
+      .populate('assignedJudges', 'firstName lastName email')
+      .populate('assignedJudgesF2F', 'firstName lastName email');
 
     if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
 
@@ -318,6 +319,7 @@ const getAllApplications = async (req, res, next) => {
         .populate('candidate', 'firstName lastName email phone organization')
         .populate('category', 'name slug icon')
         .populate('assignedJudges', 'firstName lastName')
+        .populate('assignedJudgesF2F', 'firstName lastName')
         .sort(sort)
         .skip(skip)
         .limit(parseInt(limit)),
@@ -409,6 +411,40 @@ const assignJudges = async (req, res, next) => {
 
     const updated = await Application.findById(id).populate('assignedJudges', 'firstName lastName email');
     return successResponse(res, { message: 'Judges assigned successfully.', data: { application: updated } });
+  } catch (error) { next(error); }
+};
+
+const assignJudgesF2F = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { judgeIds } = req.body;
+
+    if (!judgeIds || !Array.isArray(judgeIds)) {
+      return errorResponse(res, { statusCode: 400, message: 'judgeIds array is required.' });
+    }
+
+    const application = await Application.findById(id).populate('candidate', 'firstName email');
+    if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+
+    application.assignedJudgesF2F = judgeIds;
+    await application.save();
+
+    // Notify each judge
+    for (const judgeId of judgeIds) {
+      await createNotification({
+        recipient: judgeId,
+        type: 'judge_assigned',
+        title: 'New F2F Application Assigned',
+        message: `You have been assigned to evaluate "${application.projectTitle}" for Face-to-Face Stage.`,
+        link: `/judge-dashboard/evaluate/${application._id}?stage=f2f`,
+        relatedApplication: application._id,
+      });
+    }
+
+    await createAuditLog({ action: 'judge_assigned_f2f', performedBy: req.user._id, targetId: application._id, description: `Assigned ${judgeIds.length} Stage 2 judge(s)`, req });
+
+    const updated = await Application.findById(id).populate('assignedJudgesF2F', 'firstName lastName email');
+    return successResponse(res, { message: 'Stage 2 judges assigned successfully.', data: { application: updated } });
   } catch (error) { next(error); }
 };
 
@@ -726,6 +762,33 @@ const updateApplicationDeadline = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+const updateApplicationDeadlineF2F = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { deadline } = req.body;
+
+    if (!deadline) {
+      return errorResponse(res, { statusCode: 400, message: 'Deadline is required.' });
+    }
+
+    const application = await Application.findById(id);
+    if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+
+    application.deadlineF2F = new Date(deadline);
+    await application.save();
+
+    await createAuditLog({
+      action: 'deadline_updated_f2f',
+      performedBy: req.user._id,
+      targetId: application._id,
+      description: `Stage 2 deadline updated to: ${application.deadlineF2F.toISOString()}`,
+      req
+    });
+
+    return successResponse(res, { message: 'Stage 2 deadline updated successfully.', data: { application } });
+  } catch (error) { next(error); }
+};
+
 // ── Download Document (judges/admin) ───────────────────────────────────────────
 const downloadDocument = async (req, res, next) => {
   try {
@@ -748,9 +811,9 @@ const downloadDocument = async (req, res, next) => {
 module.exports = {
   createApplication, updateApplication, submitApplication,
   getMyApplications, getApplicationById, getAllApplications,
-  changeApplicationStatus, assignJudges, reviewEligibility,
+  changeApplicationStatus, assignJudges, assignJudgesF2F, reviewEligibility,
   getMonitoringOverview, getJudgeProgress, exportApplications,
   publishFinalists, publishWinners, generateCertificates,
   uploadDocuments, deleteDocument, deleteApplication, deleteApplicationByAdmin,
-  downloadDocument, uploadPaymentSlip, deletePaymentSlip, updateApplicationDeadline,
+  downloadDocument, uploadPaymentSlip, deletePaymentSlip, updateApplicationDeadline, updateApplicationDeadlineF2F,
 };
