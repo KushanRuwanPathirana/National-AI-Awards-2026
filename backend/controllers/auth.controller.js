@@ -393,6 +393,44 @@ const getMe = async (req, res) => {
   });
 };
 
+// @desc    Update current user's profile
+// @route   PATCH /api/auth/profile
+// @access  Private
+const updateProfile = async (req, res, next) => {
+  try {
+    const allowedFields = ['firstName', 'lastName', 'phone', 'organization', 'designation'];
+    const updates = {};
+
+    allowedFields.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+        updates[field] = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
+      }
+    });
+
+    if (!updates.firstName || !updates.lastName) {
+      return errorResponse(res, { statusCode: 400, message: 'First name and last name are required.' });
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id, updates, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!user) {
+      return errorResponse(res, { statusCode: 404, message: 'User not found.' });
+    }
+
+    logger.info(`Profile updated for: ${user.email}`);
+
+    return successResponse(res, {
+      message: 'Profile updated successfully.',
+      data: { user },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 // @desc    Logout user / clear cookie
 // @route   POST /api/auth/logout
 // @access  Private
@@ -446,4 +484,4 @@ const updateProfileImage = async (req, res, next) => {
   }
 };
 
-module.exports = { register, login, getMe, logout, verifyOTP, resendOTP, forgotPassword, resetPassword, changePassword, updateProfileImage };
+module.exports = { register, login, getMe, logout, verifyOTP, resendOTP, forgotPassword, resetPassword, changePassword, updateProfile, updateProfileImage };

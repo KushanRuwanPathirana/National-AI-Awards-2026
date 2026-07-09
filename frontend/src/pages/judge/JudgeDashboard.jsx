@@ -61,6 +61,14 @@ const JudgeDashboard = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading]           = useState(true);
   const [statsLoading, setStatsLoading] = useState(true);
+  const [profileForm, setProfileForm] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    organization: '',
+    designation: '',
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
 
   /* evaluations filter / search */
   const [search, setSearch] = useState('');
@@ -116,6 +124,17 @@ const JudgeDashboard = () => {
     fetchStats();
     fetchNotifications();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setProfileForm({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      phone: user.phone || '',
+      organization: user.organization || '',
+      designation: user.designation || '',
+    });
+  }, [user]);
 
   /* ── computed ──────────────────────────────────────────────────────────── */
   const pending   = useMemo(() => applications.filter(a => !a.myEvaluation || !a.myEvaluation.isSubmitted), [applications]);
@@ -180,6 +199,24 @@ const JudgeDashboard = () => {
       toast.error(err.response?.data?.message || 'Failed to upload profile picture.');
     } finally {
       setImageUploading(false);
+    }
+  };
+
+  const handleProfileFormChange = (field, value) => {
+    setProfileForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setProfileSaving(true);
+      const { data } = await api.patch('/auth/profile', profileForm);
+      updateUserLocal(data.data.user);
+      toast.success('Profile updated successfully.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update profile.');
+    } finally {
+      setProfileSaving(false);
     }
   };
 
@@ -730,23 +767,36 @@ const JudgeDashboard = () => {
                     </div>
                   </div>
 
-                  <div className="grid sm:grid-cols-2 gap-5">
-                    {[
-                      { label: 'First Name',    value: user?.firstName },
-                      { label: 'Last Name',     value: user?.lastName },
-                      { label: 'Email Address', value: user?.email },
-                      { label: 'Phone Number',  value: user?.phone || 'Not provided' },
-                      { label: 'Organisation',  value: user?.organization || 'Not provided' },
-                      { label: 'Designation',   value: user?.designation || 'Not provided' },
-                    ].map(({ label, value }) => (
-                      <div key={label}>
-                        <span className="block text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1.5">{label}</span>
+                  <form onSubmit={handleProfileSubmit} className="space-y-5">
+                    <div className="grid sm:grid-cols-2 gap-5">
+                      <div>
+                        <span className="block text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1.5">Email Address</span>
                         <p className="text-white text-sm font-medium bg-white/4 px-4 py-3 rounded-xl border border-white/6 truncate">
-                          {value}
+                          {user?.email}
                         </p>
                       </div>
-                    ))}
-                  </div>
+                      {[
+                        { label: 'First Name', field: 'firstName', required: true },
+                        { label: 'Last Name', field: 'lastName', required: true },
+                        { label: 'Phone Number', field: 'phone' },
+                        { label: 'Organisation', field: 'organization' },
+                        { label: 'Designation', field: 'designation' },
+                      ].map((field) => (
+                        <div key={field.field}>
+                          <label className="block text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1.5">{field.label}</label>
+                          <input
+                            className="input-field"
+                            value={profileForm[field.field]}
+                            onChange={(e) => handleProfileFormChange(field.field, e.target.value)}
+                            required={field.required}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                    <button type="submit" disabled={profileSaving} className="btn-primary text-xs disabled:cursor-not-allowed disabled:opacity-60">
+                      {profileSaving ? 'Saving...' : 'Save Profile'}
+                    </button>
+                  </form>
                 </div>
               )}
 

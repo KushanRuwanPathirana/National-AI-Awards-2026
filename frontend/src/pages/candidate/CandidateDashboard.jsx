@@ -166,6 +166,14 @@ const CandidateDashboard = () => {
   const [notifLoading, setNotifLoading] = useState(false);
   const [openFAQs, setOpenFAQs] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    organization: '',
+    designation: '',
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
   const applicationDeadlinePassed = hasApplicationDeadlinePassed();
 
   // Change Password state
@@ -211,6 +219,17 @@ const CandidateDashboard = () => {
   useEffect(() => {
     fetchApps();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+    setProfileForm({
+      firstName: user.firstName || '',
+      lastName: user.lastName || '',
+      phone: user.phone || '',
+      organization: user.organization || '',
+      designation: user.designation || '',
+    });
+  }, [user]);
 
   useEffect(() => {
     const tab = searchParams.get('tab');
@@ -270,6 +289,24 @@ const CandidateDashboard = () => {
       toast.error(err.response?.data?.message || 'Failed to upload profile picture.');
     } finally {
       setImageUploading(false);
+    }
+  };
+
+  const handleProfileFormChange = (field, value) => {
+    setProfileForm((current) => ({ ...current, [field]: value }));
+  };
+
+  const handleProfileSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      setProfileSaving(true);
+      const { data } = await api.patch('/auth/profile', profileForm);
+      updateUserLocal(data.data.user);
+      toast.success('Profile updated successfully.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update profile.');
+    } finally {
+      setProfileSaving(false);
     }
   };
 
@@ -942,24 +979,42 @@ const CandidateDashboard = () => {
                     </label>
                   </div>
                 </div>
-                <div className="grid sm:grid-cols-2 gap-5">
-                  {[
-                    { label: 'Registration Number',   value: user?.registrationNumber },
-                    { label: 'First Name',             value: user?.firstName },
-                    { label: 'Last Name',              value: user?.lastName },
-                    { label: 'Email Address',          value: user?.email },
-                    { label: 'Phone Number',           value: user?.phone },
-                    { label: 'Organisation / Institution', value: user?.organization },
-                    { label: 'Designation',            value: user?.designation },
-                  ].map(f => (
-                    <div key={f.label}>
-                      <span className="block text-xs text-slate-500 mb-1.5 font-medium">{f.label}</span>
+                <form onSubmit={handleProfileSubmit} className="space-y-5">
+                  <div className="grid sm:grid-cols-2 gap-5">
+                    <div>
+                      <span className="block text-xs text-slate-500 mb-1.5 font-medium">Registration Number</span>
                       <p className="text-white text-sm font-medium bg-white/5 p-3 rounded-xl border border-white/5">
-                        {f.value || <span className="text-slate-600 italic">Not provided</span>}
+                        {user?.registrationNumber || <span className="text-slate-600 italic">Not provided</span>}
                       </p>
                     </div>
-                  ))}
-                </div>
+                    <div>
+                      <span className="block text-xs text-slate-500 mb-1.5 font-medium">Email Address</span>
+                      <p className="text-white text-sm font-medium bg-white/5 p-3 rounded-xl border border-white/5">
+                        {user?.email}
+                      </p>
+                    </div>
+                    {[
+                      { label: 'First Name', field: 'firstName', required: true },
+                      { label: 'Last Name', field: 'lastName', required: true },
+                      { label: 'Phone Number', field: 'phone' },
+                      { label: 'Organisation / Institution', field: 'organization' },
+                      { label: 'Designation', field: 'designation' },
+                    ].map((field) => (
+                      <div key={field.field}>
+                        <label className="block text-xs text-slate-500 mb-1.5 font-medium">{field.label}</label>
+                        <input
+                          className="input-field"
+                          value={profileForm[field.field]}
+                          onChange={(e) => handleProfileFormChange(field.field, e.target.value)}
+                          required={field.required}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <button type="submit" disabled={profileSaving} className="btn-primary text-xs disabled:cursor-not-allowed disabled:opacity-60">
+                    {profileSaving ? 'Saving...' : 'Save Profile'}
+                  </button>
+                </form>
               </div>
             )}
 
