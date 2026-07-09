@@ -25,10 +25,13 @@ const EvaluationForm = () => {
 
   const { register, handleSubmit, setValue, watch, formState: { isSubmitting } } = useForm();
 
+  const searchParams = new URLSearchParams(window.location.search);
+  const stage = searchParams.get('stage') || 'initial';
+
   useEffect(() => {
     const fetchEvaluation = async () => {
       try {
-        const { data } = await evaluationService.getOrCreateEvaluation(id);
+        const { data } = await evaluationService.getOrCreateEvaluation(id, { stage });
         setApp(data.data.application);
         setCriteria(data.data.criteria);
         setEvaluation(data.data.evaluation);
@@ -128,7 +131,7 @@ const EvaluationForm = () => {
         submit, // boolean to finalize
       };
 
-      await evaluationService.saveEvaluation(id, payload);
+      await evaluationService.saveEvaluation(id, payload, { stage });
       toast.success(submit ? 'Evaluation submitted successfully!' : 'Evaluation saved as draft.');
       navigate('/judge-dashboard');
     } catch (err) {

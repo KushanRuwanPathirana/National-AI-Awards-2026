@@ -53,6 +53,7 @@ const JudgeDashboard = () => {
   const { user, logout, updateUserLocal } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [selectedStage, setSelectedStage] = useState('initial');
 
   /* data */
   const [imageUploading, setImageUploading] = useState(false);
@@ -91,7 +92,7 @@ const JudgeDashboard = () => {
   const fetchAll = async () => {
     try {
       setLoading(true);
-      const { data } = await evaluationService.getAssignedApplications();
+      const { data } = await evaluationService.getAssignedApplications({ stage: selectedStage });
       setApplications(data.data.applications || []);
     } catch {
       toast.error('Failed to load assigned applications.');
@@ -103,7 +104,7 @@ const JudgeDashboard = () => {
   const fetchStats = async () => {
     try {
       setStatsLoading(true);
-      const { data } = await evaluationService.getJudgeStats();
+      const { data } = await evaluationService.getJudgeStats({ stage: selectedStage });
       setStats(data.data);
     } catch {
       /* stats are nice-to-have; silently degrade */
@@ -120,10 +121,13 @@ const JudgeDashboard = () => {
   };
 
   useEffect(() => {
-    fetchAll();
-    fetchStats();
     fetchNotifications();
   }, []);
+
+  useEffect(() => {
+    fetchAll();
+    fetchStats();
+  }, [selectedStage]);
 
   useEffect(() => {
     if (!user) return;
@@ -562,6 +566,18 @@ const JudgeDashboard = () => {
                     className="rounded-2xl border border-white/8 p-4 flex flex-col sm:flex-row gap-3"
                     style={{ background: 'rgba(255,255,255,0.03)', backdropFilter: 'blur(16px)' }}
                   >
+                    {/* Stage Selection */}
+                    <div className="flex-shrink-0">
+                      <select
+                        className="bg-navy-900 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white"
+                        value={selectedStage}
+                        onChange={(e) => setSelectedStage(e.target.value)}
+                      >
+                        <option value="initial">Initial Stage</option>
+                        <option value="f2f">Face-to-Face Stage</option>
+                      </select>
+                    </div>
+
                     {/* Search */}
                     <div className="relative flex-1">
                       <RiSearchLine className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500 text-sm" />
@@ -688,7 +704,7 @@ const JudgeDashboard = () => {
                               {/* Actions */}
                               <div className="flex items-center gap-2">
                                 <Link
-                                  to={`/judge-dashboard/evaluate/${app._id}`}
+                                  to={`/judge-dashboard/evaluate/${app._id}?stage=${selectedStage}`}
                                   className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
                                     isSubmitted
                                       ? 'bg-white/5 border border-white/10 text-slate-300 hover:border-accent-500/40 hover:text-white'

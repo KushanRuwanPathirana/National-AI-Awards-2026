@@ -75,7 +75,7 @@ const applicationSchema = new mongoose.Schema(
     sectorIndustry: { type: String, trim: true, maxlength: [150] },
     organisationSize: {
       type: String,
-      enum: ['Startup <4 yrs', 'SME', 'Large Enterprise', 'Government', 'Academic', ''],
+      enum: ['Univercity student', 'Startup', 'Coparate', 'Gov Institute', 'Acadamic', ''],
       default: '',
     },
     primaryContactName: { type: String, trim: true, maxlength: [150] },
@@ -253,7 +253,8 @@ applicationSchema.virtual('statusLabel').get(function () {
     under_review: 'Under Review',
     eligible:     'Eligible',
     ineligible:   'Ineligible',
-    shortlisted:  'Shortlisted',
+    initial_stage: 'Initial Stage',
+    f2f_stage:    'Face-to-Face Stage',
     finalist:     'Finalist',
     winner:       'Winner',
     runner_up:    'Runner-up',

@@ -746,11 +746,11 @@ const CandidateDashboard = () => {
                     <div className="mb-5 p-4 rounded-xl bg-white/3 border border-white/8">
                       <p className="text-slate-500 text-[11px] font-semibold uppercase tracking-wider mb-3">Review Pipeline</p>
                       <div className="flex flex-wrap gap-2">
-                        {['submitted', 'under_review', 'eligible', 'shortlisted', 'finalist', 'winner'].map((s, i) => (
+                        {['submitted', 'under_review', 'eligible', 'initial_stage', 'f2f_stage', 'finalist', 'winner'].map((s, i) => (
                           <div key={s} className="flex items-center gap-1.5">
                             <div className="w-2 h-2 rounded-full bg-accent-500/60" />
                             <span className="text-slate-400 text-[10px] capitalize">{s.replace('_', ' ')}</span>
-                            {i < 5 && <RiArrowRightLine size={10} className="text-slate-700" />}
+                            {i < 6 && <RiArrowRightLine size={10} className="text-slate-700" />}
                           </div>
                         ))}
                       </div>

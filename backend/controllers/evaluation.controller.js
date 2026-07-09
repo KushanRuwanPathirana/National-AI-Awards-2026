@@ -1,3 +1,5 @@
+const mongoose = require('mongoose');
+const { MAIN_CATEGORIES_MAP } = require('../config/constants');
 const Evaluation = require('../models/Evaluation.model');
 const Application = require('../models/Application.model');
 const EvaluationCriteria = require('../models/EvaluationCriteria.model');
@@ -10,7 +12,7 @@ const logger = require('../utils/logger');
 // ── Judge: Get Assigned Applications ──────────────────────────────────────────
 const getAssignedApplications = async (req, res, next) => {
   try {
-    const { status } = req.query;
+    const { status, stage = 'initial' } = req.query;
     const filter = { assignedJudges: req.user._id };
     if (status) filter.status = status;
 
@@ -21,7 +23,8 @@ const getAssignedApplications = async (req, res, next) => {
 
     // Attach evaluation status for each application
     const withEvalStatus = await Promise.all(applications.map(async (app) => {
-      const eval_ = await Evaluation.findOne({ application: app._id, judge: req.user._id }).select('isSubmitted isDraft totalScore submittedAt');
+      const eval_ = await Evaluation.findOne({ application: app._id, judge: req.user._id, stage })
+        .select('isSubmitted isDraft totalScore submittedAt weightedScore');
       return { ...app.toJSON(), myEvaluation: eval_ || null };
     }));
 
@@ -33,6 +36,7 @@ const getAssignedApplications = async (req, res, next) => {
 const getOrCreateEvaluation = async (req, res, next) => {
   try {
     const { applicationId } = req.params;
+    const stage = req.query.stage || 'initial';
 
     const application = await Application.findOne({ _id: applicationId, assignedJudges: req.user._id })
       .populate('category', 'name evaluationCriteria')
@@ -40,11 +44,11 @@ const getOrCreateEvaluation = async (req, res, next) => {
 
     if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found or not assigned to you.' });
 
-    let evaluation = await Evaluation.findOne({ application: applicationId, judge: req.user._id })
+    let evaluation = await Evaluation.findOne({ application: applicationId, judge: req.user._id, stage })
       .populate('scores.criteria');
 
     if (!evaluation) {
-      evaluation = await Evaluation.create({ application: applicationId, judge: req.user._id });
+      evaluation = await Evaluation.create({ application: applicationId, judge: req.user._id, stage });
     }
 
     // Determine if this is an individual category
@@ -71,12 +75,13 @@ const saveEvaluation = async (req, res, next) => {
   try {
     const { applicationId } = req.params;
     const { scores, overallComments, strengths, weaknesses, recommendation, confidentialityAccepted, submit } = req.body;
+    const stage = req.query.stage || req.body.stage || 'initial';
 
     const application = await Application.findOne({ _id: applicationId, assignedJudges: req.user._id });
     if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not assigned to you.' });
 
-    let evaluation = await Evaluation.findOne({ application: applicationId, judge: req.user._id });
-    if (!evaluation) evaluation = new Evaluation({ application: applicationId, judge: req.user._id });
+    let evaluation = await Evaluation.findOne({ application: applicationId, judge: req.user._id, stage });
+    if (!evaluation) evaluation = new Evaluation({ application: applicationId, judge: req.user._id, stage });
 
     if (evaluation.isSubmitted) {
       return errorResponse(res, { statusCode: 400, message: 'Evaluation already submitted and cannot be modified.' });
@@ -106,10 +111,22 @@ const saveEvaluation = async (req, res, next) => {
       await evaluation.save();
 
       // Update application's average score
-      const allEvals = await Evaluation.find({ application: applicationId, isSubmitted: true });
+      const allEvals = await Evaluation.find({ application: applicationId, isSubmitted: true, stage });
       const totalWeighted = allEvals.reduce((s, e) => s + (e.weightedScore || 0), 0);
       application.averageScore = allEvals.length > 0 ? totalWeighted / allEvals.length : 0;
       application.evaluationCount = allEvals.length;
+
+      // Auto-allocate to initial stage on first evaluation submission
+      if (stage === 'initial' && allEvals.length === 1) {
+        application.status = 'initial_stage';
+        application.statusHistory.push({
+          status: 'initial_stage',
+          changedBy: req.user._id,
+          note: 'Auto-allocated to Initial Stage on first evaluation submission.',
+          changedAt: new Date(),
+        });
+      }
+
       await application.save({ validateBeforeSave: false });
 
       // Notify admin
@@ -151,6 +168,7 @@ const getEvaluationsByApplication = async (req, res, next) => {
 const getJudgeDashboardStats = async (req, res, next) => {
   try {
     const judgeId = req.user._id;
+    const { stage = 'initial' } = req.query;
 
     // Fetch all assigned applications
     const applications = await Application.find({ assignedJudges: judgeId })
@@ -159,7 +177,7 @@ const getJudgeDashboardStats = async (req, res, next) => {
       .select('projectTitle category status updatedAt submittedAt');
 
     // Fetch all evaluations by this judge
-    const evaluations = await Evaluation.find({ judge: judgeId })
+    const evaluations = await Evaluation.find({ judge: judgeId, stage })
       .populate('application', 'projectTitle')
       .sort({ updatedAt: -1 });
 
@@ -198,4 +216,165 @@ const getJudgeDashboardStats = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { getAssignedApplications, getOrCreateEvaluation, saveEvaluation, getEvaluationsByApplication, getJudgeDashboardStats };
+const getEvaluationTracker = async (req, res, next) => {
+  try {
+    const { stage = 'initial', mainCategory, subCategory, search } = req.query;
+
+    const appFilter = { status: { $ne: 'draft' } };
+
+    if (search) {
+      appFilter.$or = [
+        { projectTitle: { $regex: search, $options: 'i' } },
+        { referenceNumber: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    if (subCategory && subCategory !== 'all') {
+      if (mongoose.Types.ObjectId.isValid(subCategory)) {
+        appFilter.category = subCategory;
+      } else {
+        const cat = await Category.findOne({ name: subCategory });
+        if (cat) {
+          appFilter.category = cat._id;
+        } else {
+          appFilter.category = new mongoose.Types.ObjectId();
+        }
+      }
+    } else if (mainCategory && mainCategory !== 'all') {
+      const subCategoryNames = MAIN_CATEGORIES_MAP[mainCategory] || [];
+      const cats = await Category.find({ name: { $in: subCategoryNames } });
+      const catIds = cats.map(c => c._id);
+      appFilter.category = { $in: catIds };
+    }
+
+    const apps = await Application.find(appFilter)
+      .populate('candidate', 'firstName lastName email organization')
+      .populate('category', 'name slug icon')
+      .populate('assignedJudges', 'firstName lastName email');
+
+    const appIds = apps.map(a => a._id);
+
+    const evaluations = await Evaluation.find({
+      application: { $in: appIds },
+      stage: stage
+    }).populate('judge', 'firstName lastName email');
+
+    const evalsByApp = {};
+    evaluations.forEach(e => {
+      const appIdStr = e.application.toString();
+      if (!evalsByApp[appIdStr]) {
+        evalsByApp[appIdStr] = [];
+      }
+      evalsByApp[appIdStr].push(e);
+    });
+
+    const results = apps.map(app => {
+      const appEvals = evalsByApp[app._id.toString()] || [];
+      const completedEvals = appEvals.filter(e => e.isSubmitted);
+
+      let averageScore = null;
+      if (completedEvals.length > 0) {
+        const totalSum = completedEvals.reduce((sum, e) => sum + (e.totalScore || 0), 0);
+        averageScore = totalSum / completedEvals.length;
+      }
+
+      const allJudgeResults = app.assignedJudges.map(judge => {
+        const judgeEval = appEvals.find(e => e.judge?._id?.toString() === judge._id.toString());
+        return {
+          judgeId: judge._id,
+          judgeName: `${judge.firstName} ${judge.lastName}`,
+          email: judge.email,
+          isSubmitted: judgeEval ? judgeEval.isSubmitted : false,
+          submittedDate: judgeEval ? judgeEval.submittedAt : null,
+          sectionScores: judgeEval ? judgeEval.scores : [],
+          totalScore: judgeEval ? judgeEval.totalScore : null,
+          remarks: judgeEval ? judgeEval.overallComments : ''
+        };
+      });
+
+      const completedCount = completedEvals.length;
+      const totalAssigned = app.assignedJudges.length;
+      let overallStatus = 'Pending';
+      if (totalAssigned > 0) {
+        if (completedCount === totalAssigned) {
+          overallStatus = 'Completed';
+        } else if (completedCount > 0) {
+          overallStatus = 'In Progress';
+        }
+      }
+
+      return {
+        _id: app._id,
+        projectTitle: app.projectTitle,
+        referenceNumber: app.referenceNumber,
+        stage: stage,
+        mainCategory: mainCategory || 'all',
+        subCategory: app.category?.name || '',
+        category: app.category,
+        candidate: app.candidate,
+        assignedJudges: app.assignedJudges,
+        completedJudges: completedCount,
+        averageScore: averageScore,
+        allJudgeResults: allJudgeResults,
+        overallStatus: overallStatus,
+        status: app.status
+      };
+    });
+
+    const totalApplications = results.length;
+    let totalCompletedReviews = 0;
+    let totalPendingReviews = 0;
+    let sumAverageScores = 0;
+    let appsWithScoresCount = 0;
+    let highestAverageScore = null;
+    let lowestAverageScore = null;
+
+    results.forEach(res => {
+      const completed = res.completedJudges;
+      const totalAssigned = res.assignedJudges.length;
+      totalCompletedReviews += completed;
+      totalPendingReviews += Math.max(0, totalAssigned - completed);
+
+      if (res.averageScore !== null) {
+        sumAverageScores += res.averageScore;
+        appsWithScoresCount++;
+
+        if (highestAverageScore === null || res.averageScore > highestAverageScore) {
+          highestAverageScore = res.averageScore;
+        }
+        if (lowestAverageScore === null || res.averageScore < lowestAverageScore) {
+          lowestAverageScore = res.averageScore;
+        }
+      }
+    });
+
+    const averageScoreOverall = appsWithScoresCount > 0 ? sumAverageScores / appsWithScoresCount : 0;
+
+    const stats = {
+      totalApplications,
+      completedEvaluations: totalCompletedReviews,
+      pendingEvaluations: totalPendingReviews,
+      averageScore: averageScoreOverall,
+      highestAverageScore: highestAverageScore !== null ? highestAverageScore : 0,
+      lowestAverageScore: lowestAverageScore !== null ? lowestAverageScore : 0
+    };
+
+    return successResponse(res, {
+      data: {
+        applications: results,
+        stats: stats
+      }
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = {
+  getAssignedApplications,
+  getOrCreateEvaluation,
+  saveEvaluation,
+  getEvaluationsByApplication,
+  getJudgeDashboardStats,
+  getEvaluationTracker
+};

@@ -168,7 +168,8 @@ const sendPasswordChangedEmail = async (user) => {
 const sendApplicationStatusUpdate = async (user, application, newStatus) => {
   const statusLabels = {
     draft: 'Draft', submitted: 'Submitted', under_review: 'Under Review',
-    eligible: 'Eligible', ineligible: 'Ineligible', shortlisted: 'Shortlisted',
+    eligible: 'Eligible', ineligible: 'Ineligible',
+    initial_stage: 'Initial Stage', f2f_stage: 'Face-to-Face Stage',
     finalist: 'Finalist', winner: '🏆 Winner', runner_up: '🥈 Runner-up',
   };
   const label = statusLabels[newStatus] || newStatus;
@@ -210,6 +211,54 @@ const sendJudgeInvitation = async (judge, application) => {
       <p style="color:#64748b;font-size:11px;text-align:center;">National AI Awards Sri Lanka 2026</p>
     </div>`;
   await sendEmail({ to: judge.email, subject: '⚖️ New Evaluation Assignment — AI Awards', html });
+};
+
+/**
+ * Send daily reminder email to judges with pending evaluations
+ */
+const sendJudgeReminder = async (judge, pendingCount, deadlineStr) => {
+  const html = `
+    <div style="font-family:'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:30px;background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:16px;color:#e2e8f0;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#f59e0b;margin:0;">⚠️ Pending Evaluations Reminder</h1>
+      </div>
+      <p>Hi <strong>${judge.firstName}</strong>,</p>
+      <p>This is a friendly reminder that you have <strong>${pendingCount}</strong> pending application evaluation(s) assigned to you.</p>
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin:16px 0;text-align:center;">
+        <p style="margin:4px 0;font-size:14px;color:#f59e0b;"><strong>Deadline:</strong> ${deadlineStr ? new Date(deadlineStr).toLocaleDateString() : 'N/A'}</p>
+      </div>
+      <p style="color:#94a3b8;font-size:13px;">Please log in to the Judge Portal to review the criteria and submit your scorecards.</p>
+      <hr style="border:1px solid #334155;margin:24px 0;">
+      <p style="color:#64748b;font-size:11px;text-align:center;">National AI Awards Sri Lanka 2026</p>
+    </div>`;
+  await sendEmail({ to: judge.email, subject: '⚠️ Action Required: Pending Evaluations Reminder — AI Awards', html });
+};
+
+/**
+ * Send admin broadcast email
+ */
+const sendBroadcastEmail = async (user, { title, message, link }) => {
+  const dashboardUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}${link || '/dashboard'}`;
+  const html = `
+    <div style="font-family:'Segoe UI',sans-serif;max-width:560px;margin:auto;padding:30px;background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:16px;color:#e2e8f0;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#818cf8;margin:0;">National AI Awards Sri Lanka</h1>
+        <p style="color:#94a3b8;font-size:13px;">Broadcast Alert</p>
+      </div>
+      <p>Hi <strong>${user.firstName || 'there'}</strong>,</p>
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:18px;margin:18px 0;">
+        <h2 style="color:#f8fafc;font-size:18px;margin:0 0 12px;">${title}</h2>
+        <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0;">${message}</p>
+      </div>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${dashboardUrl}" style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Open Dashboard</a>
+      </div>
+      <p style="color:#94a3b8;font-size:13px;">You can also view this alert in your portal notifications.</p>
+      <hr style="border:1px solid #334155;margin:24px 0;">
+      <p style="color:#64748b;font-size:11px;text-align:center;">National AI Awards Sri Lanka 2026</p>
+    </div>`;
+
+  await sendEmail({ to: user.email, subject: title, html });
 };
 
 module.exports = {
