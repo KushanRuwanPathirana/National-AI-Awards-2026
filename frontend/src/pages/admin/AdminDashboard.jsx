@@ -1637,6 +1637,15 @@ const BROADCAST_STATUS_AUDIENCES = [
   { value: 'status:winner', status: 'winner', label: 'Winner' },
 ];
 
+const getIntegerTicks = (values = []) => {
+  const maxValue = Math.max(1, ...values.map((value) => Math.ceil(Number(value) || 0)));
+  if (maxValue <= 5) return Array.from({ length: maxValue + 1 }, (_, index) => index);
+
+  const step = Math.ceil(maxValue / 5);
+  const ticks = Array.from({ length: Math.floor(maxValue / step) + 1 }, (_, index) => index * step);
+  return ticks.includes(maxValue) ? ticks : [...ticks, maxValue];
+};
+
 const AdminDashboard = () => {
   const { user, logout, updateUserLocal } = useAuth();
   const navigate = useNavigate();
@@ -2300,7 +2309,13 @@ const AdminDashboard = () => {
                         <ResponsiveContainer width="100%" height={210}>
                           <BarChart data={stats.categoryBreakdown}>
                             <XAxis dataKey="name" stroke="#475569" fontSize={8} tickFormatter={(val) => val.split(' ').slice(2).join(' ')} />
-                            <YAxis stroke="#475569" fontSize={10} />
+                            <YAxis
+                              stroke="#475569"
+                              fontSize={10}
+                              allowDecimals={false}
+                              domain={[0, 'dataMax']}
+                              ticks={getIntegerTicks(stats.categoryBreakdown.map((entry) => entry.count))}
+                            />
                             <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }} />
                             <Bar dataKey="count" fill="#00ff87" radius={[4, 4, 0, 0]}>
                               {stats.categoryBreakdown.map((entry, index) => (
