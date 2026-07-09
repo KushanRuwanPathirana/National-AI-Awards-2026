@@ -288,7 +288,7 @@ const getAllApplications = async (req, res, next) => {
 
     const [applications, total] = await Promise.all([
       Application.find(filter)
-        .populate('candidate', 'firstName lastName email organization')
+        .populate('candidate', 'firstName lastName email phone organization')
         .populate('category', 'name slug icon')
         .populate('assignedJudges', 'firstName lastName')
         .sort(sort)
