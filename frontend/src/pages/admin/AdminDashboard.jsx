@@ -19,6 +19,7 @@
 // import applicationService from '../../services/application.service';
 // import categoryService from '../../services/category.service';
 // import evaluationCriteriaService from '../../services/evaluationCriteria.service';
+import evaluationService from '../../services/evaluation.service';
 
 // const COLORS = ['#0072ff', '#00ff87', '#ffc658', '#ff7300', '#d0ed57', '#a4de6c'];
 
@@ -1631,6 +1632,10 @@ const AdminDashboard = () => {
   const { user, logout, updateUserLocal } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
+  const [evaluationsModalOpen, setEvaluationsModalOpen] = useState(false);
+  const [evaluationsList, setEvaluationsList] = useState([]);
+  const [evaluationsApp, setEvaluationsApp] = useState(null);
+  const [evalsLoading, setEvalsLoading] = useState(false);
 
   // Stats & listings
   const [stats, setStats] = useState(null);
@@ -1983,6 +1988,22 @@ const AdminDashboard = () => {
       resetBroadcast();
     } catch {
       toast.error('Failed to send broadcast.');
+    }
+  };
+
+  // Open Judge Evaluations Modal
+  const openEvaluationsModal = async (app) => {
+    setEvaluationsApp(app);
+    setEvaluationsList([]);
+    setEvaluationsModalOpen(true);
+    setEvalsLoading(true);
+    try {
+      const { data } = await evaluationService.getEvaluationsByApplication(app._id);
+      setEvaluationsList(data.data.evaluations || []);
+    } catch {
+      toast.error('Failed to load judge evaluations.');
+    } finally {
+      setEvalsLoading(false);
     }
   };
 
@@ -2509,7 +2530,19 @@ const AdminDashboard = () => {
                                   </button>
                                 </div>
                               </td>
-                              <td className="p-4 text-center font-bold text-white">{app.averageScore?.toFixed(1) || '-'}</td>
+                               <td className="p-4 text-center">
+                                {app.averageScore !== undefined && app.averageScore !== null ? (
+                                  <button
+                                    onClick={() => openEvaluationsModal(app)}
+                                    className="font-bold text-accent-400 hover:text-accent-300 hover:underline bg-accent-500/10 px-2.5 py-1 rounded border border-accent-500/20 font-mono transition-all"
+                                    title="Click to view detailed evaluations"
+                                  >
+                                    {app.averageScore?.toFixed(1)}
+                                  </button>
+                                ) : (
+                                  <span className="text-slate-500">-</span>
+                                )}
+                              </td>
                               <td className="p-4">
                                 <Link to={`/dashboard/applications/${app._id}`} className="text-accent-400 hover:underline">View</Link>
                               </td>
@@ -2592,6 +2625,65 @@ const AdminDashboard = () => {
                             </div>
                           ))}
                         </div>
+                      </div>
+                    </div>
+
+                    {/* Evaluations Tracker Section */}
+                    <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4 mt-6">
+                      <div>
+                        <h4 className="font-display font-bold text-white text-base">Evaluations Tracker</h4>
+                        <p className="text-slate-400 text-xs mt-0.5">Track live average scores and view judge evaluation sheets for each nominee.</p>
+                      </div>
+
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-xs text-left text-slate-300">
+                          <thead className="bg-white/5 text-[10px] uppercase font-bold text-slate-400">
+                            <tr>
+                              <th className="p-3">Title/Nominee</th>
+                              <th className="p-3">Award Category</th>
+                              <th className="p-3 text-center">Judges assigned</th>
+                              <th className="p-3 text-center">Evaluations Completed</th>
+                              <th className="p-3 text-center">Average Score</th>
+                              <th className="p-3 text-right">Details</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {applications.filter(app => app.status !== 'draft').map(app => {
+                              const completedEvals = app.evaluationCount || 0;
+                              const totalAssigned = app.assignedJudges?.length || 0;
+                              return (
+                                <tr key={app._id} className="border-b border-white/5 hover:bg-white/5 transition-all">
+                                  <td className="p-3 font-semibold text-white">{app.projectTitle}</td>
+                                  <td className="p-3 text-slate-400">{app.category?.name}</td>
+                                  <td className="p-3 text-center font-mono">{totalAssigned}</td>
+                                  <td className="p-3 text-center font-mono">
+                                    <span className={completedEvals === totalAssigned && totalAssigned > 0 ? 'text-emerald-400 font-bold' : 'text-amber-400'}>
+                                      {completedEvals} / {totalAssigned}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-center">
+                                    <span className="font-mono font-bold text-white bg-white/5 px-2 py-0.5 rounded">
+                                      {app.averageScore !== undefined && app.averageScore !== null ? app.averageScore.toFixed(1) : '-'}
+                                    </span>
+                                  </td>
+                                  <td className="p-3 text-right">
+                                    <button
+                                      onClick={() => openEvaluationsModal(app)}
+                                      className="text-accent-400 hover:text-accent-300 font-bold hover:underline"
+                                    >
+                                      View scorecards
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                            {applications.filter(app => app.status !== 'draft').length === 0 && (
+                              <tr>
+                                <td colSpan="6" className="p-4 text-center text-slate-500">No nominated applications available for tracking.</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                   </div>
@@ -3252,8 +3344,8 @@ const AdminDashboard = () => {
 
       {/* JUDGES PANEL ASSIGNMENT MODAL */}
       {assignModalOpen && selectedApp && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-          <div className="glass-card max-w-md w-full p-6 relative !hover:transform-none">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/80 backdrop-blur-md">
+          <div className="relative max-w-md w-full p-6 bg-surface-200 rounded-[24px] shadow-2xl border border-white/10">
             <h3 className="font-display font-bold text-white text-lg mb-2">Assign Evaluators</h3>
             <p className="text-slate-400 text-xs mb-4">Select judges to assign to <strong>{selectedApp.projectTitle}</strong>.</p>
 
@@ -3289,6 +3381,108 @@ const AdminDashboard = () => {
               <button onClick={() => setAssignModalOpen(false)} className="btn-ghost text-xs !py-2 !px-4">Cancel</button>
               <button onClick={handleAssignSubmit} className="btn-primary text-xs !py-2 !px-4">Save Panel</button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* DETAILED JUDGE EVALUATIONS MODAL */}
+      {evaluationsModalOpen && evaluationsApp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/80 backdrop-blur-md">
+          <div className="relative max-w-4xl w-full p-8 bg-surface-200 rounded-[32px] shadow-2xl border border-white/10 max-h-[85vh] overflow-y-auto z-10">
+            <button
+              onClick={() => setEvaluationsModalOpen(false)}
+              className="absolute right-6 top-6 w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+
+            <div className="border-b border-white/10 pb-4 mb-6">
+              <span className="text-[10px] font-mono uppercase tracking-wider text-accent-400">Scorecard Review</span>
+              <h3 className="font-display font-extrabold text-white text-2xl mt-1">{evaluationsApp.projectTitle}</h3>
+              <p className="text-slate-400 text-xs mt-1">Submitted by: <strong className="text-white">{evaluationsApp.candidate?.firstName} {evaluationsApp.candidate?.lastName}</strong> ({evaluationsApp.candidate?.organization || 'Individual'})</p>
+            </div>
+
+            {evalsLoading ? (
+              <div className="flex flex-col items-center justify-center py-16 gap-3">
+                <div className="w-10 h-10 border-3 border-accent-500 border-t-transparent rounded-full animate-spin" />
+                <span className="text-xs text-slate-400">Loading judge evaluations...</span>
+              </div>
+            ) : (
+              <div className="space-y-8">
+                {evaluationsList.length === 0 ? (
+                  <div className="text-center py-12 rounded-2xl bg-white/5 border border-white/5">
+                    <p className="text-slate-400 text-sm">No judge has submitted an evaluation for this nomination yet.</p>
+                  </div>
+                ) : (
+                  <div className="grid gap-6">
+                    {evaluationsList.map((evaluationItem) => (
+                      <div
+                        key={evaluationItem._id}
+                        className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] space-y-5"
+                      >
+                        {/* Header: Judge & Score */}
+                        <div className="flex justify-between items-start gap-4 flex-wrap border-b border-white/5 pb-4">
+                          <div>
+                            <h4 className="text-white font-bold text-base">{evaluationItem.judge?.firstName} {evaluationItem.judge?.lastName}</h4>
+                            <p className="text-slate-500 text-xs mt-0.5">{evaluationItem.judge?.email}</p>
+                          </div>
+                          <div className="text-right">
+                            <span className="inline-block px-3.5 py-1.5 rounded-xl bg-accent-500/10 border border-accent-500/25 font-mono text-base font-black text-accent-400">
+                              Score: {evaluationItem.weightedScore?.toFixed(1) || '0'}/100
+                            </span>
+                            <div className="text-[10px] text-slate-500 font-mono mt-1">
+                              Status: {evaluationItem.isSubmitted ? (
+                                <strong className="text-emerald-400">SUBMITTED</strong>
+                              ) : (
+                                <strong className="text-amber-400">DRAFT</strong>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Category Comments */}
+                        <div className="grid md:grid-cols-2 gap-4 text-xs">
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Strengths Identified</span>
+                            <p className="text-slate-300 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5 whitespace-pre-line">{evaluationItem.strengths || 'None specified'}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Weaknesses / Areas of Improvement</span>
+                            <p className="text-slate-300 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5 whitespace-pre-line">{evaluationItem.weaknesses || 'None specified'}</p>
+                          </div>
+                        </div>
+
+                        <div className="text-xs space-y-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Overall Comments</span>
+                          <p className="text-slate-300 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5 whitespace-pre-line">{evaluationItem.overallComments || 'No overall critique comment provided.'}</p>
+                        </div>
+
+                        {/* Score breakdown by criteria */}
+                        <div className="space-y-2.5 pt-3">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Criteria Breakdown</span>
+                          <div className="grid sm:grid-cols-2 gap-3">
+                            {evaluationItem.scores?.map((s) => {
+                              const crit = s.criteria;
+                              return (
+                                <div key={s._id || crit._id} className="p-3 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center text-xs">
+                                  <div className="min-w-0 pr-2">
+                                    <p className="text-white font-semibold truncate">{crit?.name || 'Criterion score'}</p>
+                                    {s.comment && <p className="text-[10px] text-slate-400 mt-1 italic leading-relaxed truncate" title={s.comment}>"{s.comment}"</p>}
+                                  </div>
+                                  <span className="font-mono font-bold text-accent-300 shrink-0 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                                    {s.score} / {crit?.weight || 10}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       )}
