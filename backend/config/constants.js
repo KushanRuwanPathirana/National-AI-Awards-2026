@@ -66,6 +66,11 @@ const AWARD_CATEGORIES = [
   'Women in AI Leadership',
 ];
 
+const INDIVIDUAL_CATEGORIES = [
+  'National AI Leadership Excellence Award',
+  'Women in AI Leadership',
+];
+
 module.exports = {
   ROLES,
   APPLICATION_STATUS,
@@ -74,4 +79,5 @@ module.exports = {
   FILE_UPLOAD,
   JWT,
   AWARD_CATEGORIES,
+  INDIVIDUAL_CATEGORIES,
 };

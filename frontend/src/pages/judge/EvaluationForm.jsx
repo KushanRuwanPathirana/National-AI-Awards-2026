@@ -11,7 +11,7 @@ import {
   RiErrorWarningLine,
 } from 'react-icons/ri';
 import evaluationService from '../../services/evaluation.service';
-import { buildAssetUrl } from '../../services/api';
+import api, { buildAssetUrl, API_ORIGIN } from '../../services/api';
 
 const EvaluationForm = () => {
   const { id } = useParams(); // applicationId
@@ -19,6 +19,7 @@ const EvaluationForm = () => {
   const [app, setApp] = useState(null);
   const [criteria, setCriteria] = useState([]);
   const [evaluation, setEvaluation] = useState(null);
+  const [criteriaType, setCriteriaType] = useState('organizational');
   const [loading, setLoading] = useState(true);
   const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
 
@@ -31,6 +32,7 @@ const EvaluationForm = () => {
         setApp(data.data.application);
         setCriteria(data.data.criteria);
         setEvaluation(data.data.evaluation);
+        setCriteriaType(data.data.criteriaType || 'organizational');
 
         // Prepopulate scores & forms
         const ev = data.data.evaluation;
@@ -41,10 +43,21 @@ const EvaluationForm = () => {
           setValue('recommendation', ev.recommendation || 'recommend');
           setValue('confidentialityAccepted', ev.confidentialityAccepted || false);
 
-          // Prepopulate score inputs
+          // Track which criteria scores are loaded from DB
+          const loadedCriteriaIds = new Set();
           ev.scores?.forEach(s => {
-            setValue(`score-${s.criteria._id || s.criteria}`, s.score);
-            setValue(`comment-${s.criteria._id || s.criteria}`, s.comment || '');
+            const critId = s.criteria._id || s.criteria;
+            setValue(`score-${critId}`, s.score);
+            setValue(`comment-${critId}`, s.comment || '');
+            loadedCriteriaIds.add(critId.toString());
+          });
+
+          // Prepopulate unrated criteria to 0 by default
+          data.data.criteria?.forEach(c => {
+            if (!loadedCriteriaIds.has(c._id.toString())) {
+              setValue(`score-${c._id}`, 0);
+              setValue(`comment-${c._id}`, '');
+            }
           });
         }
       } catch {
@@ -59,24 +72,25 @@ const EvaluationForm = () => {
   // Watch scores to calculate real-time totals
   const watchedValues = watch();
   const totals = useMemo(() => {
-    if (!criteria.length) return { raw: 0, weighted: 0, completedCount: 0 };
-    let rawSum = 0;
+    if (!criteria.length) return { raw: 0, weighted: 0, maxPossible: 0, completedCount: 0 };
+    let totalScore = 0;
+    let maxPossible = 0;
     let completedCount = 0;
 
     criteria.forEach(c => {
+      const maxMark = c.weight || 10; // max marks = weight %
+      maxPossible += maxMark;
       const val = watchedValues[`score-${c._id}`];
       if (val !== undefined && val !== '') {
-        rawSum += parseInt(val || 0);
+        totalScore += parseInt(val || 0);
         completedCount++;
       }
     });
 
-    const maxPossible = criteria.length * 10;
-    const weighted = maxPossible > 0 ? (rawSum / maxPossible) * 100 : 0;
-
     return {
-      raw: rawSum,
-      weighted: Math.round(weighted * 10) / 10,
+      totalScore,
+      maxPossible,
+      percentage: maxPossible > 0 ? Math.round((totalScore / maxPossible) * 1000) / 10 : 0,
       completedCount,
     };
   }, [criteria, watchedValues]);
@@ -268,19 +282,39 @@ const EvaluationForm = () => {
                 <div className="pt-4 border-t border-white/5">
                   <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-3">Supporting Documents</h4>
                   <div className="space-y-2">
-                    {app.documents.map((doc) => (
-                      <a
-                        key={doc._id}
-                        href={`http://localhost:5000/${doc.filePath}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-3 p-3 rounded-xl bg-white/4 border border-white/5 hover:border-accent-500/30 hover:bg-white/8 transition-all text-xs text-slate-300 hover:text-white"
-                      >
-                        <RiFileTextLine className="text-accent-400 text-lg shrink-0" />
-                        <span className="truncate flex-1 font-medium">{doc.originalName}</span>
-                        <RiDownload2Line className="text-slate-500 shrink-0 text-sm" />
-                      </a>
-                    ))}
+                    {app.documents.map((doc) => {
+                      const handleDownload = async (e) => {
+                        e.preventDefault();
+                        const downloadToast = toast.loading('Preparing download...');
+                        try {
+                          const response = await api.get(`/applications/${app._id}/documents/${doc._id}/download`, {
+                            responseType: 'blob',
+                          });
+                          const url = window.URL.createObjectURL(new Blob([response.data]));
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.setAttribute('download', doc.originalName);
+                          document.body.appendChild(link);
+                          link.click();
+                          link.parentNode.removeChild(link);
+                          toast.success('Download started', { id: downloadToast });
+                        } catch (err) {
+                          toast.error('Failed to download file. It may no longer exist on the server.', { id: downloadToast });
+                        }
+                      };
+
+                      return (
+                        <button
+                          key={doc._id}
+                          onClick={handleDownload}
+                          className="flex items-center gap-3 p-3 rounded-xl bg-white/4 border border-white/5 hover:border-accent-500/30 hover:bg-white/8 transition-all text-xs text-slate-300 hover:text-white w-full text-left"
+                        >
+                          <RiFileTextLine className="text-accent-400 text-lg shrink-0" />
+                          <span className="truncate flex-1 font-medium">{doc.originalName}</span>
+                          <RiDownload2Line className="text-slate-500 shrink-0 text-sm" />
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -303,9 +337,10 @@ const EvaluationForm = () => {
                   </p>
                 </div>
                 <div className="text-right">
-                  <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Weighted Score</span>
+                  <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Total Score</span>
                   <p className="text-3xl font-display font-black text-white leading-none mt-1">
-                    {totals.weighted}%
+                    {totals.totalScore}<span className="text-sm font-normal text-slate-500">/{totals.maxPossible}</span>
+                    <span className="text-xs font-normal text-accent-400 ml-2">({totals.percentage}%)</span>
                   </p>
                 </div>
               </div>
@@ -314,7 +349,7 @@ const EvaluationForm = () => {
                 <div
                   className="h-full rounded-full transition-all duration-300"
                   style={{
-                    width: `${(totals.completedCount / criteria.length) * 100}%`,
+                    width: `${totals.maxPossible > 0 ? (totals.totalScore / totals.maxPossible) * 100 : 0}%`,
                     background: 'linear-gradient(90deg, #0072ff, #00ff87)',
                   }}
                 />
@@ -328,51 +363,82 @@ const EvaluationForm = () => {
                 className="rounded-2xl border border-white/8 p-6 space-y-6"
                 style={{ background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(16px)' }}
               >
-                <h3 className="font-display font-bold text-white text-base border-b border-white/5 pb-3 flex items-center gap-2">
-                  <RiStarLine className="text-gold-400" /> Criteria Evaluation
-                </h3>
+                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                  <h3 className="font-display font-bold text-white text-base flex items-center gap-2">
+                    <RiStarLine className="text-gold-400" /> Criteria Evaluation
+                  </h3>
+                  <span className={`text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                    criteriaType === 'individual'
+                      ? 'bg-purple-500/10 text-purple-300 border-purple-500/20'
+                      : 'bg-accent-500/10 text-accent-300 border-accent-500/20'
+                  }`}>
+                    {criteriaType === 'individual' ? '👤 Individual Award Criteria' : '🏢 Organizational Award Criteria'}
+                  </span>
+                </div>
 
-                <div className="space-y-6">
-                  {criteria.map((c) => {
+                <div className="space-y-5">
+                  {criteria.map((c, idx) => {
                     const scoreName = `score-${c._id}`;
                     const commentName = `comment-${c._id}`;
+                    const maxMark = c.weight || 10; // max marks = weight %
                     const currentScore = watchedValues[scoreName] || 0;
 
                     return (
-                      <div key={c._id} className="border-b border-white/5 pb-6 last:border-0 last:pb-0 space-y-3">
-                        <div className="flex justify-between items-start gap-4">
-                          <div>
-                            <h4 className="text-white text-sm font-bold">{c.name}</h4>
-                            <p className="text-slate-400 text-xs mt-0.5">{c.description}</p>
+                      <div
+                        key={c._id}
+                        className="rounded-xl border border-white/5 bg-white/[0.02] p-5 space-y-4 hover:border-white/10 transition-colors"
+                      >
+                        {/* Row 1: Criterion info + Score */}
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                          {/* Left: Criterion name, description, weight */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-accent-400 font-mono text-[10px] font-bold w-5 h-5 rounded bg-accent-500/10 flex items-center justify-center shrink-0">
+                                {idx + 1}
+                              </span>
+                              <h4 className="text-white text-sm font-bold truncate">{c.name}</h4>
+                              <span className="text-[9px] font-bold uppercase tracking-wider bg-gold-500/10 text-gold-400 border border-gold-500/15 px-1.5 py-0.5 rounded shrink-0">
+                                Max: {maxMark} marks ({c.weight}%)
+                              </span>
+                            </div>
+                            <p className="text-slate-400 text-xs leading-relaxed pl-7">{c.description}</p>
                           </div>
-                          <span className="text-[10px] font-bold uppercase tracking-wider bg-white/5 px-2 py-0.5 rounded text-slate-400 shrink-0">
-                            Weight: {c.weight}%
-                          </span>
-                        </div>
 
-                        <div className="flex flex-col sm:flex-row items-center gap-4 pt-1">
-                          {/* Score input / slider */}
-                          <div className="w-full sm:flex-1 flex items-center gap-3">
+                          {/* Right: Score slider + value */}
+                          <div className="flex items-center gap-3 sm:w-[250px] shrink-0 pl-7 sm:pl-0">
                             <input
                               type="range"
                               min="0"
-                              max="10"
+                              max={maxMark}
                               step="1"
                               disabled={isSubmitted}
-                              className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-accent-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                              className="flex-1 h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-accent-500 disabled:opacity-50 disabled:cursor-not-allowed"
                               {...register(scoreName)}
                             />
-                            <span className="w-8 h-8 rounded-lg bg-accent-500/10 border border-accent-500/20 text-accent-300 flex items-center justify-center font-mono font-bold text-sm shrink-0">
-                              {currentScore}
+                            <span className={`min-w-[48px] h-10 px-2 rounded-lg border flex items-center justify-center font-mono font-bold text-sm shrink-0 transition-colors ${
+                              currentScore >= maxMark * 0.8
+                                ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+                                : currentScore >= maxMark * 0.5
+                                  ? 'bg-accent-500/10 border-accent-500/20 text-accent-300'
+                                  : currentScore > 0
+                                    ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+                                    : 'bg-white/5 border-white/10 text-slate-500'
+                            }`}>
+                              {currentScore}/{maxMark}
                             </span>
                           </div>
-                          
-                          {/* Critique comment */}
-                          <input
-                            type="text"
-                            placeholder="Critique note..."
+                        </div>
+
+                        {/* Row 2: Comment / Feedback */}
+                        <div className="pl-7">
+                          <label className="block text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1.5">
+                            Judge's Comment
+                          </label>
+                          <textarea
+                            placeholder="Provide your feedback for this criterion..."
                             disabled={isSubmitted}
-                            className="input-field sm:max-w-[240px] !py-2 text-xs disabled:opacity-50"
+                            rows={2}
+                            className="input-field w-full text-xs resize-none disabled:opacity-50"
                             {...register(commentName)}
                           />
                         </div>

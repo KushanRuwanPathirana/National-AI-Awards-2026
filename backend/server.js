@@ -10,15 +10,19 @@ const routes = require('./routes');
 const errorHandler = require('./middleware/error.middleware');
 const logger = require('./utils/logger');
 const { seedDefaultAdmin } = require('./scripts/seedAdmin');
+const { seedCriteriaOnStartup } = require('./scripts/seedCriteria');
 
 // ─── App Initialization ────────────────────────────────────────────────────────
 const app = express();
 const PORT = process.env.PORT || 5001;
 
 // ─── Connect to MongoDB ────────────────────────────────────────────────────────
-connectDB().then(() => {
+connectDB().then(async () => {
   seedDefaultAdmin({ skipConnect: true }).catch((error) => {
     logger.error(`Default admin seeding skipped due to error: ${error.message}`);
+  });
+  seedCriteriaOnStartup().catch((error) => {
+    logger.error(`Criteria seeding skipped due to error: ${error.message}`);
   });
 }).catch(() => {
   // Database connection errors are already logged by connectDB

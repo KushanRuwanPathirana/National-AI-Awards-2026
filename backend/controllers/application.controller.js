@@ -554,6 +554,25 @@ const deleteApplication = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// ── Download Document (judges/admin) ───────────────────────────────────────────
+const downloadDocument = async (req, res, next) => {
+  try {
+    const { id, docId } = req.params;
+    const application = await Application.findById(id);
+    if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+
+    const doc = application.documents.id(docId);
+    if (!doc) return errorResponse(res, { statusCode: 404, message: 'Document not found.' });
+
+    const diskPath = resolveStoredFilePath(doc.filePath);
+    if (!diskPath || !fs.existsSync(diskPath)) {
+      return errorResponse(res, { statusCode: 404, message: 'File not found on server. It may have been removed.' });
+    }
+
+    res.download(diskPath, doc.originalName);
+  } catch (error) { next(error); }
+};
+
 module.exports = {
   createApplication, updateApplication, submitApplication,
   getMyApplications, getApplicationById, getAllApplications,
@@ -561,4 +580,5 @@ module.exports = {
   getMonitoringOverview, getJudgeProgress, exportApplications,
   publishFinalists, publishWinners, generateCertificates,
   uploadDocuments, deleteDocument, deleteApplication,
+  downloadDocument,
 };
