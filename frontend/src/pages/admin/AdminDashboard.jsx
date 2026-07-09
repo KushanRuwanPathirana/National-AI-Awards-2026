@@ -1716,6 +1716,7 @@ const AdminDashboard = () => {
     weight: 10,
     maxScore: 10,
     criteriaType: 'organizational',
+    stage: 'initial',
     order: 0,
     isActive: true,
   });
@@ -2062,7 +2063,7 @@ const AdminDashboard = () => {
         await evaluationCriteriaService.createCriteria(payload);
         toast.success('Evaluation criteria created.');
       }
-      setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, criteriaType: 'organizational', order: 0, isActive: true });
+      setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, criteriaType: 'organizational', stage: 'initial', order: 0, isActive: true });
       setEditingCriteriaId(null);
       fetchCriteria();
     } catch (err) {
@@ -2078,6 +2079,7 @@ const AdminDashboard = () => {
       weight: c.weight || 10,
       maxScore: c.maxScore || 10,
       criteriaType: c.criteriaType || 'organizational',
+      stage: c.stage || 'initial',
       order: c.order || 0,
       isActive: c.isActive !== false,
     });
@@ -3138,7 +3140,7 @@ const AdminDashboard = () => {
                               />
                             </div>
                           </div>
-                          <div className="grid grid-cols-2 gap-3">
+                          <div className="grid grid-cols-3 gap-3">
                             <div>
                               <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Category Type</label>
                               <select
@@ -3146,8 +3148,19 @@ const AdminDashboard = () => {
                                 value={criteriaForm.criteriaType}
                                 onChange={(e) => setCriteriaForm({ ...criteriaForm, criteriaType: e.target.value })}
                               >
-                                <option value="organizational" className="bg-navy-950">🏢 Organizational Award</option>
-                                <option value="individual" className="bg-navy-950">👤 Individual Award</option>
+                                <option value="organizational" className="bg-navy-950">🏢 Organizational</option>
+                                <option value="individual" className="bg-navy-950">👤 Individual</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Stage</label>
+                              <select
+                                className="input-field"
+                                value={criteriaForm.stage || 'initial'}
+                                onChange={(e) => setCriteriaForm({ ...criteriaForm, stage: e.target.value })}
+                              >
+                                <option value="initial" className="bg-navy-950">Initial Stage</option>
+                                <option value="f2f" className="bg-navy-950">Face-to-Face</option>
                               </select>
                             </div>
                             <div>
@@ -3178,7 +3191,7 @@ const AdminDashboard = () => {
                                 type="button"
                                 onClick={() => {
                                   setEditingCriteriaId(null);
-                                  setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, criteriaType: 'organizational', order: 0, isActive: true });
+                                  setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, criteriaType: 'organizational', stage: 'initial', order: 0, isActive: true });
                                 }}
                                 className="btn-ghost text-xs"
                               >
@@ -3204,6 +3217,13 @@ const AdminDashboard = () => {
                                         : 'bg-accent-500/10 text-accent-300 border-accent-500/20'
                                     }`}>
                                       {c.criteriaType === 'individual' ? '👤 Individual' : '🏢 Org'}
+                                    </span>
+                                    <span className={`text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                                      c.stage === 'f2f'
+                                        ? 'bg-amber-500/10 text-amber-300 border-amber-500/20'
+                                        : 'bg-emerald-500/10 text-emerald-300 border-emerald-500/20'
+                                    }`}>
+                                      {c.stage === 'f2f' ? '🗣️ Viva (F2F)' : '📄 Screening (Initial)'}
                                     </span>
                                   </div>
                                   <p className="text-slate-400 text-xs mt-1 leading-relaxed">{c.description}</p>

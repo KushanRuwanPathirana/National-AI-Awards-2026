@@ -271,4 +271,6 @@ module.exports = {
   sendPasswordChangedEmail,
   sendApplicationStatusUpdate,
   sendJudgeInvitation,
+  sendJudgeReminder,
+  sendBroadcastEmail,
 };

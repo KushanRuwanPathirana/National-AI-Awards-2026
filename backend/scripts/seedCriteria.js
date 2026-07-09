@@ -23,33 +23,60 @@ const seedCriteriaOnStartup = async () => {
   let created = 0;
   let updated = 0;
 
-  // Seed organizational criteria
-  for (const c of ORGANIZATIONAL_CRITERIA) {
-    const exists = await EvaluationCriteria.findOne({ name: c.name, criteriaType: 'organizational' });
-    if (!exists) {
-      await EvaluationCriteria.create({ ...c, criteriaType: 'organizational', isActive: true });
-      created++;
-    } else if (exists.maxScore !== c.maxScore) {
-      exists.maxScore = c.maxScore;
-      exists.weight = c.weight;
-      exists.description = c.description;
-      await exists.save();
-      updated++;
-    }
-  }
+  const stages = [
+    { key: 'initial', prefix: 'Screening - ' },
+    { key: 'f2f', prefix: 'Viva - ' }
+  ];
 
-  // Seed individual criteria
-  for (const c of INDIVIDUAL_CRITERIA) {
-    const exists = await EvaluationCriteria.findOne({ name: c.name, criteriaType: 'individual' });
-    if (!exists) {
-      await EvaluationCriteria.create({ ...c, criteriaType: 'individual', isActive: true });
-      created++;
-    } else if (exists.maxScore !== c.maxScore) {
-      exists.maxScore = c.maxScore;
-      exists.weight = c.weight;
-      exists.description = c.description;
-      await exists.save();
-      updated++;
+  for (const stg of stages) {
+    // Seed organizational criteria
+    for (const c of ORGANIZATIONAL_CRITERIA) {
+      const stageName = `${stg.prefix}${c.name}`;
+      const exists = await EvaluationCriteria.findOne({ name: stageName, criteriaType: 'organizational', stage: stg.key });
+      if (!exists) {
+        await EvaluationCriteria.create({
+          name: stageName,
+          weight: c.weight,
+          maxScore: c.maxScore || 10,
+          description: c.description,
+          order: c.order,
+          criteriaType: 'organizational',
+          isActive: true,
+          stage: stg.key
+        });
+        created++;
+      } else if (exists.maxScore !== c.maxScore || exists.weight !== c.weight) {
+        exists.maxScore = c.maxScore;
+        exists.weight = c.weight;
+        exists.description = c.description;
+        await exists.save();
+        updated++;
+      }
+    }
+
+    // Seed individual criteria
+    for (const c of INDIVIDUAL_CRITERIA) {
+      const stageName = `${stg.prefix}${c.name}`;
+      const exists = await EvaluationCriteria.findOne({ name: stageName, criteriaType: 'individual', stage: stg.key });
+      if (!exists) {
+        await EvaluationCriteria.create({
+          name: stageName,
+          weight: c.weight,
+          maxScore: c.maxScore || 10,
+          description: c.description,
+          order: c.order,
+          criteriaType: 'individual',
+          isActive: true,
+          stage: stg.key
+        });
+        created++;
+      } else if (exists.maxScore !== c.maxScore || exists.weight !== c.weight) {
+        exists.maxScore = c.maxScore;
+        exists.weight = c.weight;
+        exists.description = c.description;
+        await exists.save();
+        updated++;
+      }
     }
   }
 
@@ -61,6 +88,16 @@ const seedCriteriaOnStartup = async () => {
   await EvaluationCriteria.updateMany(
     { criteriaType: null },
     { $set: { criteriaType: 'organizational' } }
+  );
+
+  // Tag any old criteria that don't have stage set
+  await EvaluationCriteria.updateMany(
+    { stage: { $exists: false } },
+    { $set: { stage: 'initial' } }
+  );
+  await EvaluationCriteria.updateMany(
+    { stage: null },
+    { $set: { stage: 'initial' } }
   );
 
   if (created > 0 || updated > 0) {
