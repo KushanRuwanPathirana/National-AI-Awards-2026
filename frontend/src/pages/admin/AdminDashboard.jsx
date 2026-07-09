@@ -1616,9 +1616,10 @@ import {
   RiCheckDoubleLine, RiFileList3Line, RiTeamLine,
   RiDashboardLine, RiFileChartLine, RiMailSendLine,
   RiArrowRightLine, RiFolderShield2Line, RiRefreshLine, RiPulseLine, RiStarLine,
+  RiUserLine,
 } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api';
+import api, { buildAssetUrl } from '../../services/api';
 import adminService from '../../services/admin.service';
 import applicationService from '../../services/application.service';
 import categoryService from '../../services/category.service';
@@ -1627,7 +1628,7 @@ import evaluationCriteriaService from '../../services/evaluationCriteria.service
 const COLORS = ['#0072ff', '#00ff87', '#ffc658', '#ff7300', '#d0ed57', '#a4de6c'];
 
 const AdminDashboard = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, updateUserLocal } = useAuth();
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('overview');
 
@@ -1640,6 +1641,7 @@ const AdminDashboard = () => {
   const [monitoring, setMonitoring] = useState(null);
   const [judgeProgress, setJudgeProgress] = useState([]);
   const [criteria, setCriteria] = useState([]);
+  const [imageUploading, setImageUploading] = useState(false);
   const [editingCriteriaId, setEditingCriteriaId] = useState(null);
   const [criteriaForm, setCriteriaForm] = useState({
     name: '',
@@ -1668,8 +1670,6 @@ const AdminDashboard = () => {
   const [changeSuccess, setChangeSuccess] = useState('');
   const [changeError,   setChangeError]   = useState('');
   const [eligibilityReview, setEligibilityReview] = useState({ appId: null, isEligible: true, note: '' });
-  const [categoryForm, setCategoryForm] = useState({ name: '', description: '', shortDescription: '', order: 0, maxApplications: '', isActive: true });
-  const [editingCategoryId, setEditingCategoryId] = useState(null);
   const { register: regPassword, handleSubmit: handlePassword, formState: { errors: passErrors, isSubmitting: passSubmitting }, watch, reset: resetPassword } = useForm();
   const newPassword = watch('newPassword');
   const passwordRules = [
@@ -1769,6 +1769,28 @@ const AdminDashboard = () => {
     navigate('/');
   };
 
+  const handleImageUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('profileImage', file);
+
+    try {
+      setImageUploading(true);
+      const { data } = await api.post('/auth/profile-image', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      updateUserLocal(data.data.user);
+      toast.success('Profile picture updated successfully.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to upload profile picture.');
+    } finally {
+      setImageUploading(false);
+      e.target.value = '';
+    }
+  };
+
   const judgesList = users.filter((userItem) => userItem.role === 'judge');
   const candidatesList = users.filter((userItem) => userItem.role === 'candidate');
   const broadcastRole = watchBroadcast('role') || 'all';
@@ -1833,41 +1855,6 @@ const AdminDashboard = () => {
     } catch {
       toast.error('Failed to delete user.');
     }
-  };
-
-  const handleSubmitCategory = async (e) => {
-    e.preventDefault();
-    try {
-      const payload = {
-        ...categoryForm,
-        order: Number(categoryForm.order || 0),
-        maxApplications: categoryForm.maxApplications === '' ? null : Number(categoryForm.maxApplications),
-      };
-      if (editingCategoryId) {
-        await categoryService.updateCategory(editingCategoryId, payload);
-        toast.success('Category updated.');
-      } else {
-        await categoryService.createCategory(payload);
-        toast.success('Category created.');
-      }
-      setCategoryForm({ name: '', description: '', shortDescription: '', order: 0, maxApplications: '', isActive: true });
-      setEditingCategoryId(null);
-      fetchCategories();
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save category.');
-    }
-  };
-
-  const handleEditCategory = (category) => {
-    setEditingCategoryId(category._id);
-    setCategoryForm({
-      name: category.name || '',
-      description: category.description || '',
-      shortDescription: category.shortDescription || '',
-      order: category.order || 0,
-      maxApplications: category.maxApplications ?? '',
-      isActive: category.isActive !== false,
-    });
   };
 
   const handleDeleteCategory = async (id) => {
@@ -2064,26 +2051,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const handleGenerateCertificates = async () => {
-    if (!selectedReportIds.length) {
-      toast.error('Select at least one application first.');
-      return;
-    }
-
-    setReportActionBusy(true);
-    try {
-      await applicationService.generateCertificates(selectedReportIds);
-      toast.success('Certificates generated.');
-      setSelectedReportIds([]);
-      fetchApps();
-      fetchMonitoring();
-    } catch {
-      toast.error('Failed to generate certificates.');
-    } finally {
-      setReportActionBusy(false);
-    }
-  };
-
   return (
     <div className="min-h-screen bg-navy-950 flex flex-col pt-20">
       {/* Main dashboard content */}
@@ -2092,9 +2059,17 @@ const AdminDashboard = () => {
         {/* Sidebar Nav */}
         <div className="lg:col-span-1 space-y-4">
           <div className="glass-card p-6 text-center !hover:transform-none">
-            <div className="w-16 h-16 rounded-full bg-accent-500/15 border border-accent-500/30 flex items-center justify-center mx-auto mb-4 font-display font-bold text-accent-300 text-2xl">
-              {user?.firstName?.charAt(0) || 'A'}
-            </div>
+            {user?.profileImage ? (
+              <img
+                src={buildAssetUrl(user.profileImage)}
+                alt={user.fullName || user.email}
+                className="w-16 h-16 rounded-full object-cover border border-white/20 shadow-glow mx-auto mb-4"
+              />
+            ) : (
+              <div className="w-16 h-16 rounded-full bg-accent-500/15 border border-accent-500/30 flex items-center justify-center mx-auto mb-4 font-display font-bold text-accent-300 text-2xl">
+                {user?.firstName?.charAt(0) || 'A'}
+              </div>
+            )}
             <h2 className="font-display font-bold text-white text-lg">{user?.fullName}</h2>
             <span className="badge-gold mt-2 text-[10px] uppercase font-mono">{user?.role}</span>
           </div>
@@ -2109,6 +2084,7 @@ const AdminDashboard = () => {
               { id: 'criteria', label: 'Evaluation Criteria', icon: RiStarLine },
               { id: 'broadcast', label: 'Broadcast Alerts', icon: RiMailSendLine },
               { id: 'reports', label: 'Reports & Export', icon: RiFileChartLine },
+              { id: 'profile', label: 'My Profile', icon: RiUserLine },
               { id: 'password', label: 'Change Password', icon: RiLockPasswordLine },
             ].map((tab) => (
               <button
@@ -2657,29 +2633,7 @@ const AdminDashboard = () => {
                       </button>
                     </div>
 
-                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
-                        <h4 className="font-display font-bold text-white text-base">{editingCategoryId ? 'Edit Category' : 'Create Category'}</h4>
-                        <form onSubmit={handleSubmitCategory} className="space-y-3">
-                          <input className="input-field" placeholder="Category name" value={categoryForm.name} onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })} required />
-                          <textarea className="input-field h-24" placeholder="Description" value={categoryForm.description} onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })} required />
-                          <input className="input-field" placeholder="Short description" value={categoryForm.shortDescription} onChange={(e) => setCategoryForm({ ...categoryForm, shortDescription: e.target.value })} />
-                          <div className="grid grid-cols-2 gap-3">
-                            <input type="number" className="input-field" placeholder="Order" value={categoryForm.order} onChange={(e) => setCategoryForm({ ...categoryForm, order: e.target.value })} />
-                            <input type="number" className="input-field" placeholder="Max applications" value={categoryForm.maxApplications} onChange={(e) => setCategoryForm({ ...categoryForm, maxApplications: e.target.value })} />
-                          </div>
-                          <label className="flex items-center gap-2 text-sm text-slate-300">
-                            <input type="checkbox" checked={categoryForm.isActive} onChange={(e) => setCategoryForm({ ...categoryForm, isActive: e.target.checked })} />
-                            Active
-                          </label>
-                          <div className="flex gap-3">
-                            <button type="submit" className="btn-primary text-xs">{editingCategoryId ? 'Save Category' : 'Create Category'}</button>
-                            {editingCategoryId && <button type="button" onClick={() => { setEditingCategoryId(null); setCategoryForm({ name: '', description: '', shortDescription: '', order: 0, maxApplications: '', isActive: true }); }} className="btn-ghost text-xs">Cancel</button>}
-                          </div>
-                        </form>
-                      </div>
-
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
+                    <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
                         <h4 className="font-display font-bold text-white text-base">Existing Categories</h4>
                         <div className="space-y-3 max-h-[420px] overflow-y-auto">
                           {categories.map(c => (
@@ -2690,14 +2644,12 @@ const AdminDashboard = () => {
                                   <p className="text-slate-400 text-[11px] mt-1">{c.description}</p>
                                 </div>
                                 <div className="flex gap-2">
-                                  <button onClick={() => handleEditCategory(c)} className="text-accent-400 text-xs">Edit</button>
                                   <button onClick={() => handleDeleteCategory(c._id)} className="text-red-400 text-xs">Delete</button>
                                 </div>
                               </div>
                             </div>
                           ))}
                         </div>
-                      </div>
                     </div>
                   </div>
                 )}
@@ -2984,7 +2936,6 @@ const AdminDashboard = () => {
                       <div className="flex flex-wrap gap-2">
                         <button onClick={handlePublishFinalists} disabled={reportActionBusy} className="btn-primary text-xs disabled:opacity-50">Publish Finalists</button>
                         <button onClick={handlePublishWinners} disabled={reportActionBusy} className="btn-gold text-xs disabled:opacity-50">Publish Winners</button>
-                        <button onClick={handleGenerateCertificates} disabled={reportActionBusy} className="bg-emerald-500/10 border border-emerald-500/20 px-3 py-2 rounded-xl text-xs text-emerald-400 hover:bg-emerald-500/20 disabled:opacity-50">Generate Certificates</button>
                       </div>
                     </div>
 
@@ -3030,6 +2981,78 @@ const AdminDashboard = () => {
                         </div>
                         <div className="mt-4 text-[11px] text-slate-400">Selected: {selectedReportIds.length}</div>
                       </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* 7. MY PROFILE */}
+                {activeTab === 'profile' && (
+                  <div className="space-y-6">
+                    <div className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
+                      <div>
+                        <p className="text-xs font-semibold uppercase tracking-wider text-accent-300">Admin Profile</p>
+                        <h3 className="mt-1 font-display text-2xl font-black text-white">My Profile</h3>
+                        <p className="mt-1 max-w-2xl text-sm text-slate-400">Manage your administrator identity and profile picture.</p>
+                      </div>
+                      <div className="rounded-xl border border-accent-500/20 bg-accent-500/10 px-4 py-3">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-accent-300">Signed In As</div>
+                        <div className="mt-1 max-w-[220px] truncate text-sm font-semibold text-white">{user?.email || user?.fullName || 'Administrator'}</div>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col gap-6 rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:flex-row sm:items-center">
+                      <div className="relative shrink-0">
+                        {user?.profileImage ? (
+                          <img
+                            src={buildAssetUrl(user.profileImage)}
+                            alt={user.fullName || user.email}
+                            className="h-24 w-24 rounded-full border border-white/10 object-cover shadow-glow"
+                          />
+                        ) : (
+                          <div className="flex h-24 w-24 items-center justify-center rounded-full border border-accent-500/30 bg-accent-500/15 font-display text-3xl font-bold text-accent-300">
+                            {user?.firstName?.charAt(0) || 'A'}
+                          </div>
+                        )}
+                        {imageUploading && (
+                          <div className="absolute inset-0 flex items-center justify-center rounded-full bg-navy-950/70">
+                            <div className="h-6 w-6 animate-spin rounded-full border-2 border-accent-500 border-t-transparent" />
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-center sm:text-left">
+                        <h4 className="text-sm font-bold text-white">Profile Picture</h4>
+                        <p className="mt-1 text-xs text-slate-500">Supports JPEG, PNG or WebP. Max 5MB.</p>
+                        <label className="btn-ghost mt-3 inline-flex cursor-pointer items-center gap-2 text-xs !px-3 !py-2">
+                          <RiUserLine className="text-sm" />
+                          Choose Photo
+                          <input
+                            type="file"
+                            accept="image/*"
+                            className="hidden"
+                            onChange={handleImageUpload}
+                            disabled={imageUploading}
+                          />
+                        </label>
+                      </div>
+                    </div>
+
+                    <div className="grid gap-5 sm:grid-cols-2">
+                      {[
+                        { label: 'First Name', value: user?.firstName },
+                        { label: 'Last Name', value: user?.lastName },
+                        { label: 'Email Address', value: user?.email },
+                        { label: 'Phone Number', value: user?.phone },
+                        { label: 'Organisation', value: user?.organization },
+                        { label: 'Designation', value: user?.designation },
+                        { label: 'Role', value: user?.role },
+                      ].map((field) => (
+                        <div key={field.label}>
+                          <span className="mb-1.5 block text-xs font-medium text-slate-500">{field.label}</span>
+                          <p className="rounded-xl border border-white/5 bg-white/5 p-3 text-sm font-medium text-white">
+                            {field.value || <span className="italic text-slate-600">Not provided</span>}
+                          </p>
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}

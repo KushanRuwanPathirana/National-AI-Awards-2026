@@ -12,7 +12,7 @@ import {
   RiSubtractLine, RiExternalLinkLine,
 } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api';
+import api, { buildAssetUrl } from '../../services/api';
 import applicationService from '../../services/application.service';
 import notificationService from '../../services/notification.service';
 import Button from '../../components/shared/Button';
@@ -105,7 +105,6 @@ const NAV_ITEMS = [
   { id: 'drafts',        label: 'Edit Draft',             icon: RiEditLine },
   { id: 'submitted',     label: 'Submitted Applications', icon: RiCheckboxCircleLine },
   { id: 'messages',      label: 'Messages',               icon: RiMessageLine },
-  { id: 'timeline',      label: 'Timeline',               icon: RiTimeLine },
   { id: 'faqs',          label: 'FAQs',                   icon: RiQuestionLine },
 ];
 
@@ -399,7 +398,7 @@ const CandidateDashboard = () => {
           <div className="glass-card p-6 text-center !hover:transform-none">
             {user?.profileImage ? (
               <img
-                src={`http://localhost:5000/${user.profileImage}`}
+                src={buildAssetUrl(user.profileImage)}
                 alt={user.fullName}
                 className="w-16 h-16 rounded-full object-cover border border-white/20 shadow-glow mx-auto mb-4"
               />
@@ -552,7 +551,6 @@ const CandidateDashboard = () => {
                           { label: 'My Applications',  tab: 'applications', icon: RiFileList3Line },
                           { label: 'Edit Draft',        tab: 'drafts',       icon: RiEditLine },
                           { label: 'Messages',          tab: 'messages',     icon: RiMessageLine },
-                          { label: 'View Timeline',     tab: 'timeline',     icon: RiTimeLine },
                         ].map(ql => (
                           <button
                             key={ql.tab}
@@ -802,7 +800,7 @@ const CandidateDashboard = () => {
                   <div className="relative">
                     {user?.profileImage ? (
                       <img
-                        src={`http://localhost:5000/${user.profileImage}`}
+                        src={buildAssetUrl(user.profileImage)}
                         alt={user.fullName}
                         className="w-24 h-24 rounded-full object-cover border border-white/10 shadow-glow"
                       />
@@ -909,6 +907,41 @@ const CandidateDashboard = () => {
             {activeTab === 'profile' && (
               <div>
                 <h3 className="font-display font-bold text-white text-xl mb-6">Profile Details</h3>
+                <div className="flex flex-col sm:flex-row items-center gap-6 p-5 rounded-2xl bg-white/5 border border-white/5 mb-6">
+                  <div className="relative">
+                    {user?.profileImage ? (
+                      <img
+                        src={buildAssetUrl(user.profileImage)}
+                        alt={user.fullName}
+                        className="w-24 h-24 rounded-full object-cover border border-white/10 shadow-glow"
+                      />
+                    ) : (
+                      <div className="w-24 h-24 rounded-full bg-accent-500/15 border border-accent-500/30 flex items-center justify-center text-3xl font-display font-bold text-accent-300">
+                        {user?.firstName?.charAt(0) || 'C'}
+                      </div>
+                    )}
+                    {imageUploading && (
+                      <div className="absolute inset-0 bg-navy-950/70 rounded-full flex items-center justify-center">
+                        <div className="w-6 h-6 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="text-center sm:text-left">
+                    <h4 className="text-white text-sm font-bold">Profile Picture</h4>
+                    <p className="text-slate-500 text-xs mt-1">Supports JPEG, PNG or WebP. Max 5MB.</p>
+                    <label className="mt-3 inline-flex items-center gap-2 btn-ghost text-xs !py-2 !px-3 cursor-pointer">
+                      <RiUserLine className="text-sm" />
+                      Choose Photo
+                      <input
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        onChange={handleImageUpload}
+                        disabled={imageUploading}
+                      />
+                    </label>
+                  </div>
+                </div>
                 <div className="grid sm:grid-cols-2 gap-5">
                   {[
                     { label: 'Registration Number',   value: user?.registrationNumber },

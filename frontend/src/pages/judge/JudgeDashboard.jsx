@@ -14,7 +14,7 @@ import {
   RiLightbulbLine, RiFlashlightLine,
 } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api';
+import api, { buildAssetUrl } from '../../services/api';
 import evaluationService from '../../services/evaluation.service';
 import notificationService from '../../services/notification.service';
 import StatCard from '../../components/judge/StatCard';
@@ -202,7 +202,7 @@ const JudgeDashboard = () => {
             <div className="relative w-16 h-16 mx-auto mb-4">
               {user?.profileImage ? (
                 <img
-                  src={`http://localhost:5000/${user.profileImage}`}
+                  src={buildAssetUrl(user.profileImage)}
                   alt={user.fullName}
                   className="w-16 h-16 rounded-full object-cover border border-white/20 shadow-glow"
                 />
@@ -691,7 +691,7 @@ const JudgeDashboard = () => {
                     <div className="relative">
                       {user?.profileImage ? (
                         <img
-                          src={`http://localhost:5000/${user.profileImage}`}
+                          src={buildAssetUrl(user.profileImage)}
                           alt={user.fullName}
                           className="w-24 h-24 rounded-full object-cover border border-white/10 shadow-glow"
                         />
