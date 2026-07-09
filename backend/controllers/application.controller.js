@@ -67,6 +67,18 @@ const removeApplicationRecord = async ({ application, performedBy, req }) => {
     });
   }
 
+  // Delete payment slip from disk if exists
+  if (application.paymentSlip && application.paymentSlip.filePath) {
+    const diskPath = resolveStoredFilePath(application.paymentSlip.filePath);
+    if (diskPath && fs.existsSync(diskPath)) {
+      try {
+        fs.unlinkSync(diskPath);
+      } catch (e) {
+        logger.error(`Failed to delete payment slip from disk: ${e.message}`);
+      }
+    }
+  }
+
   await Promise.all([
     Evaluation.deleteMany({ application: application._id }),
     Notification.deleteMany({ relatedApplication: application._id }),
@@ -157,6 +169,7 @@ const updateApplication = async (req, res, next) => {
       'executionEvidence', 'demoVideoUrl', 'testimonialOne', 'testimonialTwo',
       'nationalRelevance', 'verificationConsent', 'promotionalConsent',
       'conflictDisclosure', 'submissionFeeAcknowledged',
+      'paymentMethod', 'onlinePaymentSimulated',
     ];
 
     allowedFields.forEach(field => {
@@ -196,6 +209,20 @@ const submitApplication = async (req, res, next) => {
     }
     if (!application.organisationName || !application.primaryContactName || !application.primaryContactEmail || !application.categoryEligibilityConfirmed) {
       return errorResponse(res, { statusCode: 400, message: 'Please complete applicant details and category eligibility confirmation before submitting.' });
+    }
+
+    // Validate payment if it's not a free category
+    const isFreeCategory = application.category?.name === 'University AI Innovation';
+    if (!isFreeCategory) {
+      if (!application.paymentMethod) {
+        return errorResponse(res, { statusCode: 400, message: 'Please select a payment method before submitting.' });
+      }
+      if (application.paymentMethod === 'transfer' && (!application.paymentSlip || !application.paymentSlip.filePath)) {
+        return errorResponse(res, { statusCode: 400, message: 'Please upload your bank transfer slip before submitting.' });
+      }
+      if (application.paymentMethod === 'online' && !application.onlinePaymentSimulated) {
+        return errorResponse(res, { statusCode: 400, message: 'Please complete the online payment simulation before submitting.' });
+      }
     }
 
     application.status = APPLICATION_STATUS.SUBMITTED;
@@ -447,6 +474,79 @@ const deleteDocument = async (req, res, next) => {
     await application.save();
 
     return successResponse(res, { message: 'Document deleted.' });
+  } catch (error) { next(error); }
+};
+
+// ── Upload Payment Slip ────────────────────────────────────────────────────────
+const uploadPaymentSlip = async (req, res, next) => {
+  try {
+    if (rejectAfterApplicationDeadline(res)) return;
+
+    const { id } = req.params;
+    const application = await Application.findOne({ _id: id, candidate: req.user._id });
+
+    if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+    if (application.status !== APPLICATION_STATUS.DRAFT) {
+      return errorResponse(res, { statusCode: 400, message: 'Payment slip can only be uploaded to draft applications.' });
+    }
+
+    if (!req.file) {
+      return errorResponse(res, { statusCode: 400, message: 'No file uploaded.' });
+    }
+
+    // Delete existing slip file from disk if exists
+    if (application.paymentSlip && application.paymentSlip.filePath) {
+      const diskPath = resolveStoredFilePath(application.paymentSlip.filePath);
+      if (diskPath && fs.existsSync(diskPath)) {
+        try {
+          fs.unlinkSync(diskPath);
+        } catch (e) {
+          logger.error(`Failed to delete old payment slip from disk: ${e.message}`);
+        }
+      }
+    }
+
+    application.paymentSlip = {
+      originalName: req.file.originalname,
+      filePath: getPublicUploadPath(req.file),
+      mimeType: req.file.mimetype,
+      size: req.file.size,
+      uploadedAt: new Date(),
+    };
+    await application.save();
+
+    return successResponse(res, { message: 'Payment slip uploaded successfully.', data: { paymentSlip: application.paymentSlip } });
+  } catch (error) { next(error); }
+};
+
+// ── Delete Payment Slip ────────────────────────────────────────────────────────
+const deletePaymentSlip = async (req, res, next) => {
+  try {
+    if (rejectAfterApplicationDeadline(res)) return;
+
+    const { id } = req.params;
+    const application = await Application.findOne({ _id: id, candidate: req.user._id });
+
+    if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+    if (application.status !== APPLICATION_STATUS.DRAFT) {
+      return errorResponse(res, { statusCode: 400, message: 'Payment slip can only be deleted from draft applications.' });
+    }
+
+    if (application.paymentSlip && application.paymentSlip.filePath) {
+      const diskPath = resolveStoredFilePath(application.paymentSlip.filePath);
+      if (diskPath && fs.existsSync(diskPath)) {
+        try {
+          fs.unlinkSync(diskPath);
+        } catch (e) {
+          logger.error(`Failed to delete payment slip from disk: ${e.message}`);
+        }
+      }
+    }
+
+    application.paymentSlip = undefined;
+    await application.save();
+
+    return successResponse(res, { message: 'Payment slip removed successfully.' });
   } catch (error) { next(error); }
 };
 

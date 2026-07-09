@@ -13,7 +13,7 @@ const {
   getMonitoringOverview, getJudgeProgress, exportApplications,
   publishFinalists, publishWinners, generateCertificates,
   uploadDocuments, deleteDocument, deleteApplication, deleteApplicationByAdmin,
-  downloadDocument,
+  downloadDocument, uploadPaymentSlip, deletePaymentSlip,
 } = require('../controllers/application.controller');
 
 // ── Multer Config ──────────────────────────────────────────────────────────────
@@ -44,6 +44,20 @@ const upload = multer({
   },
 });
 
+const uploadSlip = multer({
+  storage,
+  limits: { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    if (allowed.includes(file.mimetype)) cb(null, true);
+    else {
+      const error = new Error('Invalid file type. Only PDF and JPEG/PNG/WebP images are allowed.');
+      error.statusCode = 400;
+      cb(error);
+    }
+  },
+});
+
 const rejectAfterApplicationDeadline = (req, res, next) => {
   if (Date.now() < new Date(APPLICATION_DEADLINE.CLOSES_AT).getTime()) return next();
   return res.status(403).json({
@@ -59,6 +73,8 @@ router.put('/:id',                authenticate, requireRole('candidate'), update
 router.post('/:id/submit',        authenticate, requireRole('candidate'), submitApplication);
 router.post('/:id/documents',     authenticate, requireRole('candidate'), rejectAfterApplicationDeadline, upload.array('documents', 2), uploadDocuments);
 router.delete('/:id/documents/:docId', authenticate, requireRole('candidate'), deleteDocument);
+router.post('/:id/payment-slip',  authenticate, requireRole('candidate'), rejectAfterApplicationDeadline, uploadSlip.single('paymentSlip'), uploadPaymentSlip);
+router.delete('/:id/payment-slip', authenticate, requireRole('candidate'), deletePaymentSlip);
 router.delete('/:id',             authenticate, requireRole('candidate'), deleteApplication);
 
 // Admin

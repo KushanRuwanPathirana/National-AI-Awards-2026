@@ -189,12 +189,30 @@ const applicationSchema = new mongoose.Schema(
       type: Date,
     },
 
+    // Payment fields
+    paymentMethod: {
+      type: String,
+      enum: ['transfer', 'online', 'none', ''],
+      default: '',
+    },
+    paymentSlip: {
+      originalName: { type: String },
+      filePath:     { type: String },
+      mimeType:     { type: String },
+      size:         { type: Number },
+      uploadedAt:   { type: Date },
+    },
+    onlinePaymentSimulated: {
+      type: Boolean,
+      default: false,
+    },
+
     // Step tracking for wizard
     completedStep: {
       type: Number,
       default: 0,
       min: 0,
-      max: 7,
+      max: 8,
     },
 
     // Submission metadata

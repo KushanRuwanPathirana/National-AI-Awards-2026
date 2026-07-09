@@ -182,6 +182,43 @@ const ApplicationDetail = () => {
                 </div>
               )}
             </div>
+
+            {/* Payment Details */}
+            {app.category?.name !== 'University AI Innovation' && (
+              <div className="glass-card p-8 !hover:transform-none">
+                <h3 className="font-display font-bold text-white text-lg border-b border-white/10 pb-3 mb-5 flex items-center gap-2">
+                  <RiAwardLine className="text-accent-400" /> Payment Details
+                </h3>
+                <div className="space-y-4 text-xs text-slate-300">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Payment Status</span>
+                    <span className="font-bold text-emerald-400">Paid / Verified</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Payment Method</span>
+                    <span className="text-white capitalize font-semibold">
+                      {app.paymentMethod === 'transfer' ? 'Online / Bank Transfer' : app.paymentMethod === 'online' ? 'Online Card Payment' : 'Not Selected'}
+                    </span>
+                  </div>
+                  {app.paymentMethod === 'transfer' && app.paymentSlip && (
+                    <div className="flex flex-col gap-2 border-t border-white/5 pt-3 mt-3">
+                      <span className="text-slate-500 font-medium">Uploaded Bank Slip</span>
+                      <a
+                        href={buildAssetUrl(app.paymentSlip.filePath)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5 hover:border-accent-500/30 hover:bg-white/10 transition-all group w-fit"
+                      >
+                        <div className="flex items-center gap-2 truncate">
+                          <RiFileTextLine className="text-accent-400 text-xl group-hover:scale-105 transition-transform" />
+                          <span className="text-xs text-slate-300 truncate font-medium">{app.paymentSlip.originalName}</span>
+                        </div>
+                      </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Sidebar Metadata */}

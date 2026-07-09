@@ -11,6 +11,10 @@ const applicationService = {
     headers: { 'Content-Type': 'multipart/form-data' },
   }),
   deleteDocument: (appId, docId) => api.delete(`/applications/${appId}/documents/${docId}`),
+  uploadPaymentSlip: (id, formData) => api.post(`/applications/${id}/payment-slip`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  }),
+  deletePaymentSlip: (id) => api.delete(`/applications/${id}/payment-slip`),
   deleteApplication: (id) => api.delete(`/applications/${id}`),
 
   // Admin

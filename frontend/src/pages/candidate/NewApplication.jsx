@@ -6,13 +6,14 @@ import { toast } from 'react-hot-toast';
 import {
   RiArrowLeftLine, RiArrowRightLine, RiCheckLine, RiCloseLine,
   RiFileTextLine, RiSave3Line, RiShieldCheckLine, RiUploadCloud2Line,
+  RiBankLine, RiBankCardLine,
 } from 'react-icons/ri';
 import Button from '../../components/shared/Button';
 import categoryService from '../../services/category.service';
 import applicationService from '../../services/application.service';
 import { useAuth } from '../../context/AuthContext';
 
-const steps = [
+const baseSteps = [
   { label: 'Applicant' },
   { label: 'Category' },
   { label: 'Overview' },
@@ -71,6 +72,14 @@ const defaults = {
   promotionalConsent: false,
   conflictDisclosure: '',
   submissionFeeAcknowledged: false,
+  paymentMethod: '',
+  paymentSlip: null,
+  onlinePaymentSimulated: false,
+  cardName: '',
+  cardNumber: '',
+  cardExpiry: '',
+  cardCvv: '',
+  cardFlipped: false,
 };
 
 const countWords = (value = '') => value.trim().split(/\s+/).filter(Boolean).length;
@@ -112,8 +121,16 @@ const NewApplication = () => {
   const [savingDraft, setSavingDraft] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
+  const [paymentSlipFile, setPaymentSlipFile] = useState(null);
+  const [uploadingSlip, setUploadingSlip] = useState(false);
+  const [paymentSimulating, setPaymentSimulating] = useState(false);
+
   const { register, handleSubmit, watch, reset, getValues, setValue } = useForm({ defaultValues: defaults });
   const categoryId = watch('categoryId');
+  const selectedCategoryName = watch('selectedCategoryName');
+
+  const isFreeCategory = selectedCategory?.name === 'University AI Innovation';
+  const activeSteps = isFreeCategory ? baseSteps : [...baseSteps, { label: 'Payment' }];
   const watched = watch();
   const candidateRegistrationNumber = user?.registrationNumber || '';
   const applicationDeadlinePassed = hasApplicationDeadlinePassed();
@@ -139,6 +156,18 @@ const NewApplication = () => {
   }, [categoryId, categories]);
 
   useEffect(() => {
+    if (selectedCategory && selectedCategory.name === 'University AI Innovation') {
+      setValue('paymentMethod', '');
+      setValue('paymentSlip', null);
+      setValue('onlinePaymentSimulated', false);
+      setPaymentSlipFile(null);
+      if (currentStep > 6) {
+        setCurrentStep(6);
+      }
+    }
+  }, [selectedCategory, currentStep, setValue]);
+
+  useEffect(() => {
     if (!draftQueryId) return;
 
     const fetchDraft = async () => {
@@ -155,6 +184,7 @@ const NewApplication = () => {
 
         setDraftId(draft._id);
         setUploadedFiles(draft.documents || []);
+        setPaymentSlipFile(draft.paymentSlip || null);
         reset({
           ...defaults,
           organisationName: draft.organisationName || draft.organizationName || '',
@@ -191,8 +221,14 @@ const NewApplication = () => {
           promotionalConsent: !!draft.promotionalConsent,
           conflictDisclosure: draft.conflictDisclosure || '',
           submissionFeeAcknowledged: !!draft.submissionFeeAcknowledged,
+          paymentMethod: draft.paymentMethod || '',
+          paymentSlip: draft.paymentSlip || null,
+          onlinePaymentSimulated: !!draft.onlinePaymentSimulated,
         });
-        setCurrentStep(Math.min(Math.max(draft.completedStep || 0, 0), steps.length - 1));
+
+        const isDraftFree = draft.category?.name === 'University AI Innovation' || categories.find(c => c._id === (draft.category?._id || draft.category))?.name === 'University AI Innovation';
+        const draftActiveStepsLength = isDraftFree ? 7 : 8;
+        setCurrentStep(Math.min(Math.max(draft.completedStep || 0, 0), draftActiveStepsLength - 1));
       } catch (e) {
         toast.error(getApiErrorMessage(e, 'Failed to load draft application.'));
         navigate('/dashboard');
@@ -204,7 +240,7 @@ const NewApplication = () => {
     fetchDraft();
   }, [candidateRegistrationNumber, draftQueryId, navigate, reset]);
 
-  const buildPayload = (values, completedStep = Math.min(currentStep + 1, steps.length)) => {
+  const buildPayload = (values, completedStep = Math.min(currentStep + 1, activeSteps.length)) => {
     const payload = {
       organisationName: values.organisationName,
       organizationName: values.organisationName,
@@ -247,6 +283,9 @@ const NewApplication = () => {
       promotionalConsent: !!values.promotionalConsent,
       conflictDisclosure: values.conflictDisclosure,
       submissionFeeAcknowledged: !!values.submissionFeeAcknowledged,
+      paymentMethod: values.paymentMethod || '',
+      paymentSlip: values.paymentSlip || null,
+      onlinePaymentSimulated: !!values.onlinePaymentSimulated,
       completedStep,
     };
 
@@ -307,6 +346,29 @@ const NewApplication = () => {
     }
     if (currentStep === 5 && !values.nationalRelevance) {
       return { field: 'nationalRelevance', message: 'Please describe the Sri Lanka-specific national relevance.' };
+    }
+    if (currentStep === 6) {
+      const required = [
+        ['declarationAccepted', 'Please confirm the accuracy of all information provided.'],
+        ['verificationConsent', 'Please provide consent for verification if shortlisted.'],
+        ['promotionalConsent', 'Please provide promotional consent.'],
+        ['submissionFeeAcknowledged', 'Please acknowledge the submission fee requirements.'],
+      ];
+      const missing = required.find(([field]) => !values[field]);
+      if (missing) return { field: missing[0], message: missing[1] };
+    }
+    if (currentStep === 7) {
+      if (!isFreeCategory) {
+        if (!values.paymentMethod) {
+          return { field: 'paymentMethod', message: 'Please select a payment method.' };
+        }
+        if (values.paymentMethod === 'transfer' && !values.paymentSlip) {
+          return { field: 'paymentSlip', message: 'Please upload your bank transfer slip.' };
+        }
+        if (values.paymentMethod === 'online' && !values.onlinePaymentSimulated) {
+          return { field: 'onlinePayment', message: 'Please complete the online payment simulation.' };
+        }
+      }
     }
     return null;
   };
@@ -410,6 +472,101 @@ const NewApplication = () => {
     }
   };
 
+  const handlePaymentSlipUpload = async (e) => {
+    if (applicationDeadlinePassed) {
+      toast.error(`Slip can no longer be uploaded after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
+      e.target.value = '';
+      return;
+    }
+
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Only PDF, JPG, PNG, and WebP files are allowed.');
+      e.target.value = '';
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('File size must be under 10MB.');
+      e.target.value = '';
+      return;
+    }
+
+    setUploadingSlip(true);
+    try {
+      const id = await ensureDraft();
+      const formData = new FormData();
+      formData.append('paymentSlip', file);
+      const { data } = await applicationService.uploadPaymentSlip(id, formData);
+      setPaymentSlipFile(data.data.paymentSlip);
+      setValue('paymentSlip', data.data.paymentSlip, { shouldDirty: true });
+      toast.success('Payment slip uploaded successfully.');
+    } catch (e) {
+      toast.error(getApiErrorMessage(e, 'Failed to upload payment slip.'));
+    } finally {
+      setUploadingSlip(false);
+      e.target.value = '';
+    }
+  };
+
+  const handlePaymentSlipDelete = async () => {
+    if (applicationDeadlinePassed) {
+      toast.error(`Slip can no longer be modified after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
+      return;
+    }
+
+    try {
+      await applicationService.deletePaymentSlip(draftId);
+      setPaymentSlipFile(null);
+      setValue('paymentSlip', null, { shouldDirty: true });
+      toast.success('Payment slip removed.');
+    } catch {
+      toast.error('Failed to remove payment slip.');
+    }
+  };
+
+  const handleSimulateCardPayment = async () => {
+    const cardName = getValues('cardName');
+    const cardNumber = getValues('cardNumber');
+    const cardExpiry = getValues('cardExpiry');
+    const cardCvv = getValues('cardCvv');
+
+    if (!cardName || !cardNumber || !cardExpiry || !cardCvv) {
+      toast.error('Please fill in all credit card details.');
+      return;
+    }
+
+    if (cardNumber.replace(/\s+/g, '').length < 16) {
+      toast.error('Please enter a valid 16-digit card number.');
+      return;
+    }
+
+    if (cardExpiry.length < 5) {
+      toast.error('Please enter a valid expiry date (MM/YY).');
+      return;
+    }
+
+    if (cardCvv.length < 3) {
+      toast.error('Please enter a valid 3-digit CVV.');
+      return;
+    }
+
+    setPaymentSimulating(true);
+    try {
+      // Simulate network request delays
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      setValue('onlinePaymentSimulated', true, { shouldDirty: true });
+      toast.success('Payment authorization successful!');
+    } catch {
+      toast.error('Payment authorization failed.');
+    } finally {
+      setPaymentSimulating(false);
+    }
+  };
+
   const onSubmit = async () => {
     if (applicationDeadlinePassed) {
       toast.error(`Applications can no longer be submitted after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
@@ -476,9 +633,9 @@ const NewApplication = () => {
                 <div className="absolute left-0 right-0 top-5 h-0.5 bg-white/5 z-0" />
                 <div
                   className="absolute left-0 top-5 h-0.5 bg-gradient-accent transition-all duration-300 z-0"
-                  style={{ width: `${(currentStep / (steps.length - 1)) * 100}%` }}
+                  style={{ width: `${(currentStep / (activeSteps.length - 1)) * 100}%` }}
                 />
-                {steps.map((step, idx) => (
+                {activeSteps.map((step, idx) => (
                   <div key={step.label} className="relative z-10 flex flex-col items-center w-24">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-sm border-2 transition-all ${
                       idx < currentStep
@@ -690,6 +847,304 @@ const NewApplication = () => {
                       </div>
                     </div>
                   )}
+
+                  {currentStep === 7 && !isFreeCategory && (
+                    <div className="space-y-6">
+                      <style dangerouslySetInnerHTML={{__html: `
+                        .perspective-1000 {
+                          perspective: 1000px;
+                        }
+                        .preserve-3d {
+                          transform-style: preserve-3d;
+                        }
+                        .backface-hidden {
+                          backface-visibility: hidden;
+                        }
+                        .rotate-y-180 {
+                          transform: rotateY(180deg);
+                        }
+                        @keyframes fadeIn {
+                          from { opacity: 0; transform: translateY(8px); }
+                          to { opacity: 1; transform: translateY(0); }
+                        }
+                        .animate-fadeIn {
+                          animation: fadeIn 0.3s ease forwards;
+                        }
+                      `}} />
+
+                      <div>
+                        <h3 className="font-display font-bold text-white text-lg">Section H: Registration Fee & Payment</h3>
+                        <p className="text-slate-400 text-xs mt-1">Application fee is LKR 25,000. Choose your preferred payment method.</p>
+                      </div>
+
+                      {/* Payment Method Tabs */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setValue('paymentMethod', 'transfer');
+                            setValue('onlinePaymentSimulated', false);
+                          }}
+                          className={`p-5 rounded-2xl border text-left flex items-start gap-4 transition-all ${
+                            watched.paymentMethod === 'transfer'
+                              ? 'bg-accent-500/10 border-accent-500 shadow-glow'
+                              : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10'
+                          }`}
+                        >
+                          <RiBankLine className={`text-2xl mt-0.5 ${watched.paymentMethod === 'transfer' ? 'text-accent-400' : 'text-slate-400'}`} />
+                          <div>
+                            <h4 className="text-white font-bold text-sm">Online / Bank Transfer</h4>
+                            <p className="text-slate-400 text-xs mt-1">Transfer to our bank account and upload the transaction slip/receipt.</p>
+                          </div>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setValue('paymentMethod', 'online');
+                          }}
+                          className={`p-5 rounded-2xl border text-left flex items-start gap-4 transition-all ${
+                            watched.paymentMethod === 'online'
+                              ? 'bg-accent-500/10 border-accent-500 shadow-glow'
+                              : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10'
+                          }`}
+                        >
+                          <RiBankCardLine className={`text-2xl mt-0.5 ${watched.paymentMethod === 'online' ? 'text-accent-400' : 'text-slate-400'}`} />
+                          <div>
+                            <h4 className="text-white font-bold text-sm">Online Card Payment</h4>
+                            <p className="text-slate-400 text-xs mt-1">Pay securely via Credit/Debit card (mocked authorization flow).</p>
+                          </div>
+                        </button>
+                      </div>
+
+                      {/* Tab 1: Bank Transfer Details & Upload */}
+                      {watched.paymentMethod === 'transfer' && (
+                        <div className="space-y-5 rounded-2xl bg-white/[0.02] border border-white/5 p-6 animate-fadeIn">
+                          <div>
+                            <h4 className="text-white font-bold text-sm">Bank Transfer Instructions</h4>
+                            <p className="text-slate-400 text-xs mt-1">Please make the transfer to the following account and upload your payment slip below. Make sure to mention your registration number <strong className="text-white font-mono">{candidateRegistrationNumber}</strong> as the payment reference.</p>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
+                            <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                              <span className="text-slate-500 font-medium block">Bank Name</span>
+                              <strong className="text-white text-sm block mt-1">National Development Bank (NDB)</strong>
+                            </div>
+                            <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                              <span className="text-slate-500 font-medium block">Account Name</span>
+                              <strong className="text-white text-sm block mt-1">National AI Awards Association</strong>
+                            </div>
+                            <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                              <span className="text-slate-500 font-medium block">Account Number</span>
+                              <strong className="text-white text-sm font-mono block mt-1">0123-456789-012</strong>
+                            </div>
+                            <div className="p-4 rounded-xl bg-white/5 border border-white/5">
+                              <span className="text-slate-500 font-medium block">Branch</span>
+                              <strong className="text-white text-sm block mt-1">Colombo Corporate Branch</strong>
+                            </div>
+                          </div>
+
+                          <div className="border border-dashed border-white/10 rounded-2xl p-8 text-center bg-white/5 relative">
+                            <input
+                              type="file"
+                              accept="application/pdf,image/jpeg,image/png,image/webp"
+                              onChange={handlePaymentSlipUpload}
+                              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              disabled={uploadingSlip || !!paymentSlipFile}
+                            />
+                            <div className="flex flex-col items-center">
+                              <RiUploadCloud2Line className="text-accent-400 text-4xl mb-3" />
+                              <h4 className="font-display font-semibold text-white text-sm mb-1">
+                                {uploadingSlip ? 'Uploading Slip...' : 'Upload Payment Slip / Receipt'}
+                              </h4>
+                              <p className="text-slate-500 text-xs">PDF or Images (JPG, PNG, WebP) up to 10MB.</p>
+                            </div>
+                          </div>
+
+                          {paymentSlipFile && (
+                            <div className="space-y-2">
+                              <h4 className="text-white text-xs font-bold uppercase tracking-wider">Uploaded Slip</h4>
+                              <div className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-300">
+                                <div className="flex items-center gap-2 truncate">
+                                  <RiFileTextLine className="text-accent-400 text-lg shrink-0" />
+                                  <span className="truncate">{paymentSlipFile.originalName}</span>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={handlePaymentSlipDelete}
+                                  className="p-1 rounded hover:bg-red-500/10 text-red-400"
+                                  aria-label="Remove slip"
+                                >
+                                  <RiCloseLine size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          <FieldError message={fieldErrors.paymentSlip} />
+                        </div>
+                      )}
+
+                      {/* Tab 2: Credit/Debit Card Simulation */}
+                      {watched.paymentMethod === 'online' && (
+                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 rounded-2xl bg-white/[0.02] border border-white/5 p-6 animate-fadeIn">
+                          {/* Left Panel: Credit Card Details Form */}
+                          <div className="space-y-4">
+                            <div>
+                              <h4 className="text-white font-bold text-sm mb-1">Pay Online via Card</h4>
+                              <p className="text-slate-400 text-xs">Simulate your secure LKR 25,000 payment.</p>
+                            </div>
+
+                            {watched.onlinePaymentSimulated ? (
+                              <div className="p-6 rounded-xl bg-emerald-500/15 border border-emerald-500/20 text-center space-y-3">
+                                <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center mx-auto text-white shadow-glow">
+                                  <RiCheckLine size={24} />
+                                </div>
+                                <h4 className="text-emerald-400 font-bold text-sm">Payment Successful</h4>
+                                <p className="text-slate-300 text-xs">LKR 25,000 has been successfully simulated and approved.</p>
+                                <button
+                                  type="button"
+                                  onClick={() => setValue('onlinePaymentSimulated', false)}
+                                  className="text-xs text-slate-400 hover:text-white underline mt-2"
+                                >
+                                  Reset Payment
+                                </button>
+                              </div>
+                            ) : (
+                              <div className="space-y-4 text-xs">
+                                <div>
+                                  <FieldLabel required>Cardholder Name</FieldLabel>
+                                  <input
+                                    type="text"
+                                    className="input-field"
+                                    placeholder="JOHN DOE"
+                                    value={watched.cardName || ''}
+                                    onChange={(e) => setValue('cardName', e.target.value.toUpperCase())}
+                                  />
+                                </div>
+                                <div>
+                                  <FieldLabel required>Card Number</FieldLabel>
+                                  <input
+                                    type="text"
+                                    className="input-field font-mono"
+                                    placeholder="4111 2222 3333 4444"
+                                    maxLength="19"
+                                    value={watched.cardNumber || ''}
+                                    onChange={(e) => {
+                                      const val = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+                                      const matches = val.match(/\d{4,16}/g);
+                                      const match = (matches && matches[0]) || '';
+                                      const parts = [];
+
+                                      for (let i = 0, len = match.length; i < len; i += 4) {
+                                        parts.push(match.substring(i, i + 4));
+                                      }
+
+                                      if (parts.length > 0) {
+                                        setValue('cardNumber', parts.join(' '));
+                                      } else {
+                                        setValue('cardNumber', val);
+                                      }
+                                    }}
+                                  />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                  <div>
+                                    <FieldLabel required>Expiry Date</FieldLabel>
+                                    <input
+                                      type="text"
+                                      className="input-field font-mono"
+                                      placeholder="MM/YY"
+                                      maxLength="5"
+                                      value={watched.cardExpiry || ''}
+                                      onChange={(e) => {
+                                        let val = e.target.value.replace(/[^0-9]/g, '');
+                                        if (val.length >= 2) {
+                                          val = val.substring(0, 2) + '/' + val.substring(2, 4);
+                                        }
+                                        setValue('cardExpiry', val);
+                                      }}
+                                    />
+                                  </div>
+                                  <div>
+                                    <FieldLabel required>CVV</FieldLabel>
+                                    <input
+                                      type="password"
+                                      className="input-field font-mono"
+                                      placeholder="•••"
+                                      maxLength="3"
+                                      value={watched.cardCvv || ''}
+                                      onChange={(e) => setValue('cardCvv', e.target.value.replace(/[^0-9]/g, ''))}
+                                      onFocus={() => setValue('cardFlipped', true)}
+                                      onBlur={() => setValue('cardFlipped', false)}
+                                    />
+                                  </div>
+                                </div>
+                                <Button
+                                  type="button"
+                                  variant="gold"
+                                  className="w-full text-xs mt-3 flex justify-center items-center gap-2"
+                                  onClick={handleSimulateCardPayment}
+                                  loading={paymentSimulating}
+                                >
+                                  Authorize & Pay LKR 25,000
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Right Panel: Interactive Virtual Card */}
+                          <div className="flex items-center justify-center">
+                            <div className="w-[320px] h-[190px] perspective-1000 shrink-0 font-sans">
+                              <div
+                                className={`w-full h-full relative duration-700 preserve-3d transition-transform ${
+                                  watched.cardFlipped ? 'rotate-y-180' : ''
+                                }`}
+                              >
+                                {/* Card Front */}
+                                <div className="absolute inset-0 backface-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-slate-900 to-indigo-950 border border-white/10 p-5 flex flex-col justify-between shadow-2xl">
+                                  <div className="flex justify-between items-start">
+                                    <div className="w-12 h-9 bg-yellow-500/80 rounded-md opacity-80" /> {/* Chip */}
+                                    <span className="text-white font-mono font-bold tracking-widest text-sm">VISA</span>
+                                  </div>
+                                  <div className="text-white font-mono text-lg tracking-widest my-4">
+                                    {watched.cardNumber || '•••• •••• •••• ••••'}
+                                  </div>
+                                  <div className="flex justify-between text-[10px] text-slate-400">
+                                    <div className="flex-1 truncate pr-2">
+                                      <span className="block uppercase text-[8px] text-slate-500">Cardholder</span>
+                                      <strong className="text-white tracking-wider block truncate">{watched.cardName || 'JOHN DOE'}</strong>
+                                    </div>
+                                    <div className="w-10">
+                                      <span className="block uppercase text-[8px] text-slate-500">Expires</span>
+                                      <strong className="text-white block">{watched.cardExpiry || 'MM/YY'}</strong>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* Card Back */}
+                                <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 border border-white/10 py-5 flex flex-col justify-between shadow-2xl animate-fadeIn">
+                                  <div className="w-full h-10 bg-slate-950 mt-1" />
+                                  <div className="px-5 mt-4">
+                                    <div className="flex items-center gap-2">
+                                      <div className="flex-1 h-8 bg-white/10 rounded flex justify-end items-center pr-3 text-[10px] text-slate-400 font-mono italic">
+                                        Signature Strip
+                                      </div>
+                                      <div className="w-12 h-8 bg-white text-slate-900 rounded font-mono font-bold flex items-center justify-center tracking-wider text-xs">
+                                        {watched.cardCvv || '•••'}
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <div className="px-5 text-[8px] text-slate-500 text-center">
+                                    Secured by National AI Awards System simulation authorization.
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </motion.div>
               </AnimatePresence>
 
@@ -701,7 +1156,7 @@ const NewApplication = () => {
                   <Button variant="ghost" className="text-xs !px-4 !py-2" onClick={handleSaveDraft} loading={savingDraft}>
                     Save Draft <RiSave3Line />
                   </Button>
-                  {currentStep < steps.length - 1 ? (
+                  {currentStep < activeSteps.length - 1 ? (
                     <Button variant="primary" className="text-xs" onClick={handleNext}>Save & Continue <RiArrowRightLine /></Button>
                   ) : (
                     <Button variant="gold" className="text-xs" onClick={handleSubmit(onSubmit)}>Submit Application <RiCheckLine /></Button>
