@@ -48,6 +48,12 @@ const JWT = {
   COOKIE_MAX_AGE: 7 * 24 * 60 * 60 * 1000,
 };
 
+const APPLICATION_DEADLINE = {
+  // Applications close at the end of 15 August 2026 in Sri Lanka time.
+  CLOSES_AT: process.env.APPLICATION_DEADLINE || '2026-08-16T00:00:00+05:30',
+  DISPLAY_DATE: '15 August 2026',
+};
+
 const AWARD_CATEGORIES = [
   'National AI Excellence Award',
   'National AI Leadership Excellence Award',
@@ -73,5 +79,6 @@ module.exports = {
   PAGINATION,
   FILE_UPLOAD,
   JWT,
+  APPLICATION_DEADLINE,
   AWARD_CATEGORIES,
 };

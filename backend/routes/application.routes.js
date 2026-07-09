@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { APPLICATION_DEADLINE } = require('../config/constants');
 const { authenticate } = require('../middleware/auth.middleware');
 const { requireRole } = require('../middleware/role.middleware');
 const {
@@ -42,12 +43,20 @@ const upload = multer({
   },
 });
 
+const rejectAfterApplicationDeadline = (req, res, next) => {
+  if (Date.now() < new Date(APPLICATION_DEADLINE.CLOSES_AT).getTime()) return next();
+  return res.status(403).json({
+    success: false,
+    message: `Applications can no longer be created, edited, or submitted after the ${APPLICATION_DEADLINE.DISPLAY_DATE} deadline.`,
+  });
+};
+
 // Candidate
 router.post('/',                  authenticate, requireRole('candidate'), createApplication);
 router.get('/my',                 authenticate, requireRole('candidate'), getMyApplications);
 router.put('/:id',                authenticate, requireRole('candidate'), updateApplication);
 router.post('/:id/submit',        authenticate, requireRole('candidate'), submitApplication);
-router.post('/:id/documents',     authenticate, requireRole('candidate'), upload.array('documents', 2), uploadDocuments);
+router.post('/:id/documents',     authenticate, requireRole('candidate'), rejectAfterApplicationDeadline, upload.array('documents', 2), uploadDocuments);
 router.delete('/:id/documents/:docId', authenticate, requireRole('candidate'), deleteDocument);
 router.delete('/:id',             authenticate, requireRole('candidate'), deleteApplication);
 

@@ -4,7 +4,7 @@ const Evaluation = require('../models/Evaluation.model');
 const Notification = require('../models/Notification.model');
 const AuditLog = require('../models/AuditLog.model');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
-const { APPLICATION_STATUS, ALLOWED_TRANSITIONS } = require('../config/constants');
+const { APPLICATION_DEADLINE, APPLICATION_STATUS, ALLOWED_TRANSITIONS } = require('../config/constants');
 const { sendApplicationStatusUpdate } = require('../services/email.service');
 const logger = require('../utils/logger');
 const { buildApplicationsCsv, buildSimplePdf } = require('../utils/reportExporter');
@@ -14,6 +14,17 @@ const mongoose = require('mongoose');
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const getPublicUploadPath = (file) => path.posix.join('uploads', 'documents', file.filename);
+
+const hasApplicationDeadlinePassed = () => Date.now() >= new Date(APPLICATION_DEADLINE.CLOSES_AT).getTime();
+
+const rejectAfterApplicationDeadline = (res) => {
+  if (!hasApplicationDeadlinePassed()) return false;
+  errorResponse(res, {
+    statusCode: 403,
+    message: `Applications can no longer be created, edited, or submitted after the ${APPLICATION_DEADLINE.DISPLAY_DATE} deadline.`,
+  });
+  return true;
+};
 
 const resolveStoredFilePath = (filePath) => {
   if (!filePath) return null;
@@ -74,6 +85,8 @@ const removeApplicationRecord = async ({ application, performedBy, req }) => {
 // ── Create Draft ───────────────────────────────────────────────────────────────
 const createApplication = async (req, res, next) => {
   try {
+    if (rejectAfterApplicationDeadline(res)) return;
+
     const { categoryId, projectTitle, tagline, organisationName, organizationName } = req.body;
 
     if (categoryId) {
@@ -109,6 +122,8 @@ const createApplication = async (req, res, next) => {
 // ── Update Draft (multi-step) ──────────────────────────────────────────────────
 const updateApplication = async (req, res, next) => {
   try {
+    if (rejectAfterApplicationDeadline(res)) return;
+
     const { id } = req.params;
     const application = await Application.findOne({ _id: id, candidate: req.user._id });
 
@@ -158,6 +173,8 @@ const updateApplication = async (req, res, next) => {
 // ── Submit Application ─────────────────────────────────────────────────────────
 const submitApplication = async (req, res, next) => {
   try {
+    if (rejectAfterApplicationDeadline(res)) return;
+
     const { id } = req.params;
     const application = await Application.findOne({ _id: id, candidate: req.user._id }).populate('category');
 
@@ -371,6 +388,8 @@ const assignJudges = async (req, res, next) => {
 // ── Upload Documents ───────────────────────────────────────────────────────────
 const uploadDocuments = async (req, res, next) => {
   try {
+    if (rejectAfterApplicationDeadline(res)) return;
+
     const { id } = req.params;
     const application = await Application.findOne({ _id: id, candidate: req.user._id });
 
@@ -404,10 +423,15 @@ const uploadDocuments = async (req, res, next) => {
 // ── Delete Document ────────────────────────────────────────────────────────────
 const deleteDocument = async (req, res, next) => {
   try {
+    if (rejectAfterApplicationDeadline(res)) return;
+
     const { id, docId } = req.params;
     const application = await Application.findOne({ _id: id, candidate: req.user._id });
 
     if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+    if (application.status !== APPLICATION_STATUS.DRAFT) {
+      return errorResponse(res, { statusCode: 400, message: 'Documents can only be removed from draft applications.' });
+    }
 
     const docIndex = application.documents.findIndex(d => d._id.toString() === docId);
     if (docIndex === -1) return errorResponse(res, { statusCode: 404, message: 'Document not found.' });

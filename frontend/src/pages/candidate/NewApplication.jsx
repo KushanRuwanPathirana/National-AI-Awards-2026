@@ -24,6 +24,8 @@ const steps = [
 
 const organisationSizes = ['Startup <4 yrs', 'SME', 'Large Enterprise', 'Government', 'Academic'];
 const deploymentStatuses = ['Pilot', 'Live in production', 'Scaling'];
+const APPLICATION_DEADLINE_CLOSES_AT = '2026-08-16T00:00:00+05:30';
+const APPLICATION_DEADLINE_LABEL = '15 August 2026';
 
 const judgingCriteria = [
   ['innovationOriginality', 'Innovation & Originality', 20, 'What makes this technically or conceptually novel vs existing solutions?'],
@@ -72,6 +74,7 @@ const defaults = {
 };
 
 const countWords = (value = '') => value.trim().split(/\s+/).filter(Boolean).length;
+const hasApplicationDeadlinePassed = () => Date.now() >= new Date(APPLICATION_DEADLINE_CLOSES_AT).getTime();
 
 const getApiErrorMessage = (error, fallback) => {
   const first = error.response?.data?.errors?.[0];
@@ -113,6 +116,7 @@ const NewApplication = () => {
   const categoryId = watch('categoryId');
   const watched = watch();
   const candidateRegistrationNumber = user?.registrationNumber || '';
+  const applicationDeadlinePassed = hasApplicationDeadlinePassed();
 
   useEffect(() => {
     setValue('registrationNumber', candidateRegistrationNumber, { shouldDirty: false });
@@ -308,6 +312,12 @@ const NewApplication = () => {
   };
 
   const handleNext = async () => {
+    if (applicationDeadlinePassed) {
+      toast.error(`Applications can no longer be edited after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
+      navigate('/dashboard?tab=drafts');
+      return;
+    }
+
     const values = getValues();
     const validationError = validateStep(values);
     if (validationError) {
@@ -327,6 +337,12 @@ const NewApplication = () => {
   };
 
   const handleSaveDraft = async () => {
+    if (applicationDeadlinePassed) {
+      toast.error(`Applications can no longer be edited after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
+      navigate('/dashboard?tab=drafts');
+      return;
+    }
+
     const values = getValues();
 
     try {
@@ -344,6 +360,12 @@ const NewApplication = () => {
   };
 
   const handleFileUpload = async (e) => {
+    if (applicationDeadlinePassed) {
+      toast.error(`Documents can no longer be edited after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
+      e.target.value = '';
+      return;
+    }
+
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
     if (uploadedFiles.length + files.length > 2) {
@@ -374,6 +396,11 @@ const NewApplication = () => {
   };
 
   const handleFileDelete = async (docId) => {
+    if (applicationDeadlinePassed) {
+      toast.error(`Documents can no longer be edited after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
+      return;
+    }
+
     try {
       await applicationService.deleteDocument(draftId, docId);
       setUploadedFiles(files => files.filter(file => file._id !== docId));
@@ -384,6 +411,12 @@ const NewApplication = () => {
   };
 
   const onSubmit = async () => {
+    if (applicationDeadlinePassed) {
+      toast.error(`Applications can no longer be submitted after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
+      navigate('/dashboard?tab=drafts');
+      return;
+    }
+
     const values = getValues();
     const requiredConsents = values.declarationAccepted && values.verificationConsent && values.promotionalConsent && values.submissionFeeAcknowledged;
     if (!requiredConsents) {
@@ -425,6 +458,16 @@ const NewApplication = () => {
         {loadingDraft ? (
           <div className="glass-card p-10 !hover:transform-none flex justify-center">
             <div className="w-10 h-10 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
+          </div>
+        ) : applicationDeadlinePassed ? (
+          <div className="glass-card p-8 sm:p-10 !hover:transform-none text-center">
+            <h2 className="font-display font-bold text-white text-2xl">Applications Closed</h2>
+            <p className="text-slate-400 text-sm mt-3 max-w-xl mx-auto leading-relaxed">
+              The application deadline was {APPLICATION_DEADLINE_LABEL}. Drafts are now locked and can no longer be edited or submitted.
+            </p>
+            <Button variant="primary" className="mt-6 text-xs" onClick={() => navigate('/dashboard?tab=drafts')}>
+              Back to Edit Draft
+            </Button>
           </div>
         ) : (
           <>

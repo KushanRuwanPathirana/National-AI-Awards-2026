@@ -21,11 +21,11 @@ import Button from '../../components/shared/Button';
 const timelinePhases = [
   {
     phase: 'Phase 1', title: 'Applications Open',
-    dateRange: '15 May – 31 July 2026', status: 'active', color: 'accent',
+    dateRange: '15 May – 15 August 2026', status: 'active', color: 'accent',
     milestones: [
       { date: '15 May 2026', event: 'Application portal goes live', status: 'completed' },
       { date: '01 Jun 2026', event: 'Informational webinar for applicants', status: 'completed' },
-      { date: '31 Jul 2026', event: 'Final submission deadline', status: 'active' },
+      { date: '15 Aug 2026', event: 'Final submission deadline', status: 'active' },
     ],
   },
   {
@@ -78,7 +78,7 @@ const faqData = [
       { q: 'Is there an application fee?', a: 'No. Applying to the National AI Awards Sri Lanka is completely free of charge.' },
       { q: 'How do I submit my application?', a: 'Complete your profile, choose up to 2 award categories, fill in the application form, upload supporting documents, and click Submit. You can save drafts and return before the deadline.' },
       { q: 'Can I apply in more than one category?', a: 'Yes, you may apply in up to 2 award categories. A separate application form must be submitted for each category.' },
-      { q: 'Can I edit my application after submission?', a: 'Applications can be edited any time before the submission deadline (31 July 2026). After the deadline, submissions are locked for the review process.' },
+      { q: 'Can I edit my application after submission?', a: 'Applications can be edited any time before the submission deadline (15 August 2026). After the deadline, submissions are locked for the review process.' },
     ],
   },
   {
@@ -115,6 +115,10 @@ const VALID_TABS = new Set([
   'profile',
   'password',
 ]);
+const APPLICATION_DEADLINE_CLOSES_AT = '2026-08-16T00:00:00+05:30';
+const APPLICATION_DEADLINE_LABEL = '15 August 2026';
+const APPLICATION_EDIT_TIME_LABEL = '15 August 2026, 11:59 PM';
+const hasApplicationDeadlinePassed = () => Date.now() >= new Date(APPLICATION_DEADLINE_CLOSES_AT).getTime();
 
 /* ─── Inline FAQ accordion ───────────────────────────────────────────────── */
 const FAQItem = ({ faq, isOpen, onToggle }) => (
@@ -163,6 +167,7 @@ const CandidateDashboard = () => {
   const [notifLoading, setNotifLoading] = useState(false);
   const [openFAQs, setOpenFAQs] = useState({});
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const applicationDeadlinePassed = hasApplicationDeadlinePassed();
 
   // Change Password state
   const [changeSuccess, setChangeSuccess] = useState('');
@@ -309,14 +314,26 @@ const CandidateDashboard = () => {
         <span className="badge-accent uppercase font-mono text-[9px]">{app.category?.name}</span>
         <h4 className="font-display font-bold text-white text-base mt-1">{app.projectTitle}</h4>
         <span className="text-slate-500 text-xs font-mono">{app.referenceNumber || 'Draft'}</span>
+        {app.status === 'draft' && (
+          <p className={`mt-1 text-[11px] flex items-center gap-1.5 ${applicationDeadlinePassed ? 'text-red-300' : 'text-accent-300'}`}>
+            <RiCalendarLine size={13} />
+            Can only edit until {APPLICATION_EDIT_TIME_LABEL}
+          </p>
+        )}
       </div>
       <div className="flex items-center gap-3 shrink-0">
         <StatusBadge status={app.status} label={app.statusLabel || app.status} />
         {app.status === 'draft' ? (
           <>
-            <Link to={`/dashboard/apply?draft=${app._id}`} className="btn-ghost !py-2 !px-4 text-xs flex items-center gap-1.5">
-              <RiEditLine size={14} /> Edit
-            </Link>
+            {applicationDeadlinePassed ? (
+              <span className="btn-ghost !py-2 !px-4 text-xs flex items-center gap-1.5 opacity-60 cursor-not-allowed">
+                <RiLockPasswordLine size={14} /> Locked
+              </span>
+            ) : (
+              <Link to={`/dashboard/apply?draft=${app._id}`} className="btn-ghost !py-2 !px-4 text-xs flex items-center gap-1.5">
+                <RiEditLine size={14} /> Edit
+              </Link>
+            )}
             <button
               onClick={() => handleDelete(app)}
               className="btn-ghost !py-2 !px-4 text-xs flex items-center gap-1.5 text-red-400 border-red-500/30 hover:bg-red-500/10 hover:text-red-300 animate-fade-in"
@@ -514,7 +531,7 @@ const CandidateDashboard = () => {
                       </div>
                       <div className="flex justify-between border-b border-white/5 pb-2">
                         <span className="text-accent-400 font-bold">Submission Deadline</span>
-                        <span className="text-accent-400 font-bold">July 31, 2026</span>
+                        <span className="text-accent-400 font-bold">August 15, 2026</span>
                       </div>
                       <div className="flex justify-between border-b border-white/5 pb-2">
                         <span className="text-slate-400">Judge Evaluation</span>
@@ -565,7 +582,7 @@ const CandidateDashboard = () => {
                     <h3 className="font-display font-bold text-white text-xl">My Applications</h3>
                     <p className="text-slate-400 text-xs mt-1">All your nominations in one place.</p>
                   </div>
-                  <button onClick={() => switchTab('new')} className="btn-primary text-xs flex items-center gap-1.5">
+                  <button onClick={() => switchTab('new')} disabled={applicationDeadlinePassed} className="btn-primary text-xs flex items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-60">
                     <RiAddLine /> Start New
                   </button>
                 </div>
@@ -593,7 +610,9 @@ const CandidateDashboard = () => {
                 <div>
                   <h3 className="font-display font-bold text-white text-2xl mb-2">Start a New Application</h3>
                   <p className="text-slate-400 text-sm max-w-sm mx-auto leading-relaxed">
-                    Submit your AI innovation to the National AI Awards 2026. You can save your progress as a draft at any time.
+                    {applicationDeadlinePassed
+                      ? `The application deadline was ${APPLICATION_DEADLINE_LABEL}. New applications are now closed.`
+                      : 'Submit your AI innovation to the National AI Awards 2026. You can save your progress as a draft at any time.'}
                   </p>
                 </div>
 
@@ -601,7 +620,7 @@ const CandidateDashboard = () => {
                   {[
                     { step: '01', title: 'Choose a Category', desc: 'Select up to 2 award categories that best match your innovation.' },
                     { step: '02', title: 'Fill the Form',     desc: 'Describe your project, impact, team, and technical details.' },
-                    { step: '03', title: 'Submit',            desc: 'Review and submit before 31 July 2026.' },
+                    { step: '03', title: 'Submit',            desc: 'Review and submit before 15 August 2026.' },
                   ].map(s => (
                     <div key={s.step} className="p-4 rounded-xl bg-white/5 border border-white/5">
                       <span className="text-accent-400 font-black font-display text-lg">{s.step}</span>
@@ -611,9 +630,15 @@ const CandidateDashboard = () => {
                   ))}
                 </div>
 
-                <Link to="/dashboard/apply" className="btn-gold mt-2">
-                  Begin Application <RiArrowRightLine />
-                </Link>
+                {applicationDeadlinePassed ? (
+                  <span className="btn-ghost mt-2 opacity-60 cursor-not-allowed">
+                    Applications Closed <RiLockPasswordLine />
+                  </span>
+                ) : (
+                  <Link to="/dashboard/apply" className="btn-gold mt-2">
+                    Begin Application <RiArrowRightLine />
+                  </Link>
+                )}
               </div>
             )}
 
@@ -625,7 +650,7 @@ const CandidateDashboard = () => {
                     <h3 className="font-display font-bold text-white text-xl">Edit Draft</h3>
                     <p className="text-slate-400 text-xs mt-1">Continue working on your saved drafts.</p>
                   </div>
-                  <button onClick={() => switchTab('new')} className="btn-primary text-xs flex items-center gap-1.5">
+                  <button onClick={() => switchTab('new')} disabled={applicationDeadlinePassed} className="btn-primary text-xs flex items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-60">
                     <RiAddLine /> New Draft
                   </button>
                 </div>
@@ -638,8 +663,8 @@ const CandidateDashboard = () => {
                   <EmptyState
                     icon={RiEditLine}
                     title="No Draft Applications"
-                    subtitle="You don't have any drafts to edit. Start a new application and save it as draft."
-                    cta="Start New Application"
+                    subtitle={applicationDeadlinePassed ? 'The application deadline has passed. No new drafts can be created.' : "You don't have any drafts to edit. Start a new application and save it as draft."}
+                    cta={applicationDeadlinePassed ? '' : 'Start New Application'}
                     ctaTo="/dashboard/apply"
                   />
                 ) : (
@@ -647,7 +672,9 @@ const CandidateDashboard = () => {
                     <div className="mb-4 p-4 rounded-xl bg-accent-500/8 border border-accent-500/20">
                       <p className="text-accent-300 text-xs flex items-center gap-2">
                         <RiInformationLine size={14} />
-                        Drafts are not submitted. Click <strong>Edit</strong> to continue filling in your application before the July 31 deadline.
+                        {applicationDeadlinePassed
+                          ? `The ${APPLICATION_DEADLINE_LABEL} deadline has passed. Drafts are locked and can no longer be edited or submitted.`
+                          : <>Drafts are not submitted. Click <strong>Edit</strong> to continue filling in your application before the August 15 deadline.</>}
                       </p>
                     </div>
                     <div className="space-y-4">
