@@ -1703,7 +1703,7 @@ const AdminDashboard = () => {
   const passwordStrength = passwordRules.filter((rule) => rule.passed).length;
 
   // Broadcast form
-  const { register: regBroadcast, handleSubmit: handleBroadcast, reset: resetBroadcast, watch: watchBroadcast, formState: { isSubmitting: broadcastSubmitting } } = useForm({
+  const { register: regBroadcast, handleSubmit: handleBroadcast, reset: resetBroadcast, watch: watchBroadcast, setValue: setBroadcastValue, formState: { isSubmitting: broadcastSubmitting } } = useForm({
     defaultValues: { role: 'all', title: '', message: '' },
   });
 
@@ -2982,23 +2982,45 @@ const AdminDashboard = () => {
 
                     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
                       <form onSubmit={handleBroadcast(onBroadcastSubmit)} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
-                        <div>
-                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Audience</label>
-                          <select className="input-field" {...regBroadcast('role')}>
-                            <optgroup label="General">
-                              <option value="all">All Users ({users.length})</option>
-                              <option value="candidate">Candidates ({candidatesList.length})</option>
-                              <option value="judge">Judges ({judgesList.length})</option>
-                            </optgroup>
-                            <optgroup label="Application Status">
-                              {BROADCAST_STATUS_AUDIENCES.map((audience) => (
-                                <option key={audience.value} value={audience.value}>
-                                  {audience.label} ({getStatusAudienceCount(audience.status)})
-                                </option>
-                              ))}
-                            </optgroup>
+                        <div className="grid gap-4 sm:grid-cols-3">
+                          {[
+                            { value: 'all', label: 'All Users', count: users.length, helper: 'Full platform notice' },
+                            { value: 'candidate', label: 'Candidates', count: candidatesList.length, helper: 'Applicants only' },
+                            { value: 'judge', label: 'Judges', count: judgesList.length, helper: 'Evaluation panel' },
+                          ].map((audience) => (
+                            <label
+                              key={audience.value}
+                              className={`cursor-pointer rounded-xl border p-4 transition-all ${
+                                broadcastRole === audience.value
+                                  ? 'border-accent-500 bg-accent-500/10 shadow-glow'
+                                  : 'border-white/10 bg-navy-950/30 hover:border-white/20 hover:bg-white/5'
+                              }`}
+                            >
+                              <input type="radio" value={audience.value} className="sr-only" {...regBroadcast('role')} />
+                              <div className="flex items-center justify-between gap-3">
+                                <span className="text-sm font-bold text-white">{audience.label}</span>
+                                <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold text-slate-300">{audience.count}</span>
+                              </div>
+                              <p className="mt-2 text-xs text-slate-500">{audience.helper}</p>
+                            </label>
+                          ))}
+                        </div>
+
+                        <div className="mt-5">
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Application Status List</label>
+                          <select
+                            className="input-field"
+                            value={broadcastStatusAudience?.value || ''}
+                            onChange={(event) => setBroadcastValue('role', event.target.value, { shouldDirty: true })}
+                          >
+                            <option value="" disabled>Select application status...</option>
+                            {BROADCAST_STATUS_AUDIENCES.map((audience) => (
+                              <option key={audience.value} value={audience.value}>
+                                {audience.label} ({getStatusAudienceCount(audience.status)})
+                              </option>
+                            ))}
                           </select>
-                          <p className="mt-2 text-xs text-slate-500">Use the status list to message candidates whose applications are currently in that stage.</p>
+                          <p className="mt-2 text-xs text-slate-500">Use this dropdown to message candidates whose applications are currently in that stage.</p>
                         </div>
 
                         <div className="mt-6 space-y-4">
