@@ -3,6 +3,7 @@ import ApplyLink from './shared/ApplyLink';
 import { RiAwardLine, RiMailLine, RiPhoneLine, RiMapPinLine } from 'react-icons/ri';
 import { FaLinkedin, FaTwitter, FaFacebook, FaYoutube } from 'react-icons/fa';
 import { motion } from 'framer-motion';
+import sltMobitelLogo from '../assets/slt-mobitel-logo.png';
 
 const footerLinks = {
   'Quick Links': [
@@ -20,10 +21,10 @@ const footerLinks = {
 };
 
 const socials = [
-  { icon: FaLinkedin, href: '#', label: 'LinkedIn' },
-  { icon: FaTwitter, href: '#', label: 'Twitter' },
-  { icon: FaFacebook, href: '#', label: 'Facebook' },
-  { icon: FaYoutube, href: '#', label: 'YouTube' },
+  { icon: FaLinkedin, href: 'https://www.linkedin.com/company/srilankatelecom/posts/?feedView=all', label: 'LinkedIn' },
+  { icon: FaTwitter, href: 'https://x.com/slt_mobitel', label: 'Twitter' },
+  { icon: FaFacebook, href: 'https://www.facebook.com/SLTMobitel', label: 'Facebook' },
+  { icon: FaYoutube, href: 'https://www.youtube.com/@SLTMobitel', label: 'YouTube' },
 ];
 
 const Footer = () => (
@@ -37,15 +38,17 @@ const Footer = () => (
 
         {/* Brand Column */}
         <div className="lg:col-span-1">
-          <Link to="/" className="flex items-center gap-3 mb-6 group w-fit">
-            <div className="w-10 h-10 rounded-xl bg-gradient-accent flex items-center justify-center shadow-glow">
-              <RiAwardLine className="text-white text-2xl" />
-            </div>
+          <a href="https://www.slt.lk/home" target="_blank" rel="noopener noreferrer" className="flex flex-col items-start gap-3 mb-6 group w-fit" aria-label="SLT MOBITEL website">
+            <img
+              src={sltMobitelLogo}
+              alt="SLT MOBITEL"
+              className="h-11 w-auto transition-transform duration-300 group-hover:scale-[1.02] sm:h-12"
+            />
             <div>
               <p className="font-display font-bold text-white text-sm leading-tight">National AI Awards</p>
               <p className="text-xs text-accent-400 font-medium">Sri Lanka 2026</p>
             </div>
-          </Link>
+          </a>
           <p className="text-slate-400 text-sm leading-relaxed mb-6">
             Recognising excellence in Artificial Intelligence innovation across Sri Lanka.
             Celebrating the brightest minds shaping our digital future.
@@ -62,6 +65,9 @@ const Footer = () => (
                 <Icon size={16} />
               </a>
             ))}
+          </div>
+          <div className="mt-5">
+            <span className="text-[10px] font-bold tracking-widest text-slate-500 uppercase block">Powered by Sri Lanka Telecom</span>
           </div>
         </div>
 
@@ -124,8 +130,8 @@ const Footer = () => (
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
         <p>© {new Date().getFullYear()} National AI Awards Sri Lanka. All rights reserved.</p>
         <div className="flex items-center gap-6">
-          <Link to="#" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
-          <Link to="#" className="hover:text-slate-300 transition-colors">Terms of Use</Link>
+          <Link to="/privacy-policy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
+          <Link to="/terms-of-use" className="hover:text-slate-300 transition-colors">Terms of Use</Link>
           <Link to="#" className="hover:text-slate-300 transition-colors">Cookie Policy</Link>
         </div>
       </div>

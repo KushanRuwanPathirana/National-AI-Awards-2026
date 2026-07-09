@@ -10,8 +10,6 @@ const adminService = {
   getReports: () => api.get('/admin/reports'),
   getAuditLogs: (params) => api.get('/admin/audit-logs', { params }),
   broadcastNotification: (data) => api.post('/admin/broadcast', data),
-  getEvaluationDeadline: () => api.get('/admin/settings/evaluation-deadline'),
-  updateEvaluationDeadline: (deadline) => api.post('/admin/settings/evaluation-deadline', { deadline }),
 };
 
 export default adminService;

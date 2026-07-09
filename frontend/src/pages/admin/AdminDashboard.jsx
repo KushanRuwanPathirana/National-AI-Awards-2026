@@ -1697,8 +1697,6 @@ const AdminDashboard = () => {
   const [categories, setCategories] = useState([]);
   const [monitoring, setMonitoring] = useState(null);
   const [judgeProgress, setJudgeProgress] = useState([]);
-  const [evaluationDeadline, setEvaluationDeadline] = useState('');
-  const [savingDeadline, setSavingDeadline] = useState(false);
   const [criteria, setCriteria] = useState([]);
   const [imageUploading, setImageUploading] = useState(false);
   const [profileForm, setProfileForm] = useState({
@@ -1733,6 +1731,11 @@ const AdminDashboard = () => {
   const [assignModalOpen, setAssignModalOpen] = useState(false);
   const [selectedReportIds, setSelectedReportIds] = useState([]);
   const [reportActionBusy, setReportActionBusy] = useState(false);
+
+  // Deadline editing
+  const [editingDeadlineAppId, setEditingDeadlineAppId] = useState(null);
+  const [deadlineValue, setDeadlineValue] = useState('');
+  const [savingDeadline, setSavingDeadline] = useState(false);
 
   // Change Password form
   const [changeSuccess, setChangeSuccess] = useState('');
@@ -1833,35 +1836,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchDeadline = async () => {
-    try {
-      const { data } = await adminService.getEvaluationDeadline();
-      if (data.data.deadline) {
-        const date = new Date(data.data.deadline);
-        const tzOffset = date.getTimezoneOffset() * 60000;
-        const localISOTime = (new Date(date - tzOffset)).toISOString().slice(0, 16);
-        setEvaluationDeadline(localISOTime);
-      }
-    } catch (err) {
-      console.error('Failed to fetch evaluation deadline:', err);
-    }
-  };
-
-  const saveEvaluationDeadline = async () => {
-    if (!evaluationDeadline) {
-      return toast.error('Please select a valid deadline.');
-    }
-    try {
-      setSavingDeadline(true);
-      const isoString = new Date(evaluationDeadline).toISOString();
-      await adminService.updateEvaluationDeadline(isoString);
-      toast.success('Evaluation deadline saved successfully!');
-    } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to save evaluation deadline.');
-    } finally {
-      setSavingDeadline(false);
-    }
-  };
 
   useEffect(() => {
     if (activeTab === 'monitoring') {
@@ -1879,7 +1853,6 @@ const AdminDashboard = () => {
       fetchCategories(),
       fetchMonitoring(),
       fetchCriteria(),
-      fetchDeadline(),
     ]);
     setLoading(false);
   };
@@ -1997,6 +1970,43 @@ const AdminDashboard = () => {
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update status.');
     }
+  };
+
+  // Deadline editing
+  const handleEditDeadline = (app) => {
+    setEditingDeadlineAppId(app._id);
+    if (app.deadline) {
+      const date = new Date(app.deadline);
+      const tzOffset = date.getTimezoneOffset() * 60000;
+      const localISOTime = (new Date(date - tzOffset)).toISOString().slice(0, 16);
+      setDeadlineValue(localISOTime);
+    } else {
+      setDeadlineValue('');
+    }
+  };
+
+  const handleSaveDeadline = async () => {
+    if (!deadlineValue) {
+      return toast.error('Please select a valid deadline.');
+    }
+    try {
+      setSavingDeadline(true);
+      const isoString = new Date(deadlineValue).toISOString();
+      await applicationService.updateApplicationDeadline(editingDeadlineAppId, isoString);
+      toast.success('Application deadline updated successfully.');
+      setEditingDeadlineAppId(null);
+      setDeadlineValue('');
+      fetchApps();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update deadline.');
+    } finally {
+      setSavingDeadline(false);
+    }
+  };
+
+  const handleCancelDeadlineEdit = () => {
+    setEditingDeadlineAppId(null);
+    setDeadlineValue('');
   };
 
   // User Activation Toggle
@@ -2632,14 +2642,15 @@ const AdminDashboard = () => {
                       <table className="w-full text-xs text-left text-slate-300">
                         <thead className="bg-white/5 text-[10px] uppercase font-bold text-slate-400">
                           <tr>
-                            <th className="p-4">Ref/Title</th>
-                            <th className="p-4">Category</th>
-                            <th className="p-4">Candidate</th>
-                            <th className="p-4">Phone</th>
-                            <th className="p-4">Status</th>
-                            <th className="p-4">Judges Panel</th>
+                            <th className="p-4 text-left">Ref/Title</th>
+                            <th className="p-4 text-left">Category</th>
+                            <th className="p-4 text-left">Candidate</th>
+                            <th className="p-4 text-left">Phone</th>
+                            <th className="p-4 text-left">Status</th>
+                            <th className="p-4 text-left">Deadline</th>
+                            <th className="p-4 text-left">Judges Panel</th>
                             <th className="p-4 text-center">Score</th>
-                            <th className="p-4">Actions</th>
+                            <th className="p-4 text-left">Actions</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -2673,6 +2684,52 @@ const AdminDashboard = () => {
                                   <option value="finalist">Finalist</option>
                                   <option value="winner">Winner</option>
                                 </select>
+                              </td>
+                              <td className="p-4">
+                                {editingDeadlineAppId === app._id ? (
+                                  <div className="flex items-center gap-2">
+                                    <input
+                                      type="datetime-local"
+                                      className="bg-navy-900 border border-white/10 rounded-lg px-3 py-2 text-[11px] text-white outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
+                                      value={deadlineValue}
+                                      onChange={(e) => setDeadlineValue(e.target.value)}
+                                    />
+                                    <button
+                                      onClick={handleSaveDeadline}
+                                      disabled={savingDeadline}
+                                      className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-[11px] font-bold transition-colors disabled:opacity-50"
+                                    >
+                                      {savingDeadline ? '...' : '✓'}
+                                    </button>
+                                    <button
+                                      onClick={handleCancelDeadlineEdit}
+                                      className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-[11px] font-bold transition-colors"
+                                    >
+                                      ✗
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-3">
+                                    {app.deadline ? (
+                                      <div className="flex flex-col">
+                                        <span className="text-[11px] font-mono text-white">
+                                          {new Date(app.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                        </span>
+                                        <span className="text-[10px] font-mono text-slate-400">
+                                          {new Date(app.deadline).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      <span className="text-[11px] text-slate-500 italic">No deadline set</span>
+                                    )}
+                                    <button
+                                      onClick={() => handleEditDeadline(app)}
+                                      className="bg-accent-500 hover:bg-accent-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
+                                    >
+                                      {app.deadline ? 'Edit' : 'Set'}
+                                    </button>
+                                  </div>
+                                )}
                               </td>
                               <td className="p-4">
                                 <div className="space-y-1">
@@ -2718,25 +2775,6 @@ const AdminDashboard = () => {
                       <div>
                         <h3 className="font-display font-bold text-white text-xl">Application Monitoring</h3>
                         <p className="text-slate-400 text-xs mt-1">Review submissions, screen eligibility, manage judge assignment, and track evaluation progress.</p>
-                      </div>
-                      <div className="flex items-center gap-3 bg-white/5 border border-white/10 p-3.5 rounded-xl shrink-0">
-                        <div>
-                          <label className="text-[9px] font-bold uppercase tracking-wider text-slate-400 block mb-1.5">Evaluation Process Deadline</label>
-                          <input
-                            type="datetime-local"
-                            className="bg-navy-900 border border-white/10 rounded px-3 py-1.5 text-xs text-white outline-none focus:border-accent-500"
-                            value={evaluationDeadline}
-                            onChange={(e) => setEvaluationDeadline(e.target.value)}
-                          />
-                        </div>
-                        <button
-                          type="button"
-                          onClick={saveEvaluationDeadline}
-                          disabled={savingDeadline}
-                          className="btn-primary text-xs !py-2 !px-4 self-end h-[34px] flex items-center justify-center shrink-0"
-                        >
-                          {savingDeadline ? 'Saving...' : 'Set Deadline'}
-                        </button>
                       </div>
                     </div>
 

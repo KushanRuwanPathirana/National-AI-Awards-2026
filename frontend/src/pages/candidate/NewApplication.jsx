@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useNavigate, useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams, Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { useForm } from "react-hook-form";
 import { toast } from "react-hot-toast";
@@ -115,6 +115,7 @@ const defaults = {
   promotionalConsent: false,
   conflictDisclosure: "",
   submissionFeeAcknowledged: false,
+  termsAndPrivacyAccepted: false,
   paymentMethod: "",
   paymentSlip: null,
   onlinePaymentSimulated: false,
@@ -753,7 +754,8 @@ const NewApplication = () => {
       values.declarationAccepted &&
       values.verificationConsent &&
       values.promotionalConsent &&
-      values.submissionFeeAcknowledged;
+      values.submissionFeeAcknowledged &&
+      values.termsAndPrivacyAccepted;
     if (!requiredConsents) {
       setFieldErrors({
         declarationAccepted: !values.declarationAccepted
@@ -767,6 +769,9 @@ const NewApplication = () => {
           : "",
         submissionFeeAcknowledged: !values.submissionFeeAcknowledged
           ? "Please acknowledge the submission fee requirement."
+          : "",
+        termsAndPrivacyAccepted: !values.termsAndPrivacyAccepted
+          ? "You must agree to the Terms of Use and Privacy Policy."
           : "",
       });
       toast.error("Please complete all required declarations and consents.");
@@ -1367,6 +1372,42 @@ const NewApplication = () => {
                             <FieldError message={fieldErrors[field]} />
                           </div>
                         ))}
+
+                        <div>
+                          <label
+                            className={`flex gap-3 rounded-xl border p-3 ${fieldErrors.termsAndPrivacyAccepted ? "border-red-400 bg-red-500/5" : "border-transparent"}`}
+                          >
+                            <input
+                              type="checkbox"
+                              className="w-5 h-5 accent-accent-500 mt-0.5"
+                              {...register("termsAndPrivacyAccepted")}
+                            />
+                            <span className="text-slate-300 text-sm leading-relaxed">
+                              I agree to the{" "}
+                              <Link
+                                to="/terms-of-use"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-accent-400 hover:text-accent-300 underline font-medium"
+                              >
+                                Terms of Use
+                              </Link>{" "}
+                              and{" "}
+                              <Link
+                                to="/privacy-policy"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-accent-400 hover:text-accent-300 underline font-medium"
+                              >
+                                Privacy Policy
+                              </Link>
+                              .
+                            </span>
+                          </label>
+                          <FieldError
+                            message={fieldErrors.termsAndPrivacyAccepted}
+                          />
+                        </div>
                       </div>
                       <div>
                         <FieldLabel>Conflict of interest disclosure</FieldLabel>

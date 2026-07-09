@@ -18,6 +18,8 @@ import VerifyOTP   from './pages/VerifyOTP';
 import ForgotPassword from './pages/ForgotPassword';
 import ResetPassword  from './pages/ResetPassword';
 import ScrollToTop   from './components/shared/ScrollToTop';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfUse    from './pages/TermsOfUse';
 
 // Dashboards & Wizards
 import CandidateDashboard from './pages/candidate/CandidateDashboard';
@@ -70,6 +72,8 @@ const App = () => (
           <Route path="login"       element={<Login />} />
           <Route path="forgot-password" element={<ForgotPassword />} />
           <Route path="reset-password"  element={<ResetPassword />} />
+          <Route path="privacy-policy"  element={<PrivacyPolicy />} />
+          <Route path="terms-of-use"    element={<TermsOfUse />} />
 
           {/* Protected candidate routes (rendered with Navbar and Footer) */}
           <Route
