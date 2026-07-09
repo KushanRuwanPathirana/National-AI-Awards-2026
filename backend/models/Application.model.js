@@ -222,6 +222,9 @@ const applicationSchema = new mongoose.Schema(
     // Admin notes
     adminNotes: { type: String },
 
+    // Per-application deadline
+    deadline: { type: Date },
+
     // Scores (aggregated from evaluations)
     averageScore: { type: Number, default: 0 },
     evaluationCount: { type: Number, default: 0 },
