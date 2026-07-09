@@ -58,11 +58,15 @@ const getOrCreateEvaluation = async (req, res, next) => {
 
     // Get criteria matching the category type
     // For organizational: also match criteria without criteriaType set (backward compat)
-    const criteriaFilter = { isActive: true };
+    const criteriaFilter = { isActive: true, stage: stage };
     if (criteriaType === 'individual') {
       criteriaFilter.criteriaType = 'individual';
     } else {
-      criteriaFilter.$or = [{ criteriaType: 'organizational' }, { criteriaType: { $exists: false } }, { criteriaType: null }];
+      criteriaFilter.$or = [
+        { criteriaType: 'organizational', stage: stage },
+        { criteriaType: { $exists: false }, stage: stage },
+        { criteriaType: null, stage: stage }
+      ];
     }
     const criteria = await EvaluationCriteria.find(criteriaFilter).sort({ order: 1 });
 

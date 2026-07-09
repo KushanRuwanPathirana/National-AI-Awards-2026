@@ -41,6 +41,12 @@ const evaluationCriteriaSchema = new mongoose.Schema(
       type: Boolean,
       default: true,
     },
+    stage: {
+      type: String,
+      enum: ['initial', 'f2f'],
+      default: 'initial',
+      required: true,
+    },
   },
   { timestamps: true }
 );
