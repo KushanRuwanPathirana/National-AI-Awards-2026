@@ -537,15 +537,9 @@ const getAllApplications = async (req, res, next) => {
 
     const [applications, total] = await Promise.all([
       Application.find(filter)
-<<<<<<< HEAD
-        .populate("candidate", "firstName lastName email organization")
+        .populate("candidate", "firstName lastName email phone organization")
         .populate("category", "name slug icon")
         .populate("assignedJudges", "firstName lastName")
-=======
-        .populate('candidate', 'firstName lastName email phone organization')
-        .populate('category', 'name slug icon')
-        .populate('assignedJudges', 'firstName lastName')
->>>>>>> Kushan-dev
         .sort(sort)
         .skip(skip)
         .limit(parseInt(limit)),
@@ -1244,11 +1238,26 @@ const downloadDocument = async (req, res, next) => {
 };
 
 module.exports = {
-  createApplication, updateApplication, submitApplication,
-  getMyApplications, getApplicationById, getAllApplications,
-  changeApplicationStatus, assignJudges, reviewEligibility,
-  getMonitoringOverview, getJudgeProgress, exportApplications,
-  publishFinalists, publishWinners, generateCertificates,
-  uploadDocuments, deleteDocument, deleteApplication, deleteApplicationByAdmin,
-  downloadDocument, uploadPaymentSlip, deletePaymentSlip,
+  createApplication,
+  updateApplication,
+  submitApplication,
+  getMyApplications,
+  getApplicationById,
+  getAllApplications,
+  changeApplicationStatus,
+  assignJudges,
+  reviewEligibility,
+  getMonitoringOverview,
+  getJudgeProgress,
+  exportApplications,
+  publishFinalists,
+  publishWinners,
+  generateCertificates,
+  uploadDocuments,
+  deleteDocument,
+  deleteApplication,
+  deleteApplicationByAdmin,
+  downloadDocument,
+  uploadPaymentSlip,
+  deletePaymentSlip,
 };
