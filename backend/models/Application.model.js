@@ -75,7 +75,7 @@ const applicationSchema = new mongoose.Schema(
     sectorIndustry: { type: String, trim: true, maxlength: [150] },
     organisationSize: {
       type: String,
-      enum: ['Startup <4 yrs', 'SME', 'Large Enterprise', 'Government', 'Academic', ''],
+      enum: ['Univercity student', 'Startup', 'Coparate', 'Gov Institute', 'Acadamic', ''],
       default: '',
     },
     primaryContactName: { type: String, trim: true, maxlength: [150] },
