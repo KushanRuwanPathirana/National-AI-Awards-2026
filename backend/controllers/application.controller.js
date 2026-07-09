@@ -5,7 +5,12 @@ const Notification = require('../models/Notification.model');
 const AuditLog = require('../models/AuditLog.model');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
 const { APPLICATION_DEADLINE, APPLICATION_STATUS, ALLOWED_TRANSITIONS } = require('../config/constants');
-const { sendApplicationStatusUpdate } = require('../services/email.service');
+const {
+  sendApplicationStatusUpdate,
+  sendWinnerEmail,
+  sendFinalistEmail,
+  sendRunnerUpEmail,
+} = require('../services/email.service');
 const logger = require('../utils/logger');
 const { buildApplicationsCsv, buildSimplePdf } = require('../utils/reportExporter');
 const path = require('path');
@@ -50,6 +55,30 @@ const createAuditLog = async ({ action, performedBy, targetId, description, oldV
   } catch (e) {
     logger.error(`AuditLog create failed: ${e.message}`);
   }
+};
+
+const sendStatusEmailForApplication = async (application, status) => {
+  const candidate = application.candidate;
+  if (!candidate?.email) return;
+
+  const categoryName = application.category?.name || '';
+
+  if (status === APPLICATION_STATUS.WINNER) {
+    await sendWinnerEmail(candidate, application, categoryName);
+    return;
+  }
+
+  if (status === APPLICATION_STATUS.FINALIST) {
+    await sendFinalistEmail(candidate, application, categoryName);
+    return;
+  }
+
+  if (status === APPLICATION_STATUS.RUNNER_UP) {
+    await sendRunnerUpEmail(candidate, application, categoryName);
+    return;
+  }
+
+  await sendApplicationStatusUpdate(candidate, application, status);
 };
 
 const removeApplicationRecord = async ({ application, performedBy, req }) => {
@@ -338,15 +367,15 @@ const changeApplicationStatus = async (req, res, next) => {
 
     if (!status) return errorResponse(res, { statusCode: 400, message: 'New status is required.' });
 
-    const application = await Application.findById(id).populate('candidate', 'firstName email');
+    const application = await Application.findById(id)
+      .populate('candidate', 'firstName email')
+      .populate('category', 'name');
     if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
 
+    // Admins can bypass workflow validation, but log the override
     const allowed = ALLOWED_TRANSITIONS[application.status] || [];
     if (!allowed.includes(status)) {
-      return errorResponse(res, {
-        statusCode: 400,
-        message: `Cannot transition from "${application.status}" to "${status}". Allowed: ${allowed.join(', ') || 'none'}.`,
-      });
+      logger.warn(`Admin ${req.user._id} overriding status transition: from "${application.status}" to "${status}". Allowed: ${allowed.join(', ')}`);
     }
 
     const oldStatus = application.status;
@@ -370,7 +399,7 @@ const changeApplicationStatus = async (req, res, next) => {
     });
 
     try {
-      await sendApplicationStatusUpdate(application.candidate, application, status);
+      await sendStatusEmailForApplication(application, status);
     } catch (e) { logger.error(`Status email error: ${e.message}`); }
 
     return successResponse(res, { message: `Status updated to "${status}".`, data: { application } });
@@ -625,13 +654,30 @@ const exportApplications = async (req, res, next) => {
 const publishFinalists = async (req, res, next) => {
   try {
     const { ids = [] } = req.body;
-    const applications = await Application.find({ _id: { $in: ids } });
+    const applications = await Application.find({ _id: { $in: ids } })
+      .populate('candidate', 'firstName email')
+      .populate('category', 'name');
     await Promise.all(applications.map(async (app) => {
       app.status = APPLICATION_STATUS.FINALIST;
       app.publishedAsFinalist = true;
       app.publishedAsWinner = false;
       app.awardCitation = app.awardCitation || `${app.projectTitle} has been recognized as a finalist.`;
       await app.save();
+
+      await createNotification({
+        recipient: app.candidate._id,
+        type: 'application_status_changed',
+        title: 'Congratulations, you are a finalist',
+        message: `Your application "${app.projectTitle}" has been selected as a finalist.`,
+        link: `/dashboard/applications/${app._id}`,
+        relatedApplication: app._id,
+      });
+
+      try {
+        await sendStatusEmailForApplication(app, APPLICATION_STATUS.FINALIST);
+      } catch (e) {
+        logger.error(`Finalist email error for ${app._id}: ${e.message}`);
+      }
     }));
 
     return successResponse(res, { message: 'Finalists published.', data: { count: applications.length } });
@@ -641,7 +687,9 @@ const publishFinalists = async (req, res, next) => {
 const publishWinners = async (req, res, next) => {
   try {
     const { ids = [] } = req.body;
-    const applications = await Application.find({ _id: { $in: ids } });
+    const applications = await Application.find({ _id: { $in: ids } })
+      .populate('candidate', 'firstName email')
+      .populate('category', 'name');
     await Promise.all(applications.map(async (app, index) => {
       app.status = APPLICATION_STATUS.WINNER;
       app.publishedAsWinner = true;
@@ -650,6 +698,21 @@ const publishWinners = async (req, res, next) => {
       app.certificateIssuedAt = new Date();
       app.awardCitation = app.awardCitation || `${app.projectTitle} has been recognized as a winner.`;
       await app.save();
+
+      await createNotification({
+        recipient: app.candidate._id,
+        type: 'application_status_changed',
+        title: 'Congratulations, you are a winner',
+        message: `Your application "${app.projectTitle}" has been selected as a winner.`,
+        link: `/dashboard/applications/${app._id}`,
+        relatedApplication: app._id,
+      });
+
+      try {
+        await sendStatusEmailForApplication(app, APPLICATION_STATUS.WINNER);
+      } catch (e) {
+        logger.error(`Winner email error for ${app._id}: ${e.message}`);
+      }
     }));
 
     return successResponse(res, { message: 'Winners published.', data: { count: applications.length } });
