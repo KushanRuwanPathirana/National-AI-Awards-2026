@@ -1,90 +1,136 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import { useForm } from 'react-hook-form';
-import { toast } from 'react-hot-toast';
+import { useEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
+import { motion, AnimatePresence } from "framer-motion";
+import { useForm } from "react-hook-form";
+import { toast } from "react-hot-toast";
 import {
-  RiArrowLeftLine, RiArrowRightLine, RiCheckLine, RiCloseLine,
-  RiFileTextLine, RiSave3Line, RiShieldCheckLine, RiUploadCloud2Line,
-  RiBankLine, RiBankCardLine,
-} from 'react-icons/ri';
-import Button from '../../components/shared/Button';
-import categoryService from '../../services/category.service';
-import applicationService from '../../services/application.service';
-import { useAuth } from '../../context/AuthContext';
+  RiArrowLeftLine,
+  RiArrowRightLine,
+  RiCheckLine,
+  RiCloseLine,
+  RiFileTextLine,
+  RiSave3Line,
+  RiShieldCheckLine,
+  RiUploadCloud2Line,
+  RiBankLine,
+  RiBankCardLine,
+} from "react-icons/ri";
+import Button from "../../components/shared/Button";
+import categoryService from "../../services/category.service";
+import applicationService from "../../services/application.service";
+import { useAuth } from "../../context/AuthContext";
 
 const baseSteps = [
-  { label: 'Applicant' },
-  { label: 'Category' },
-  { label: 'Overview' },
-  { label: 'Evidence' },
-  { label: 'Materials' },
-  { label: 'National' },
-  { label: 'Consent' },
+  { label: "Applicant" },
+  { label: "Category" },
+  { label: "Overview" },
+  { label: "Evidence" },
+  { label: "Materials" },
+  { label: "National" },
+  { label: "Consent" },
 ];
 
-const organisationSizes = ['Univercity student', 'Startup', 'Coparate', 'Gov Institute', 'Acadamic'];
-const deploymentStatuses = ['Pilot', 'Live in production', 'Scaling'];
-const APPLICATION_DEADLINE_CLOSES_AT = '2026-08-16T00:00:00+05:30';
-const APPLICATION_DEADLINE_LABEL = '15 August 2026';
+const organisationSizes = [
+  "Univercity student",
+  "Startup",
+  "Coparate",
+  "Gov Institute",
+  "Acadamic",
+];
+const deploymentStatuses = ["Pilot", "Live in production", "Scaling"];
+const APPLICATION_DEADLINE_CLOSES_AT = "2026-08-16T00:00:00+05:30";
+const APPLICATION_DEADLINE_LABEL = "15 August 2026";
 
 const judgingCriteria = [
-  ['innovationOriginality', 'Innovation & Originality', 20, 'What makes this technically or conceptually novel vs existing solutions?'],
-  ['measurableImpact', 'Measurable Impact (Business/National)', 25, 'Quantified results: revenue impact, cost savings, users served, efficiency gains with supporting data/metrics.'],
-  ['technicalExcellence', 'Technical Excellence', 20, 'Architecture overview, models/frameworks used, performance benchmarks.'],
-  ['responsibleAI', 'Responsible AI & Governance', 15, 'Data privacy measures, bias mitigation, explainability, compliance steps taken.'],
-  ['scalabilitySustainability', 'Scalability & Sustainability', 10, 'Plan/evidence for scaling beyond current deployment.'],
-  ['executionEvidence', 'Execution & Evidence', 10, 'Team capability, timeline of delivery, proof points such as links, screenshots, or demo video.'],
+  [
+    "innovationOriginality",
+    "Innovation & Originality",
+    20,
+    "What makes this technically or conceptually novel vs existing solutions?",
+  ],
+  [
+    "measurableImpact",
+    "Measurable Impact (Business/National)",
+    25,
+    "Quantified results: revenue impact, cost savings, users served, efficiency gains with supporting data/metrics.",
+  ],
+  [
+    "technicalExcellence",
+    "Technical Excellence",
+    20,
+    "Architecture overview, models/frameworks used, performance benchmarks.",
+  ],
+  [
+    "responsibleAI",
+    "Responsible AI & Governance",
+    15,
+    "Data privacy measures, bias mitigation, explainability, compliance steps taken.",
+  ],
+  [
+    "scalabilitySustainability",
+    "Scalability & Sustainability",
+    10,
+    "Plan/evidence for scaling beyond current deployment.",
+  ],
+  [
+    "executionEvidence",
+    "Execution & Evidence",
+    10,
+    "Team capability, timeline of delivery, proof points such as links, screenshots, or demo video.",
+  ],
 ];
 
 const defaults = {
-  organisationName: '',
-  registrationNumber: '',
-  sectorIndustry: '',
-  organisationSize: '',
-  primaryContactName: '',
-  primaryContactDesignation: '',
-  primaryContactEmail: '',
-  primaryContactPhone: '',
-  websiteLinkedIn: '',
-  categoryId: '',
+  organisationName: "",
+  registrationNumber: "",
+  sectorIndustry: "",
+  organisationSize: "",
+  primaryContactName: "",
+  primaryContactDesignation: "",
+  primaryContactEmail: "",
+  primaryContactPhone: "",
+  websiteLinkedIn: "",
+  categoryId: "",
   categoryEligibilityConfirmed: false,
-  projectTitle: '',
-  tagline: '',
-  problemStatement: '',
-  solution: '',
-  deploymentStatus: '',
-  launchDate: '',
-  customerReferenceRevenue: '',
-  innovationOriginality: '',
-  measurableImpact: '',
-  technicalExcellence: '',
-  responsibleAI: '',
-  scalabilitySustainability: '',
-  executionEvidence: '',
-  projectUrl: '',
-  demoVideoUrl: '',
-  testimonialOne: '',
-  testimonialTwo: '',
-  nationalRelevance: '',
+  projectTitle: "",
+  tagline: "",
+  problemStatement: "",
+  solution: "",
+  deploymentStatus: "",
+  launchDate: "",
+  customerReferenceRevenue: "",
+  innovationOriginality: "",
+  measurableImpact: "",
+  technicalExcellence: "",
+  responsibleAI: "",
+  scalabilitySustainability: "",
+  executionEvidence: "",
+  projectUrl: "",
+  demoVideoUrl: "",
+  testimonialOne: "",
+  testimonialTwo: "",
+  nationalRelevance: "",
   declarationAccepted: false,
   verificationConsent: false,
   promotionalConsent: false,
-  conflictDisclosure: '',
+  conflictDisclosure: "",
   submissionFeeAcknowledged: false,
-  paymentMethod: '',
+  paymentMethod: "",
   paymentSlip: null,
   onlinePaymentSimulated: false,
-  cardName: '',
-  cardNumber: '',
-  cardExpiry: '',
-  cardCvv: '',
+  cardName: "",
+  cardNumber: "",
+  cardExpiry: "",
+  cardCvv: "",
   cardFlipped: false,
 };
 
-const countWords = (value = '') => value.trim().split(/\s+/).filter(Boolean).length;
-const hasApplicationDeadlinePassed = () => Date.now() >= new Date(APPLICATION_DEADLINE_CLOSES_AT).getTime();
-const normalizePhoneNumber = (value = '') => value.replace(/\D/g, '').slice(0, 10);
+const countWords = (value = "") =>
+  value.trim().split(/\s+/).filter(Boolean).length;
+const hasApplicationDeadlinePassed = () =>
+  Date.now() >= new Date(APPLICATION_DEADLINE_CLOSES_AT).getTime();
+const normalizePhoneNumber = (value = "") =>
+  value.replace(/\D/g, "").slice(0, 10);
 const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const getApiErrorMessage = (error, fallback) => {
@@ -101,18 +147,25 @@ const FieldLabel = ({ children, required = false }) => (
 
 const WordHint = ({ value, max }) => {
   const count = countWords(value);
-  return <p className={`mt-1 text-[11px] ${count > max ? 'text-red-300' : 'text-slate-500'}`}>{count}/{max} words</p>;
+  return (
+    <p
+      className={`mt-1 text-[11px] ${count > max ? "text-red-300" : "text-slate-500"}`}
+    >
+      {count}/{max} words
+    </p>
+  );
 };
 
-const FieldError = ({ message }) => (
-  message ? <p className="mt-1 text-[11px] font-medium text-red-300">{message}</p> : null
-);
+const FieldError = ({ message }) =>
+  message ? (
+    <p className="mt-1 text-[11px] font-medium text-red-300">{message}</p>
+  ) : null;
 
 const NewApplication = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
-  const draftQueryId = searchParams.get('draft');
+  const draftQueryId = searchParams.get("draft");
   const [currentStep, setCurrentStep] = useState(0);
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
@@ -127,18 +180,24 @@ const NewApplication = () => {
   const [uploadingSlip, setUploadingSlip] = useState(false);
   const [paymentSimulating, setPaymentSimulating] = useState(false);
 
-  const { register, handleSubmit, watch, reset, getValues, setValue } = useForm({ defaultValues: defaults });
-  const categoryId = watch('categoryId');
-  const selectedCategoryName = watch('selectedCategoryName');
+  const { register, handleSubmit, watch, reset, getValues, setValue } = useForm(
+    { defaultValues: defaults },
+  );
+  const categoryId = watch("categoryId");
+  const selectedCategoryName = watch("selectedCategoryName");
 
-  const isFreeCategory = selectedCategory?.name === 'University AI Innovation';
-  const activeSteps = isFreeCategory ? baseSteps : [...baseSteps, { label: 'Payment' }];
+  const isFreeCategory = selectedCategory?.name === "University AI Innovation";
+  const activeSteps = isFreeCategory
+    ? baseSteps
+    : [...baseSteps, { label: "Payment" }];
   const watched = watch();
-  const candidateRegistrationNumber = user?.registrationNumber || '';
+  const candidateRegistrationNumber = user?.registrationNumber || "";
   const applicationDeadlinePassed = hasApplicationDeadlinePassed();
 
   useEffect(() => {
-    setValue('registrationNumber', candidateRegistrationNumber, { shouldDirty: false });
+    setValue("registrationNumber", candidateRegistrationNumber, {
+      shouldDirty: false,
+    });
   }, [candidateRegistrationNumber, setValue]);
 
   useEffect(() => {
@@ -147,21 +206,26 @@ const NewApplication = () => {
         const { data } = await categoryService.getCategories();
         setCategories(data.data.categories || []);
       } catch {
-        toast.error('Failed to load award categories.');
+        toast.error("Failed to load award categories.");
       }
     };
     fetchCategories();
   }, []);
 
   useEffect(() => {
-    setSelectedCategory(categories.find(category => category._id === categoryId) || null);
+    setSelectedCategory(
+      categories.find((category) => category._id === categoryId) || null,
+    );
   }, [categoryId, categories]);
 
   useEffect(() => {
-    if (selectedCategory && selectedCategory.name === 'University AI Innovation') {
-      setValue('paymentMethod', '');
-      setValue('paymentSlip', null);
-      setValue('onlinePaymentSimulated', false);
+    if (
+      selectedCategory &&
+      selectedCategory.name === "University AI Innovation"
+    ) {
+      setValue("paymentMethod", "");
+      setValue("paymentSlip", null);
+      setValue("onlinePaymentSimulated", false);
       setPaymentSlipFile(null);
       if (currentStep > 6) {
         setCurrentStep(6);
@@ -175,12 +239,13 @@ const NewApplication = () => {
     const fetchDraft = async () => {
       setLoadingDraft(true);
       try {
-        const { data } = await applicationService.getApplicationById(draftQueryId);
+        const { data } =
+          await applicationService.getApplicationById(draftQueryId);
         const draft = data.data.application;
 
-        if (draft.status !== 'draft') {
-          toast.error('Only draft applications can be edited.');
-          navigate('/dashboard');
+        if (draft.status !== "draft") {
+          toast.error("Only draft applications can be edited.");
+          navigate("/dashboard");
           return;
         }
 
@@ -189,51 +254,64 @@ const NewApplication = () => {
         setPaymentSlipFile(draft.paymentSlip || null);
         reset({
           ...defaults,
-          organisationName: draft.organisationName || draft.organizationName || '',
+          organisationName:
+            draft.organisationName || draft.organizationName || "",
           registrationNumber: candidateRegistrationNumber,
-          sectorIndustry: draft.sectorIndustry || '',
-          organisationSize: draft.organisationSize || '',
-          primaryContactName: draft.primaryContactName || '',
-          primaryContactDesignation: draft.primaryContactDesignation || '',
-          primaryContactEmail: draft.primaryContactEmail || '',
-          primaryContactPhone: draft.primaryContactPhone || '',
-          websiteLinkedIn: draft.websiteLinkedIn || '',
-          categoryId: draft.category?._id || draft.category || '',
-          categoryEligibilityConfirmed: !!draft.categoryEligibilityConfirmed || draft.isEligible === true,
-          projectTitle: draft.projectTitle || '',
-          tagline: draft.tagline || '',
-          problemStatement: draft.problemStatement || '',
-          solution: draft.solution || '',
-          deploymentStatus: draft.deploymentStatus || '',
-          launchDate: draft.launchDate ? draft.launchDate.slice(0, 10) : '',
-          customerReferenceRevenue: draft.customerReferenceRevenue || '',
-          innovationOriginality: draft.innovationOriginality || draft.innovationDetails || '',
-          measurableImpact: draft.measurableImpact || draft.impactDetails || '',
-          technicalExcellence: draft.technicalExcellence || draft.aiTechnologies || '',
-          responsibleAI: draft.responsibleAI || '',
-          scalabilitySustainability: draft.scalabilitySustainability || '',
-          executionEvidence: draft.executionEvidence || '',
-          projectUrl: draft.projectUrl || '',
-          demoVideoUrl: draft.demoVideoUrl || '',
-          testimonialOne: draft.testimonialOne || '',
-          testimonialTwo: draft.testimonialTwo || '',
-          nationalRelevance: draft.nationalRelevance || '',
+          sectorIndustry: draft.sectorIndustry || "",
+          organisationSize: draft.organisationSize || "",
+          primaryContactName: draft.primaryContactName || "",
+          primaryContactDesignation: draft.primaryContactDesignation || "",
+          primaryContactEmail: draft.primaryContactEmail || "",
+          primaryContactPhone: draft.primaryContactPhone || "",
+          websiteLinkedIn: draft.websiteLinkedIn || "",
+          categoryId: draft.category?._id || draft.category || "",
+          categoryEligibilityConfirmed:
+            !!draft.categoryEligibilityConfirmed || draft.isEligible === true,
+          projectTitle: draft.projectTitle || "",
+          tagline: draft.tagline || "",
+          problemStatement: draft.problemStatement || "",
+          solution: draft.solution || "",
+          deploymentStatus: draft.deploymentStatus || "",
+          launchDate: draft.launchDate ? draft.launchDate.slice(0, 10) : "",
+          customerReferenceRevenue: draft.customerReferenceRevenue || "",
+          innovationOriginality:
+            draft.innovationOriginality || draft.innovationDetails || "",
+          measurableImpact: draft.measurableImpact || draft.impactDetails || "",
+          technicalExcellence:
+            draft.technicalExcellence || draft.aiTechnologies || "",
+          responsibleAI: draft.responsibleAI || "",
+          scalabilitySustainability: draft.scalabilitySustainability || "",
+          executionEvidence: draft.executionEvidence || "",
+          projectUrl: draft.projectUrl || "",
+          demoVideoUrl: draft.demoVideoUrl || "",
+          testimonialOne: draft.testimonialOne || "",
+          testimonialTwo: draft.testimonialTwo || "",
+          nationalRelevance: draft.nationalRelevance || "",
           declarationAccepted: !!draft.declarationAccepted,
           verificationConsent: !!draft.verificationConsent,
           promotionalConsent: !!draft.promotionalConsent,
-          conflictDisclosure: draft.conflictDisclosure || '',
+          conflictDisclosure: draft.conflictDisclosure || "",
           submissionFeeAcknowledged: !!draft.submissionFeeAcknowledged,
-          paymentMethod: draft.paymentMethod || '',
+          paymentMethod: draft.paymentMethod || "",
           paymentSlip: draft.paymentSlip || null,
           onlinePaymentSimulated: !!draft.onlinePaymentSimulated,
         });
 
-        const isDraftFree = draft.category?.name === 'University AI Innovation' || categories.find(c => c._id === (draft.category?._id || draft.category))?.name === 'University AI Innovation';
+        const isDraftFree =
+          draft.category?.name === "University AI Innovation" ||
+          categories.find(
+            (c) => c._id === (draft.category?._id || draft.category),
+          )?.name === "University AI Innovation";
         const draftActiveStepsLength = isDraftFree ? 7 : 8;
-        setCurrentStep(Math.min(Math.max(draft.completedStep || 0, 0), draftActiveStepsLength - 1));
+        setCurrentStep(
+          Math.min(
+            Math.max(draft.completedStep || 0, 0),
+            draftActiveStepsLength - 1,
+          ),
+        );
       } catch (e) {
-        toast.error(getApiErrorMessage(e, 'Failed to load draft application.'));
-        navigate('/dashboard');
+        toast.error(getApiErrorMessage(e, "Failed to load draft application."));
+        navigate("/dashboard");
       } finally {
         setLoadingDraft(false);
       }
@@ -242,7 +320,10 @@ const NewApplication = () => {
     fetchDraft();
   }, [candidateRegistrationNumber, draftQueryId, navigate, reset]);
 
-  const buildPayload = (values, completedStep = Math.min(currentStep + 1, activeSteps.length)) => {
+  const buildPayload = (
+    values,
+    completedStep = Math.min(currentStep + 1, activeSteps.length),
+  ) => {
     const payload = {
       organisationName: values.organisationName,
       organizationName: values.organisationName,
@@ -274,10 +355,13 @@ const NewApplication = () => {
       testimonialOne: values.testimonialOne,
       testimonialTwo: values.testimonialTwo,
       nationalRelevance: values.nationalRelevance,
-      eligibilityAnswers: [{
-        question: 'I confirm this entry meets the eligibility criteria for the selected category.',
-        answer: !!values.categoryEligibilityConfirmed,
-      }],
+      eligibilityAnswers: [
+        {
+          question:
+            "I confirm this entry meets the eligibility criteria for the selected category.",
+          answer: !!values.categoryEligibilityConfirmed,
+        },
+      ],
       isEligible: !!values.categoryEligibilityConfirmed,
       categoryEligibilityConfirmed: !!values.categoryEligibilityConfirmed,
       declarationAccepted: !!values.declarationAccepted,
@@ -285,7 +369,7 @@ const NewApplication = () => {
       promotionalConsent: !!values.promotionalConsent,
       conflictDisclosure: values.conflictDisclosure,
       submissionFeeAcknowledged: !!values.submissionFeeAcknowledged,
-      paymentMethod: values.paymentMethod || '',
+      paymentMethod: values.paymentMethod || "",
       paymentSlip: values.paymentSlip || null,
       onlinePaymentSimulated: !!values.onlinePaymentSimulated,
       completedStep,
@@ -299,7 +383,9 @@ const NewApplication = () => {
 
   const ensureDraft = async (values = getValues()) => {
     if (draftId) return draftId;
-    const { data } = await applicationService.createDraft(buildPayload(values, currentStep));
+    const { data } = await applicationService.createDraft(
+      buildPayload(values, currentStep),
+    );
     const id = data.data.application._id;
     setDraftId(id);
     return id;
@@ -308,59 +394,105 @@ const NewApplication = () => {
   const validateStep = (values) => {
     if (currentStep === 0) {
       const required = [
-        ['organisationName', 'Organisation/Individual name'],
-        ['sectorIndustry', 'Sector/Industry'],
-        ['organisationSize', 'Organisation size'],
-        ['primaryContactName', 'Primary contact name'],
-        ['primaryContactDesignation', 'Designation'],
-        ['primaryContactEmail', 'Email'],
-        ['primaryContactPhone', 'Phone'],
+        ["organisationName", "Organisation/Individual name"],
+        ["sectorIndustry", "Sector/Industry"],
+        ["organisationSize", "Organisation size"],
+        ["primaryContactName", "Primary contact name"],
+        ["primaryContactDesignation", "Designation"],
+        ["primaryContactEmail", "Email"],
+        ["primaryContactPhone", "Phone"],
       ];
       const missing = required.find(([field]) => !values[field]);
-      if (missing) return { field: missing[0], message: `Please fill in ${missing[1]}.` };
+      if (missing)
+        return { field: missing[0], message: `Please fill in ${missing[1]}.` };
       if (!EMAIL_PATTERN.test(values.primaryContactEmail)) {
-        return { field: 'primaryContactEmail', message: 'Please enter a valid email address.' };
+        return {
+          field: "primaryContactEmail",
+          message: "Please enter a valid email address.",
+        };
       }
       if (!/^\d{10}$/.test(values.primaryContactPhone)) {
-        return { field: 'primaryContactPhone', message: 'Please enter a 10 digit phone number.' };
+        return {
+          field: "primaryContactPhone",
+          message: "Please enter a 10 digit phone number.",
+        };
       }
     }
     if (currentStep === 1) {
-      if (!values.categoryId || !categories.some(category => category._id === values.categoryId)) {
-        return { field: 'categoryId', message: 'Please select a valid award category.' };
+      if (
+        !values.categoryId ||
+        !categories.some((category) => category._id === values.categoryId)
+      ) {
+        return {
+          field: "categoryId",
+          message: "Please select a valid award category.",
+        };
       }
       if (!values.categoryEligibilityConfirmed) {
-        return { field: 'categoryEligibilityConfirmed', message: 'Please confirm this entry meets the selected category eligibility criteria.' };
+        return {
+          field: "categoryEligibilityConfirmed",
+          message:
+            "Please confirm this entry meets the selected category eligibility criteria.",
+        };
       }
     }
     if (currentStep === 2) {
       const required = [
-        ['projectTitle', 'Solution/Project name'],
-        ['tagline', 'One-line summary'],
-        ['problemStatement', 'Problem statement'],
-        ['solution', 'Solution description'],
-        ['deploymentStatus', 'Deployment status'],
-        ['launchDate', 'Date of launch'],
+        ["projectTitle", "Solution/Project name"],
+        ["tagline", "One-line summary"],
+        ["problemStatement", "Problem statement"],
+        ["solution", "Solution description"],
+        ["deploymentStatus", "Deployment status"],
+        ["launchDate", "Date of launch"],
       ];
       const missing = required.find(([field]) => !values[field]);
-      if (missing) return { field: missing[0], message: `Please fill in ${missing[1]}.` };
-      if (countWords(values.tagline) > 25) return { field: 'tagline', message: 'One-line summary must be 25 words or fewer.' };
-      if (countWords(values.problemStatement) > 300) return { field: 'problemStatement', message: 'Problem statement must be 300 words or fewer.' };
-      if (countWords(values.solution) > 500) return { field: 'solution', message: 'Solution description must be 500 words or fewer.' };
+      if (missing)
+        return { field: missing[0], message: `Please fill in ${missing[1]}.` };
+      if (countWords(values.tagline) > 25)
+        return {
+          field: "tagline",
+          message: "One-line summary must be 25 words or fewer.",
+        };
+      if (countWords(values.problemStatement) > 300)
+        return {
+          field: "problemStatement",
+          message: "Problem statement must be 300 words or fewer.",
+        };
+      if (countWords(values.solution) > 500)
+        return {
+          field: "solution",
+          message: "Solution description must be 500 words or fewer.",
+        };
     }
     if (currentStep === 3) {
       const missing = judgingCriteria.find(([key]) => !values[key]);
-      if (missing) return { field: missing[0], message: `Please fill in ${missing[1]} evidence.` };
+      if (missing)
+        return {
+          field: missing[0],
+          message: `Please fill in ${missing[1]} evidence.`,
+        };
     }
     if (currentStep === 5 && !values.nationalRelevance) {
-      return { field: 'nationalRelevance', message: 'Please describe the Sri Lanka-specific national relevance.' };
+      return {
+        field: "nationalRelevance",
+        message: "Please describe the Sri Lanka-specific national relevance.",
+      };
     }
     if (currentStep === 6) {
       const required = [
-        ['declarationAccepted', 'Please confirm the accuracy of all information provided.'],
-        ['verificationConsent', 'Please provide consent for verification if shortlisted.'],
-        ['promotionalConsent', 'Please provide promotional consent.'],
-        ['submissionFeeAcknowledged', 'Please acknowledge the submission fee requirements.'],
+        [
+          "declarationAccepted",
+          "Please confirm the accuracy of all information provided.",
+        ],
+        [
+          "verificationConsent",
+          "Please provide consent for verification if shortlisted.",
+        ],
+        ["promotionalConsent", "Please provide promotional consent."],
+        [
+          "submissionFeeAcknowledged",
+          "Please acknowledge the submission fee requirements.",
+        ],
       ];
       const missing = required.find(([field]) => !values[field]);
       if (missing) return { field: missing[0], message: missing[1] };
@@ -368,13 +500,25 @@ const NewApplication = () => {
     if (currentStep === 7) {
       if (!isFreeCategory) {
         if (!values.paymentMethod) {
-          return { field: 'paymentMethod', message: 'Please select a payment method.' };
+          return {
+            field: "paymentMethod",
+            message: "Please select a payment method.",
+          };
         }
-        if (values.paymentMethod === 'transfer' && !values.paymentSlip) {
-          return { field: 'paymentSlip', message: 'Please upload your bank transfer slip.' };
+        if (values.paymentMethod === "transfer" && !values.paymentSlip) {
+          return {
+            field: "paymentSlip",
+            message: "Please upload your bank transfer slip.",
+          };
         }
-        if (values.paymentMethod === 'online' && !values.onlinePaymentSimulated) {
-          return { field: 'onlinePayment', message: 'Please complete the online payment simulation.' };
+        if (
+          values.paymentMethod === "online" &&
+          !values.onlinePaymentSimulated
+        ) {
+          return {
+            field: "onlinePayment",
+            message: "Please complete the online payment simulation.",
+          };
         }
       }
     }
@@ -383,8 +527,10 @@ const NewApplication = () => {
 
   const handleNext = async () => {
     if (applicationDeadlinePassed) {
-      toast.error(`Applications can no longer be edited after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
-      navigate('/dashboard?tab=drafts');
+      toast.error(
+        `Applications can no longer be edited after the ${APPLICATION_DEADLINE_LABEL} deadline.`,
+      );
+      navigate("/dashboard?tab=drafts");
       return;
     }
 
@@ -400,16 +546,20 @@ const NewApplication = () => {
       setFieldErrors({});
       const id = await ensureDraft(values);
       await applicationService.updateDraft(id, buildPayload(values));
-      setCurrentStep(step => step + 1);
+      setCurrentStep((step) => step + 1);
     } catch (e) {
-      toast.error(getApiErrorMessage(e, 'Failed to save application progress.'));
+      toast.error(
+        getApiErrorMessage(e, "Failed to save application progress."),
+      );
     }
   };
 
   const handleSaveDraft = async () => {
     if (applicationDeadlinePassed) {
-      toast.error(`Applications can no longer be edited after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
-      navigate('/dashboard?tab=drafts');
+      toast.error(
+        `Applications can no longer be edited after the ${APPLICATION_DEADLINE_LABEL} deadline.`,
+      );
+      navigate("/dashboard?tab=drafts");
       return;
     }
 
@@ -419,11 +569,14 @@ const NewApplication = () => {
       setSavingDraft(true);
       setFieldErrors({});
       const id = await ensureDraft(values);
-      await applicationService.updateDraft(id, buildPayload(values, currentStep));
-      toast.success('Draft saved successfully.');
-      navigate('/dashboard?tab=drafts');
+      await applicationService.updateDraft(
+        id,
+        buildPayload(values, currentStep),
+      );
+      toast.success("Draft saved successfully.");
+      navigate("/dashboard?tab=drafts");
     } catch (e) {
-      toast.error(getApiErrorMessage(e, 'Failed to save draft.'));
+      toast.error(getApiErrorMessage(e, "Failed to save draft."));
     } finally {
       setSavingDraft(false);
     }
@@ -431,21 +584,23 @@ const NewApplication = () => {
 
   const handleFileUpload = async (e) => {
     if (applicationDeadlinePassed) {
-      toast.error(`Documents can no longer be edited after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
-      e.target.value = '';
+      toast.error(
+        `Documents can no longer be edited after the ${APPLICATION_DEADLINE_LABEL} deadline.`,
+      );
+      e.target.value = "";
       return;
     }
 
     const files = Array.from(e.target.files || []);
     if (files.length === 0) return;
     if (uploadedFiles.length + files.length > 2) {
-      toast.error('Upload a maximum of 2 PDF documents.');
-      e.target.value = '';
+      toast.error("Upload a maximum of 2 PDF documents.");
+      e.target.value = "";
       return;
     }
-    if (files.some(file => file.type !== 'application/pdf')) {
-      toast.error('Only PDF documents are allowed.');
-      e.target.value = '';
+    if (files.some((file) => file.type !== "application/pdf")) {
+      toast.error("Only PDF documents are allowed.");
+      e.target.value = "";
       return;
     }
 
@@ -453,53 +608,62 @@ const NewApplication = () => {
     try {
       const id = await ensureDraft();
       const formData = new FormData();
-      files.forEach(file => formData.append('documents', file));
+      files.forEach((file) => formData.append("documents", file));
       const { data } = await applicationService.uploadDocuments(id, formData);
       setUploadedFiles(data.data.documents);
-      toast.success('Document uploaded successfully.');
+      toast.success("Document uploaded successfully.");
     } catch (e) {
-      toast.error(getApiErrorMessage(e, 'Failed to upload documents.'));
+      toast.error(getApiErrorMessage(e, "Failed to upload documents."));
     } finally {
       setUploading(false);
-      e.target.value = '';
+      e.target.value = "";
     }
   };
 
   const handleFileDelete = async (docId) => {
     if (applicationDeadlinePassed) {
-      toast.error(`Documents can no longer be edited after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
+      toast.error(
+        `Documents can no longer be edited after the ${APPLICATION_DEADLINE_LABEL} deadline.`,
+      );
       return;
     }
 
     try {
       await applicationService.deleteDocument(draftId, docId);
-      setUploadedFiles(files => files.filter(file => file._id !== docId));
-      toast.success('Document removed.');
+      setUploadedFiles((files) => files.filter((file) => file._id !== docId));
+      toast.success("Document removed.");
     } catch {
-      toast.error('Failed to remove document.');
+      toast.error("Failed to remove document.");
     }
   };
 
   const handlePaymentSlipUpload = async (e) => {
     if (applicationDeadlinePassed) {
-      toast.error(`Slip can no longer be uploaded after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
-      e.target.value = '';
+      toast.error(
+        `Slip can no longer be uploaded after the ${APPLICATION_DEADLINE_LABEL} deadline.`,
+      );
+      e.target.value = "";
       return;
     }
 
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+    const allowedTypes = [
+      "application/pdf",
+      "image/jpeg",
+      "image/png",
+      "image/webp",
+    ];
     if (!allowedTypes.includes(file.type)) {
-      toast.error('Only PDF, JPG, PNG, and WebP files are allowed.');
-      e.target.value = '';
+      toast.error("Only PDF, JPG, PNG, and WebP files are allowed.");
+      e.target.value = "";
       return;
     }
 
     if (file.size > 10 * 1024 * 1024) {
-      toast.error('File size must be under 10MB.');
-      e.target.value = '';
+      toast.error("File size must be under 10MB.");
+      e.target.value = "";
       return;
     }
 
@@ -507,69 +671,69 @@ const NewApplication = () => {
     try {
       const id = await ensureDraft();
       const formData = new FormData();
-      formData.append('paymentSlip', file);
+      formData.append("paymentSlip", file);
       const { data } = await applicationService.uploadPaymentSlip(id, formData);
       setPaymentSlipFile(data.data.paymentSlip);
-      setValue('paymentSlip', data.data.paymentSlip, { shouldDirty: true });
-      toast.success('Payment slip uploaded successfully.');
+      setValue("paymentSlip", data.data.paymentSlip, { shouldDirty: true });
+      toast.success("Payment slip uploaded successfully.");
     } catch (e) {
-      toast.error(getApiErrorMessage(e, 'Failed to upload payment slip.'));
+      toast.error(getApiErrorMessage(e, "Failed to upload payment slip."));
     } finally {
       setUploadingSlip(false);
-      e.target.value = '';
+      e.target.value = "";
     }
   };
 
   const handlePaymentSlipDelete = async () => {
     if (applicationDeadlinePassed) {
-      toast.error(`Slip can no longer be modified after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
+      toast.error(
+        `Slip can no longer be modified after the ${APPLICATION_DEADLINE_LABEL} deadline.`,
+      );
       return;
     }
 
     try {
       await applicationService.deletePaymentSlip(draftId);
       setPaymentSlipFile(null);
-      setValue('paymentSlip', null, { shouldDirty: true });
-      toast.success('Payment slip removed.');
+      setValue("paymentSlip", null, { shouldDirty: true });
+      toast.success("Payment slip removed.");
     } catch {
-      toast.error('Failed to remove payment slip.');
+      toast.error("Failed to remove payment slip.");
     }
   };
 
+  // 1. මේ function එක වෙනස් කරන්න
   const handleSimulateCardPayment = async () => {
-    const cardName = getValues('cardName');
-    const cardNumber = getValues('cardNumber');
-    const cardExpiry = getValues('cardExpiry');
-    const cardCvv = getValues('cardCvv');
-
-    if (!cardName || !cardNumber || !cardExpiry || !cardCvv) {
-      toast.error('Please fill in all credit card details.');
-      return;
-    }
-
-    if (cardNumber.replace(/\s+/g, '').length < 16) {
-      toast.error('Please enter a valid 16-digit card number.');
-      return;
-    }
-
-    if (cardExpiry.length < 5) {
-      toast.error('Please enter a valid expiry date (MM/YY).');
-      return;
-    }
-
-    if (cardCvv.length < 3) {
-      toast.error('Please enter a valid 3-digit CVV.');
-      return;
-    }
-
-    setPaymentSimulating(true);
     try {
-      // Simulate network request delays
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      setValue('onlinePaymentSimulated', true, { shouldDirty: true });
-      toast.success('Payment authorization successful!');
-    } catch {
-      toast.error('Payment authorization failed.');
+      setPaymentSimulating(true);
+
+      // A. මුලින්ම දැනට කරපු ටික draft එකක් විදිහට DB එකේ සේව් කරගන්නවා
+      const id = await ensureDraft();
+
+      // B. Backend එකෙන් signed PayHere parameters ටික ඉල්ලගන්නවා
+      const { data } = await applicationService.getPayHereParams(id);
+      const paymentConfig = data.data;
+
+      // C. PayHere JS Event Handlers ටික සෙට් කරනවා
+      window.payhere.onCompleted = function onCompleted(orderId) {
+        setValue("onlinePaymentSimulated", true, { shouldDirty: true });
+        toast.success("Payment completed successfully via PayHere!");
+      };
+
+      window.payhere.onDismissed = function onDismissed() {
+        toast.error("Payment popup closed by user.");
+      };
+
+      window.payhere.onError = function onError(error) {
+        toast.error("PayHere Error: " + error);
+      };
+
+      // D. PayHere Checkout Modal එක open කරනවා 🚀
+      window.payhere.startPayment(paymentConfig);
+    } catch (e) {
+      toast.error(
+        getApiErrorMessage(e, "Failed to initialize PayHere gateway."),
+      );
     } finally {
       setPaymentSimulating(false);
     }
@@ -577,47 +741,72 @@ const NewApplication = () => {
 
   const onSubmit = async () => {
     if (applicationDeadlinePassed) {
-      toast.error(`Applications can no longer be submitted after the ${APPLICATION_DEADLINE_LABEL} deadline.`);
-      navigate('/dashboard?tab=drafts');
+      toast.error(
+        `Applications can no longer be submitted after the ${APPLICATION_DEADLINE_LABEL} deadline.`,
+      );
+      navigate("/dashboard?tab=drafts");
       return;
     }
 
     const values = getValues();
-    const requiredConsents = values.declarationAccepted && values.verificationConsent && values.promotionalConsent && values.submissionFeeAcknowledged;
+    const requiredConsents =
+      values.declarationAccepted &&
+      values.verificationConsent &&
+      values.promotionalConsent &&
+      values.submissionFeeAcknowledged;
     if (!requiredConsents) {
       setFieldErrors({
-        declarationAccepted: !values.declarationAccepted ? 'Please confirm the accuracy of the information provided.' : '',
-        verificationConsent: !values.verificationConsent ? 'Please provide consent for verification if shortlisted.' : '',
-        promotionalConsent: !values.promotionalConsent ? 'Please provide promotional consent.' : '',
-        submissionFeeAcknowledged: !values.submissionFeeAcknowledged ? 'Please acknowledge the submission fee requirement.' : '',
+        declarationAccepted: !values.declarationAccepted
+          ? "Please confirm the accuracy of the information provided."
+          : "",
+        verificationConsent: !values.verificationConsent
+          ? "Please provide consent for verification if shortlisted."
+          : "",
+        promotionalConsent: !values.promotionalConsent
+          ? "Please provide promotional consent."
+          : "",
+        submissionFeeAcknowledged: !values.submissionFeeAcknowledged
+          ? "Please acknowledge the submission fee requirement."
+          : "",
       });
-      toast.error('Please complete all required declarations and consents.');
+      toast.error("Please complete all required declarations and consents.");
       return;
     }
 
     try {
       setFieldErrors({});
       const id = await ensureDraft();
-      await applicationService.updateDraft(id, buildPayload({ ...values, declarationAccepted: true }));
+      await applicationService.updateDraft(
+        id,
+        buildPayload({ ...values, declarationAccepted: true }),
+      );
       await applicationService.submitApplication(id);
-      toast.success('Application submitted successfully!');
-      navigate('/dashboard');
+      toast.success("Application submitted successfully!");
+      navigate("/dashboard");
     } catch (e) {
-      toast.error(getApiErrorMessage(e, 'Failed to submit application.'));
+      toast.error(getApiErrorMessage(e, "Failed to submit application."));
     }
   };
 
-  const inputClass = 'input-field';
-  const textareaClass = 'input-field resize-none min-h-[116px]';
-  const fieldClass = (field, base = inputClass) => `${base} ${fieldErrors[field] ? '!border-red-400 focus:!border-red-400 focus:!shadow-none' : ''}`;
+  const inputClass = "input-field";
+  const textareaClass = "input-field resize-none min-h-[116px]";
+  const fieldClass = (field, base = inputClass) =>
+    `${base} ${fieldErrors[field] ? "!border-red-400 focus:!border-red-400 focus:!shadow-none" : ""}`;
 
   return (
     <div className="min-h-screen bg-navy-950 pt-28 pb-20">
       <div className="section-container max-w-5xl">
         <div className="mb-10 text-center">
           <span className="badge-accent mb-4">Candidate Application</span>
-          <h1 className="font-display font-black text-3xl text-white">{draftId ? 'Edit Draft Submission' : 'National AI Awards 2026 Submission'}</h1>
-          <p className="text-slate-400 text-sm mt-2">One submission per primary award category. Multiple categories require separate entries.</p>
+          <h1 className="font-display font-black text-3xl text-white">
+            {draftId
+              ? "Edit Draft Submission"
+              : "National AI Awards 2026 Submission"}
+          </h1>
+          <p className="text-slate-400 text-sm mt-2">
+            One submission per primary award category. Multiple categories
+            require separate entries.
+          </p>
         </div>
 
         {loadingDraft ? (
@@ -626,11 +815,18 @@ const NewApplication = () => {
           </div>
         ) : applicationDeadlinePassed ? (
           <div className="glass-card p-8 sm:p-10 !hover:transform-none text-center">
-            <h2 className="font-display font-bold text-white text-2xl">Applications Closed</h2>
+            <h2 className="font-display font-bold text-white text-2xl">
+              Applications Closed
+            </h2>
             <p className="text-slate-400 text-sm mt-3 max-w-xl mx-auto leading-relaxed">
-              The application deadline was {APPLICATION_DEADLINE_LABEL}. Drafts are now locked and can no longer be edited or submitted.
+              The application deadline was {APPLICATION_DEADLINE_LABEL}. Drafts
+              are now locked and can no longer be edited or submitted.
             </p>
-            <Button variant="primary" className="mt-6 text-xs" onClick={() => navigate('/dashboard?tab=drafts')}>
+            <Button
+              variant="primary"
+              className="mt-6 text-xs"
+              onClick={() => navigate("/dashboard?tab=drafts")}
+            >
               Back to Edit Draft
             </Button>
           </div>
@@ -641,20 +837,29 @@ const NewApplication = () => {
                 <div className="absolute left-0 right-0 top-5 h-0.5 bg-white/5 z-0" />
                 <div
                   className="absolute left-0 top-5 h-0.5 bg-gradient-accent transition-all duration-300 z-0"
-                  style={{ width: `${(currentStep / (activeSteps.length - 1)) * 100}%` }}
+                  style={{
+                    width: `${(currentStep / (activeSteps.length - 1)) * 100}%`,
+                  }}
                 />
                 {activeSteps.map((step, idx) => (
-                  <div key={step.label} className="relative z-10 flex flex-col items-center w-24">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-sm border-2 transition-all ${
-                      idx < currentStep
-                        ? 'bg-accent-500 border-accent-500 text-white shadow-glow'
-                        : idx === currentStep
-                          ? 'bg-navy-900 border-accent-500 text-accent-400 shadow-glow'
-                          : 'bg-navy-900 border-white/10 text-slate-500'
-                    }`}>
+                  <div
+                    key={step.label}
+                    className="relative z-10 flex flex-col items-center w-24"
+                  >
+                    <div
+                      className={`w-10 h-10 rounded-full flex items-center justify-center font-display font-bold text-sm border-2 transition-all ${
+                        idx < currentStep
+                          ? "bg-accent-500 border-accent-500 text-white shadow-glow"
+                          : idx === currentStep
+                            ? "bg-navy-900 border-accent-500 text-accent-400 shadow-glow"
+                            : "bg-navy-900 border-white/10 text-slate-500"
+                      }`}
+                    >
                       {idx < currentStep ? <RiCheckLine size={18} /> : idx + 1}
                     </div>
-                    <span className={`text-[10px] mt-2 font-medium uppercase tracking-wider ${idx === currentStep ? 'text-accent-400' : 'text-slate-500'}`}>
+                    <span
+                      className={`text-[10px] mt-2 font-medium uppercase tracking-wider ${idx === currentStep ? "text-accent-400" : "text-slate-500"}`}
+                    >
                       {step.label}
                     </span>
                   </div>
@@ -674,64 +879,129 @@ const NewApplication = () => {
                   {currentStep === 0 && (
                     <div className="space-y-6">
                       <div>
-                        <h3 className="font-display font-bold text-white text-lg">Section A: Applicant & Organisation Details</h3>
-                        <p className="text-slate-400 text-xs mt-1">Provide the applicant details and authorised contact for this entry.</p>
+                        <h3 className="font-display font-bold text-white text-lg">
+                          Section A: Applicant & Organisation Details
+                        </h3>
+                        <p className="text-slate-400 text-xs mt-1">
+                          Provide the applicant details and authorised contact
+                          for this entry.
+                        </p>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div><FieldLabel required>Organisation/Individual name</FieldLabel><input className={fieldClass('organisationName')} {...register('organisationName')} /><FieldError message={fieldErrors.organisationName} /></div>
+                        <div>
+                          <FieldLabel required>
+                            Organisation/Individual name
+                          </FieldLabel>
+                          <input
+                            className={fieldClass("organisationName")}
+                            {...register("organisationName")}
+                          />
+                          <FieldError message={fieldErrors.organisationName} />
+                        </div>
                         <div>
                           <FieldLabel>Registration number</FieldLabel>
                           <input
                             className={`${inputClass} cursor-not-allowed bg-white/3 text-slate-300`}
                             readOnly
                             aria-readonly="true"
-                            {...register('registrationNumber')}
+                            {...register("registrationNumber")}
                           />
-                          <p className="mt-1 text-[11px] text-slate-500">Automatically assigned to your candidate account.</p>
+                          <p className="mt-1 text-[11px] text-slate-500">
+                            Automatically assigned to your candidate account.
+                          </p>
                         </div>
-                        <div><FieldLabel required>Sector/Industry</FieldLabel><input className={fieldClass('sectorIndustry')} {...register('sectorIndustry')} /><FieldError message={fieldErrors.sectorIndustry} /></div>
+                        <div>
+                          <FieldLabel required>Sector/Industry</FieldLabel>
+                          <input
+                            className={fieldClass("sectorIndustry")}
+                            {...register("sectorIndustry")}
+                          />
+                          <FieldError message={fieldErrors.sectorIndustry} />
+                        </div>
                         <div>
                           <FieldLabel required>Organisation size</FieldLabel>
-                          <select className={fieldClass('organisationSize')} {...register('organisationSize')}>
+                          <select
+                            className={fieldClass("organisationSize")}
+                            {...register("organisationSize")}
+                          >
                             <option value="">Select size...</option>
-                            {organisationSizes.map(size => <option key={size} value={size} className="bg-navy-950">{size}</option>)}
+                            {organisationSizes.map((size) => (
+                              <option
+                                key={size}
+                                value={size}
+                                className="bg-navy-950"
+                              >
+                                {size}
+                              </option>
+                            ))}
                           </select>
                           <FieldError message={fieldErrors.organisationSize} />
                         </div>
-                        <div><FieldLabel required>Primary contact name</FieldLabel><input className={fieldClass('primaryContactName')} {...register('primaryContactName')} /><FieldError message={fieldErrors.primaryContactName} /></div>
-                        <div><FieldLabel required>Designation</FieldLabel><input className={fieldClass('primaryContactDesignation')} {...register('primaryContactDesignation')} /><FieldError message={fieldErrors.primaryContactDesignation} /></div>
+                        <div>
+                          <FieldLabel required>Primary contact name</FieldLabel>
+                          <input
+                            className={fieldClass("primaryContactName")}
+                            {...register("primaryContactName")}
+                          />
+                          <FieldError
+                            message={fieldErrors.primaryContactName}
+                          />
+                        </div>
+                        <div>
+                          <FieldLabel required>Designation</FieldLabel>
+                          <input
+                            className={fieldClass("primaryContactDesignation")}
+                            {...register("primaryContactDesignation")}
+                          />
+                          <FieldError
+                            message={fieldErrors.primaryContactDesignation}
+                          />
+                        </div>
                         <div>
                           <FieldLabel required>Email</FieldLabel>
                           <input
                             type="email"
-                            className={fieldClass('primaryContactEmail')}
-                            {...register('primaryContactEmail', {
+                            className={fieldClass("primaryContactEmail")}
+                            {...register("primaryContactEmail", {
                               pattern: {
                                 value: EMAIL_PATTERN,
-                                message: 'Please enter a valid email address.',
+                                message: "Please enter a valid email address.",
                               },
                               setValueAs: (value) => value.trim(),
                             })}
                           />
-                          <FieldError message={fieldErrors.primaryContactEmail} />
+                          <FieldError
+                            message={fieldErrors.primaryContactEmail}
+                          />
                         </div>
                         <div>
                           <FieldLabel required>Phone</FieldLabel>
                           <input
-                            className={fieldClass('primaryContactPhone')}
+                            className={fieldClass("primaryContactPhone")}
                             inputMode="numeric"
                             pattern="[0-9]*"
                             maxLength={10}
-                            {...register('primaryContactPhone', {
+                            {...register("primaryContactPhone", {
                               setValueAs: normalizePhoneNumber,
                               onChange: (event) => {
-                                event.target.value = normalizePhoneNumber(event.target.value);
+                                event.target.value = normalizePhoneNumber(
+                                  event.target.value,
+                                );
                               },
                             })}
                           />
-                          <FieldError message={fieldErrors.primaryContactPhone} />
+                          <FieldError
+                            message={fieldErrors.primaryContactPhone}
+                          />
                         </div>
-                        <div><FieldLabel>Website/LinkedIn</FieldLabel><input className={inputClass} placeholder="https://..." {...register('websiteLinkedIn')} /></div>
+                        <div>
+                          <FieldLabel>Website/LinkedIn</FieldLabel>
+                          <input
+                            className={inputClass}
+                            placeholder="https://..."
+                            {...register("websiteLinkedIn")}
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
@@ -739,53 +1009,158 @@ const NewApplication = () => {
                   {currentStep === 1 && (
                     <div className="space-y-6">
                       <div>
-                        <h3 className="font-display font-bold text-white text-lg">Section B: Award Category Selection</h3>
-                        <p className="text-slate-400 text-xs mt-1">Select one primary award category for this submission.</p>
+                        <h3 className="font-display font-bold text-white text-lg">
+                          Section B: Award Category Selection
+                        </h3>
+                        <p className="text-slate-400 text-xs mt-1">
+                          Select one primary award category for this submission.
+                        </p>
                       </div>
                       <div>
                         <FieldLabel required>Award category</FieldLabel>
-                        <select className={fieldClass('categoryId')} {...register('categoryId')}>
+                        <select
+                          className={fieldClass("categoryId")}
+                          {...register("categoryId")}
+                        >
                           <option value="">Choose category...</option>
-                          {categories.map(category => <option key={category._id} value={category._id} className="bg-navy-950">{category.name}</option>)}
+                          {categories.map((category) => (
+                            <option
+                              key={category._id}
+                              value={category._id}
+                              className="bg-navy-950"
+                            >
+                              {category.name}
+                            </option>
+                          ))}
                         </select>
                         <FieldError message={fieldErrors.categoryId} />
-                        {categories.length === 0 && <p className="mt-2 text-xs text-amber-300">No active award categories are available. Please ask an administrator to seed or activate categories.</p>}
+                        {categories.length === 0 && (
+                          <p className="mt-2 text-xs text-amber-300">
+                            No active award categories are available. Please ask
+                            an administrator to seed or activate categories.
+                          </p>
+                        )}
                       </div>
                       {selectedCategory && (
                         <div className="rounded-xl bg-accent-500/5 border border-accent-500/20 p-4">
-                          <h4 className="text-accent-400 text-xs font-bold uppercase tracking-wider">Category Focus</h4>
-                          <p className="text-slate-300 text-xs mt-1 leading-relaxed">{selectedCategory.description}</p>
+                          <h4 className="text-accent-400 text-xs font-bold uppercase tracking-wider">
+                            Category Focus
+                          </h4>
+                          <p className="text-slate-300 text-xs mt-1 leading-relaxed">
+                            {selectedCategory.description}
+                          </p>
                         </div>
                       )}
-                      <label className={`flex gap-3 p-4 rounded-xl bg-white/5 border ${fieldErrors.categoryEligibilityConfirmed ? 'border-red-400' : 'border-white/5'}`}>
-                        <input type="checkbox" className="w-5 h-5 accent-accent-500 mt-0.5" {...register('categoryEligibilityConfirmed')} />
-                        <span className="text-slate-300 text-sm leading-relaxed">I confirm this entry meets the eligibility criteria for the selected category.</span>
+                      <label
+                        className={`flex gap-3 p-4 rounded-xl bg-white/5 border ${fieldErrors.categoryEligibilityConfirmed ? "border-red-400" : "border-white/5"}`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="w-5 h-5 accent-accent-500 mt-0.5"
+                          {...register("categoryEligibilityConfirmed")}
+                        />
+                        <span className="text-slate-300 text-sm leading-relaxed">
+                          I confirm this entry meets the eligibility criteria
+                          for the selected category.
+                        </span>
                       </label>
-                      <FieldError message={fieldErrors.categoryEligibilityConfirmed} />
+                      <FieldError
+                        message={fieldErrors.categoryEligibilityConfirmed}
+                      />
                     </div>
                   )}
 
                   {currentStep === 2 && (
                     <div className="space-y-6">
                       <div>
-                        <h3 className="font-display font-bold text-white text-lg">Section C: Solution Overview</h3>
-                        <p className="text-slate-400 text-xs mt-1">The core narrative used for screening and shortlist announcements.</p>
+                        <h3 className="font-display font-bold text-white text-lg">
+                          Section C: Solution Overview
+                        </h3>
+                        <p className="text-slate-400 text-xs mt-1">
+                          The core narrative used for screening and shortlist
+                          announcements.
+                        </p>
                       </div>
-                      <div><FieldLabel required>Solution/Project name</FieldLabel><input className={fieldClass('projectTitle')} {...register('projectTitle')} /><FieldError message={fieldErrors.projectTitle} /></div>
-                      <div><FieldLabel required>One-line summary</FieldLabel><input className={fieldClass('tagline')} placeholder="25 words or fewer" {...register('tagline')} /><WordHint value={watched.tagline} max={25} /><FieldError message={fieldErrors.tagline} /></div>
-                      <div><FieldLabel required>Problem statement</FieldLabel><textarea className={fieldClass('problemStatement', textareaClass)} placeholder="What challenge does this solve?" {...register('problemStatement')} /><WordHint value={watched.problemStatement} max={300} /><FieldError message={fieldErrors.problemStatement} /></div>
-                      <div><FieldLabel required>Solution description</FieldLabel><textarea className={fieldClass('solution', 'input-field resize-none min-h-[160px]')} placeholder="How does it work, and what AI/ML techniques are used?" {...register('solution')} /><WordHint value={watched.solution} max={500} /><FieldError message={fieldErrors.solution} /></div>
+                      <div>
+                        <FieldLabel required>Solution/Project name</FieldLabel>
+                        <input
+                          className={fieldClass("projectTitle")}
+                          {...register("projectTitle")}
+                        />
+                        <FieldError message={fieldErrors.projectTitle} />
+                      </div>
+                      <div>
+                        <FieldLabel required>One-line summary</FieldLabel>
+                        <input
+                          className={fieldClass("tagline")}
+                          placeholder="25 words or fewer"
+                          {...register("tagline")}
+                        />
+                        <WordHint value={watched.tagline} max={25} />
+                        <FieldError message={fieldErrors.tagline} />
+                      </div>
+                      <div>
+                        <FieldLabel required>Problem statement</FieldLabel>
+                        <textarea
+                          className={fieldClass(
+                            "problemStatement",
+                            textareaClass,
+                          )}
+                          placeholder="What challenge does this solve?"
+                          {...register("problemStatement")}
+                        />
+                        <WordHint value={watched.problemStatement} max={300} />
+                        <FieldError message={fieldErrors.problemStatement} />
+                      </div>
+                      <div>
+                        <FieldLabel required>Solution description</FieldLabel>
+                        <textarea
+                          className={fieldClass(
+                            "solution",
+                            "input-field resize-none min-h-[160px]",
+                          )}
+                          placeholder="How does it work, and what AI/ML techniques are used?"
+                          {...register("solution")}
+                        />
+                        <WordHint value={watched.solution} max={500} />
+                        <FieldError message={fieldErrors.solution} />
+                      </div>
                       <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
                         <div>
                           <FieldLabel required>Deployment status</FieldLabel>
-                          <select className={fieldClass('deploymentStatus')} {...register('deploymentStatus')}>
+                          <select
+                            className={fieldClass("deploymentStatus")}
+                            {...register("deploymentStatus")}
+                          >
                             <option value="">Select status...</option>
-                            {deploymentStatuses.map(status => <option key={status} value={status} className="bg-navy-950">{status}</option>)}
+                            {deploymentStatuses.map((status) => (
+                              <option
+                                key={status}
+                                value={status}
+                                className="bg-navy-950"
+                              >
+                                {status}
+                              </option>
+                            ))}
                           </select>
                           <FieldError message={fieldErrors.deploymentStatus} />
                         </div>
-                        <div><FieldLabel required>Date of launch</FieldLabel><input type="date" className={fieldClass('launchDate')} {...register('launchDate')} /><FieldError message={fieldErrors.launchDate} /></div>
-                        <div><FieldLabel>Customer reference/revenue</FieldLabel><input className={inputClass} {...register('customerReferenceRevenue')} /></div>
+                        <div>
+                          <FieldLabel required>Date of launch</FieldLabel>
+                          <input
+                            type="date"
+                            className={fieldClass("launchDate")}
+                            {...register("launchDate")}
+                          />
+                          <FieldError message={fieldErrors.launchDate} />
+                        </div>
+                        <div>
+                          <FieldLabel>Customer reference/revenue</FieldLabel>
+                          <input
+                            className={inputClass}
+                            {...register("customerReferenceRevenue")}
+                          />
+                        </div>
                       </div>
                     </div>
                   )}
@@ -793,17 +1168,31 @@ const NewApplication = () => {
                   {currentStep === 3 && (
                     <div className="space-y-6">
                       <div>
-                        <h3 className="font-display font-bold text-white text-lg">Section D: Evidence Against Judging Criteria</h3>
-                        <p className="text-slate-400 text-xs mt-1">Judges score directly against these weighted criteria.</p>
+                        <h3 className="font-display font-bold text-white text-lg">
+                          Section D: Evidence Against Judging Criteria
+                        </h3>
+                        <p className="text-slate-400 text-xs mt-1">
+                          Judges score directly against these weighted criteria.
+                        </p>
                       </div>
                       {judgingCriteria.map(([key, label, weight, prompt]) => (
-                        <div key={key} className="rounded-xl bg-white/5 border border-white/5 p-4">
+                        <div
+                          key={key}
+                          className="rounded-xl bg-white/5 border border-white/5 p-4"
+                        >
                           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-                            <h4 className="text-white text-sm font-bold">{label}</h4>
-                            <span className="badge-accent w-fit">{weight}%</span>
+                            <h4 className="text-white text-sm font-bold">
+                              {label}
+                            </h4>
+                            <span className="badge-accent w-fit">
+                              {weight}%
+                            </span>
                           </div>
                           <FieldLabel required>{prompt}</FieldLabel>
-                          <textarea className={fieldClass(key, textareaClass)} {...register(key)} />
+                          <textarea
+                            className={fieldClass(key, textareaClass)}
+                            {...register(key)}
+                          />
                           <FieldError message={fieldErrors[key]} />
                         </div>
                       ))}
@@ -813,30 +1202,95 @@ const NewApplication = () => {
                   {currentStep === 4 && (
                     <div className="space-y-6">
                       <div>
-                        <h3 className="font-display font-bold text-white text-lg">Section E: Supporting Materials</h3>
-                        <p className="text-slate-400 text-xs mt-1">Keep evidence concise and comparable across applicants.</p>
+                        <h3 className="font-display font-bold text-white text-lg">
+                          Section E: Supporting Materials
+                        </h3>
+                        <p className="text-slate-400 text-xs mt-1">
+                          Keep evidence concise and comparable across
+                          applicants.
+                        </p>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                        <div><FieldLabel>External URL</FieldLabel><input className={inputClass} placeholder="One live demo, product page, or video URL" {...register('projectUrl')} /></div>
-                        <div><FieldLabel>Optional demo video link</FieldLabel><input className={inputClass} placeholder="YouTube/Vimeo, 2-3 minutes" {...register('demoVideoUrl')} /></div>
-                        <div><FieldLabel>Testimonial/client reference 1</FieldLabel><input className={inputClass} {...register('testimonialOne')} /></div>
-                        <div><FieldLabel>Testimonial/client reference 2</FieldLabel><input className={inputClass} {...register('testimonialTwo')} /></div>
+                        <div>
+                          <FieldLabel>External URL</FieldLabel>
+                          <input
+                            className={inputClass}
+                            placeholder="One live demo, product page, or video URL"
+                            {...register("projectUrl")}
+                          />
+                        </div>
+                        <div>
+                          <FieldLabel>Optional demo video link</FieldLabel>
+                          <input
+                            className={inputClass}
+                            placeholder="YouTube/Vimeo, 2-3 minutes"
+                            {...register("demoVideoUrl")}
+                          />
+                        </div>
+                        <div>
+                          <FieldLabel>
+                            Testimonial/client reference 1
+                          </FieldLabel>
+                          <input
+                            className={inputClass}
+                            {...register("testimonialOne")}
+                          />
+                        </div>
+                        <div>
+                          <FieldLabel>
+                            Testimonial/client reference 2
+                          </FieldLabel>
+                          <input
+                            className={inputClass}
+                            {...register("testimonialTwo")}
+                          />
+                        </div>
                       </div>
                       <div className="border border-dashed border-white/10 rounded-2xl p-8 text-center bg-white/5 relative">
-                        <input type="file" multiple accept="application/pdf" onChange={handleFileUpload} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" disabled={uploading || uploadedFiles.length >= 2} />
+                        <input
+                          type="file"
+                          multiple
+                          accept="application/pdf"
+                          onChange={handleFileUpload}
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                          disabled={uploading || uploadedFiles.length >= 2}
+                        />
                         <div className="flex flex-col items-center">
                           <RiUploadCloud2Line className="text-accent-400 text-4xl mb-3" />
-                          <h4 className="font-display font-semibold text-white text-sm mb-1">{uploading ? 'Uploading...' : 'Upload up to 2 PDF documents'}</h4>
-                          <p className="text-slate-500 text-xs">Suggested cap: 5 pages each, max 10MB per file.</p>
+                          <h4 className="font-display font-semibold text-white text-sm mb-1">
+                            {uploading
+                              ? "Uploading..."
+                              : "Upload up to 2 PDF documents"}
+                          </h4>
+                          <p className="text-slate-500 text-xs">
+                            Suggested cap: 5 pages each, max 10MB per file.
+                          </p>
                         </div>
                       </div>
                       {uploadedFiles.length > 0 && (
                         <div className="space-y-2">
-                          <h4 className="text-white text-xs font-bold uppercase tracking-wider">Uploaded Documents</h4>
-                          {uploadedFiles.map(file => (
-                            <div key={file._id} className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-300">
-                              <div className="flex items-center gap-2 truncate"><RiFileTextLine className="text-accent-400 text-lg shrink-0" /><span className="truncate">{file.originalName}</span></div>
-                              <button type="button" onClick={() => handleFileDelete(file._id)} className="p-1 rounded hover:bg-red-500/10 text-red-400" aria-label="Remove document"><RiCloseLine size={16} /></button>
+                          <h4 className="text-white text-xs font-bold uppercase tracking-wider">
+                            Uploaded Documents
+                          </h4>
+                          {uploadedFiles.map((file) => (
+                            <div
+                              key={file._id}
+                              className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-300"
+                            >
+                              <div className="flex items-center gap-2 truncate">
+                                <RiFileTextLine className="text-accent-400 text-lg shrink-0" />
+                                <span className="truncate">
+                                  {file.originalName}
+                                </span>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => handleFileDelete(file._id)}
+                                className="p-1 rounded hover:bg-red-500/10 text-red-400"
+                                aria-label="Remove document"
+                              >
+                                <RiCloseLine size={16} />
+                              </button>
                             </div>
                           ))}
                         </div>
@@ -847,10 +1301,22 @@ const NewApplication = () => {
                   {currentStep === 5 && (
                     <div className="space-y-6">
                       <div>
-                        <h3 className="font-display font-bold text-white text-lg">Section F: National Relevance</h3>
-                        <p className="text-slate-400 text-xs mt-1">Describe the Sri Lanka-specific need, local language support, or national development relevance.</p>
+                        <h3 className="font-display font-bold text-white text-lg">
+                          Section F: National Relevance
+                        </h3>
+                        <p className="text-slate-400 text-xs mt-1">
+                          Describe the Sri Lanka-specific need, local language
+                          support, or national development relevance.
+                        </p>
                       </div>
-                      <textarea className={fieldClass('nationalRelevance', 'input-field resize-none min-h-[180px]')} placeholder="How does this solution address Sinhala/Tamil support, local market needs, or national development goals?" {...register('nationalRelevance')} />
+                      <textarea
+                        className={fieldClass(
+                          "nationalRelevance",
+                          "input-field resize-none min-h-[180px]",
+                        )}
+                        placeholder="How does this solution address Sinhala/Tamil support, local market needs, or national development goals?"
+                        {...register("nationalRelevance")}
+                      />
                       <FieldError message={fieldErrors.nationalRelevance} />
                     </div>
                   )}
@@ -858,36 +1324,74 @@ const NewApplication = () => {
                   {currentStep === 6 && (
                     <div className="space-y-6">
                       <div>
-                        <h3 className="font-display font-bold text-white text-lg">Section G: Declarations & Consent</h3>
-                        <p className="text-slate-400 text-xs mt-1">Confirm authority, accuracy, verification consent, and conflict disclosure before final submission.</p>
+                        <h3 className="font-display font-bold text-white text-lg">
+                          Section G: Declarations & Consent
+                        </h3>
+                        <p className="text-slate-400 text-xs mt-1">
+                          Confirm authority, accuracy, verification consent, and
+                          conflict disclosure before final submission.
+                        </p>
                       </div>
                       <div className="rounded-2xl bg-white/5 border border-white/5 p-5 space-y-4">
                         {[
-                          ['declarationAccepted', 'I confirm the accuracy of all information provided in this application.'],
-                          ['verificationConsent', 'I consent to a site visit or demo verification if shortlisted.'],
-                          ['promotionalConsent', 'I consent to be featured in promotional materials if shortlisted or winning.'],
-                          ['submissionFeeAcknowledged', 'I acknowledge the submission fee requirements for this entry.'],
+                          [
+                            "declarationAccepted",
+                            "I confirm the accuracy of all information provided in this application.",
+                          ],
+                          [
+                            "verificationConsent",
+                            "I consent to a site visit or demo verification if shortlisted.",
+                          ],
+                          [
+                            "promotionalConsent",
+                            "I consent to be featured in promotional materials if shortlisted or winning.",
+                          ],
+                          [
+                            "submissionFeeAcknowledged",
+                            "I acknowledge the submission fee requirements for this entry.",
+                          ],
                         ].map(([field, label]) => (
                           <div key={field}>
-                            <label className={`flex gap-3 rounded-xl border p-3 ${fieldErrors[field] ? 'border-red-400 bg-red-500/5' : 'border-transparent'}`}>
-                              <input type="checkbox" className="w-5 h-5 accent-accent-500 mt-0.5" {...register(field)} />
-                              <span className="text-slate-300 text-sm leading-relaxed">{label}</span>
+                            <label
+                              className={`flex gap-3 rounded-xl border p-3 ${fieldErrors[field] ? "border-red-400 bg-red-500/5" : "border-transparent"}`}
+                            >
+                              <input
+                                type="checkbox"
+                                className="w-5 h-5 accent-accent-500 mt-0.5"
+                                {...register(field)}
+                              />
+                              <span className="text-slate-300 text-sm leading-relaxed">
+                                {label}
+                              </span>
                             </label>
                             <FieldError message={fieldErrors[field]} />
                           </div>
                         ))}
                       </div>
-                      <div><FieldLabel>Conflict of interest disclosure</FieldLabel><textarea className={textareaClass} placeholder="Declare any judge affiliation, committee relationship, or write N/A." {...register('conflictDisclosure')} /></div>
+                      <div>
+                        <FieldLabel>Conflict of interest disclosure</FieldLabel>
+                        <textarea
+                          className={textareaClass}
+                          placeholder="Declare any judge affiliation, committee relationship, or write N/A."
+                          {...register("conflictDisclosure")}
+                        />
+                      </div>
                       <div className="rounded-xl bg-accent-500/5 border border-accent-500/20 p-4 flex gap-3">
                         <RiShieldCheckLine className="text-accent-400 text-xl shrink-0 mt-0.5" />
-                        <p className="text-slate-300 text-xs leading-relaxed">Once submitted, this candidate application enters the review workflow and cannot be modified from the portal.</p>
+                        <p className="text-slate-300 text-xs leading-relaxed">
+                          Once submitted, this candidate application enters the
+                          review workflow and cannot be modified from the
+                          portal.
+                        </p>
                       </div>
                     </div>
                   )}
 
                   {currentStep === 7 && !isFreeCategory && (
                     <div className="space-y-6">
-                      <style dangerouslySetInnerHTML={{__html: `
+                      <style
+                        dangerouslySetInnerHTML={{
+                          __html: `
                         .perspective-1000 {
                           perspective: 1000px;
                         }
@@ -907,11 +1411,18 @@ const NewApplication = () => {
                         .animate-fadeIn {
                           animation: fadeIn 0.3s ease forwards;
                         }
-                      `}} />
+                      `,
+                        }}
+                      />
 
                       <div>
-                        <h3 className="font-display font-bold text-white text-lg">Section H: Registration Fee & Payment</h3>
-                        <p className="text-slate-400 text-xs mt-1">Application fee is LKR 25,000. Choose your preferred payment method.</p>
+                        <h3 className="font-display font-bold text-white text-lg">
+                          Section H: Registration Fee & Payment
+                        </h3>
+                        <p className="text-slate-400 text-xs mt-1">
+                          Application fee is LKR 25,000. Choose your preferred
+                          payment method.
+                        </p>
                       </div>
 
                       {/* Payment Method Tabs */}
@@ -919,65 +1430,105 @@ const NewApplication = () => {
                         <button
                           type="button"
                           onClick={() => {
-                            setValue('paymentMethod', 'transfer');
-                            setValue('onlinePaymentSimulated', false);
+                            setValue("paymentMethod", "transfer");
+                            setValue("onlinePaymentSimulated", false);
                           }}
                           className={`p-5 rounded-2xl border text-left flex items-start gap-4 transition-all ${
-                            watched.paymentMethod === 'transfer'
-                              ? 'bg-accent-500/10 border-accent-500 shadow-glow'
-                              : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10'
+                            watched.paymentMethod === "transfer"
+                              ? "bg-accent-500/10 border-accent-500 shadow-glow"
+                              : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
                           }`}
                         >
-                          <RiBankLine className={`text-2xl mt-0.5 ${watched.paymentMethod === 'transfer' ? 'text-accent-400' : 'text-slate-400'}`} />
+                          <RiBankLine
+                            className={`text-2xl mt-0.5 ${watched.paymentMethod === "transfer" ? "text-accent-400" : "text-slate-400"}`}
+                          />
                           <div>
-                            <h4 className="text-white font-bold text-sm">Online / Bank Transfer</h4>
-                            <p className="text-slate-400 text-xs mt-1">Transfer to our bank account and upload the transaction slip/receipt.</p>
+                            <h4 className="text-white font-bold text-sm">
+                              Online / Bank Transfer
+                            </h4>
+                            <p className="text-slate-400 text-xs mt-1">
+                              Transfer to our bank account and upload the
+                              transaction slip/receipt.
+                            </p>
                           </div>
                         </button>
 
                         <button
                           type="button"
                           onClick={() => {
-                            setValue('paymentMethod', 'online');
+                            setValue("paymentMethod", "online");
                           }}
                           className={`p-5 rounded-2xl border text-left flex items-start gap-4 transition-all ${
-                            watched.paymentMethod === 'online'
-                              ? 'bg-accent-500/10 border-accent-500 shadow-glow'
-                              : 'bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10'
+                            watched.paymentMethod === "online"
+                              ? "bg-accent-500/10 border-accent-500 shadow-glow"
+                              : "bg-white/5 border-white/5 hover:bg-white/10 hover:border-white/10"
                           }`}
                         >
-                          <RiBankCardLine className={`text-2xl mt-0.5 ${watched.paymentMethod === 'online' ? 'text-accent-400' : 'text-slate-400'}`} />
+                          <RiBankCardLine
+                            className={`text-2xl mt-0.5 ${watched.paymentMethod === "online" ? "text-accent-400" : "text-slate-400"}`}
+                          />
                           <div>
-                            <h4 className="text-white font-bold text-sm">Online Card Payment</h4>
-                            <p className="text-slate-400 text-xs mt-1">Pay securely via Credit/Debit card (mocked authorization flow).</p>
+                            <h4 className="text-white font-bold text-sm">
+                              Online Card Payment
+                            </h4>
+                            <p className="text-slate-400 text-xs mt-1">
+                              Pay securely via Credit/Debit card (mocked
+                              authorization flow).
+                            </p>
                           </div>
                         </button>
                       </div>
 
                       {/* Tab 1: Bank Transfer Details & Upload */}
-                      {watched.paymentMethod === 'transfer' && (
+                      {watched.paymentMethod === "transfer" && (
                         <div className="space-y-5 rounded-2xl bg-white/[0.02] border border-white/5 p-6 animate-fadeIn">
                           <div>
-                            <h4 className="text-white font-bold text-sm">Bank Transfer Instructions</h4>
-                            <p className="text-slate-400 text-xs mt-1">Please make the transfer to the following account and upload your payment slip below. Make sure to mention your registration number <strong className="text-white font-mono">{candidateRegistrationNumber}</strong> as the payment reference.</p>
+                            <h4 className="text-white font-bold text-sm">
+                              Bank Transfer Instructions
+                            </h4>
+                            <p className="text-slate-400 text-xs mt-1">
+                              Please make the transfer to the following account
+                              and upload your payment slip below. Make sure to
+                              mention your registration number{" "}
+                              <strong className="text-white font-mono">
+                                {candidateRegistrationNumber}
+                              </strong>{" "}
+                              as the payment reference.
+                            </p>
                           </div>
 
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                             <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                              <span className="text-slate-500 font-medium block">Bank Name</span>
-                              <strong className="text-white text-sm block mt-1">National Development Bank (NDB)</strong>
+                              <span className="text-slate-500 font-medium block">
+                                Bank Name
+                              </span>
+                              <strong className="text-white text-sm block mt-1">
+                                National Development Bank (NDB)
+                              </strong>
                             </div>
                             <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                              <span className="text-slate-500 font-medium block">Account Name</span>
-                              <strong className="text-white text-sm block mt-1">National AI Awards Association</strong>
+                              <span className="text-slate-500 font-medium block">
+                                Account Name
+                              </span>
+                              <strong className="text-white text-sm block mt-1">
+                                National AI Awards Association
+                              </strong>
                             </div>
                             <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                              <span className="text-slate-500 font-medium block">Account Number</span>
-                              <strong className="text-white text-sm font-mono block mt-1">0123-456789-012</strong>
+                              <span className="text-slate-500 font-medium block">
+                                Account Number
+                              </span>
+                              <strong className="text-white text-sm font-mono block mt-1">
+                                0123-456789-012
+                              </strong>
                             </div>
                             <div className="p-4 rounded-xl bg-white/5 border border-white/5">
-                              <span className="text-slate-500 font-medium block">Branch</span>
-                              <strong className="text-white text-sm block mt-1">Colombo Corporate Branch</strong>
+                              <span className="text-slate-500 font-medium block">
+                                Branch
+                              </span>
+                              <strong className="text-white text-sm block mt-1">
+                                Colombo Corporate Branch
+                              </strong>
                             </div>
                           </div>
 
@@ -992,19 +1543,27 @@ const NewApplication = () => {
                             <div className="flex flex-col items-center">
                               <RiUploadCloud2Line className="text-accent-400 text-4xl mb-3" />
                               <h4 className="font-display font-semibold text-white text-sm mb-1">
-                                {uploadingSlip ? 'Uploading Slip...' : 'Upload Payment Slip / Receipt'}
+                                {uploadingSlip
+                                  ? "Uploading Slip..."
+                                  : "Upload Payment Slip / Receipt"}
                               </h4>
-                              <p className="text-slate-500 text-xs">PDF or Images (JPG, PNG, WebP) up to 10MB.</p>
+                              <p className="text-slate-500 text-xs">
+                                PDF or Images (JPG, PNG, WebP) up to 10MB.
+                              </p>
                             </div>
                           </div>
 
                           {paymentSlipFile && (
                             <div className="space-y-2">
-                              <h4 className="text-white text-xs font-bold uppercase tracking-wider">Uploaded Slip</h4>
+                              <h4 className="text-white text-xs font-bold uppercase tracking-wider">
+                                Uploaded Slip
+                              </h4>
                               <div className="flex justify-between items-center p-3 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-300">
                                 <div className="flex items-center gap-2 truncate">
                                   <RiFileTextLine className="text-accent-400 text-lg shrink-0" />
-                                  <span className="truncate">{paymentSlipFile.originalName}</span>
+                                  <span className="truncate">
+                                    {paymentSlipFile.originalName}
+                                  </span>
                                 </div>
                                 <button
                                   type="button"
@@ -1022,162 +1581,44 @@ const NewApplication = () => {
                       )}
 
                       {/* Tab 2: Credit/Debit Card Simulation */}
-                      {watched.paymentMethod === 'online' && (
-                        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 rounded-2xl bg-white/[0.02] border border-white/5 p-6 animate-fadeIn">
-                          {/* Left Panel: Credit Card Details Form */}
-                          <div className="space-y-4">
-                            <div>
-                              <h4 className="text-white font-bold text-sm mb-1">Pay Online via Card</h4>
-                              <p className="text-slate-400 text-xs">Simulate your secure LKR 25,000 payment.</p>
-                            </div>
-
-                            {watched.onlinePaymentSimulated ? (
-                              <div className="p-6 rounded-xl bg-emerald-500/15 border border-emerald-500/20 text-center space-y-3">
-                                <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center mx-auto text-white shadow-glow">
-                                  <RiCheckLine size={24} />
-                                </div>
-                                <h4 className="text-emerald-400 font-bold text-sm">Payment Successful</h4>
-                                <p className="text-slate-300 text-xs">LKR 25,000 has been successfully simulated and approved.</p>
-                                <button
-                                  type="button"
-                                  onClick={() => setValue('onlinePaymentSimulated', false)}
-                                  className="text-xs text-slate-400 hover:text-white underline mt-2"
-                                >
-                                  Reset Payment
-                                </button>
-                              </div>
-                            ) : (
-                              <div className="space-y-4 text-xs">
-                                <div>
-                                  <FieldLabel required>Cardholder Name</FieldLabel>
-                                  <input
-                                    type="text"
-                                    className="input-field"
-                                    placeholder="JOHN DOE"
-                                    value={watched.cardName || ''}
-                                    onChange={(e) => setValue('cardName', e.target.value.toUpperCase())}
-                                  />
-                                </div>
-                                <div>
-                                  <FieldLabel required>Card Number</FieldLabel>
-                                  <input
-                                    type="text"
-                                    className="input-field font-mono"
-                                    placeholder="4111 2222 3333 4444"
-                                    maxLength="19"
-                                    value={watched.cardNumber || ''}
-                                    onChange={(e) => {
-                                      const val = e.target.value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
-                                      const matches = val.match(/\d{4,16}/g);
-                                      const match = (matches && matches[0]) || '';
-                                      const parts = [];
-
-                                      for (let i = 0, len = match.length; i < len; i += 4) {
-                                        parts.push(match.substring(i, i + 4));
-                                      }
-
-                                      if (parts.length > 0) {
-                                        setValue('cardNumber', parts.join(' '));
-                                      } else {
-                                        setValue('cardNumber', val);
-                                      }
-                                    }}
-                                  />
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                  <div>
-                                    <FieldLabel required>Expiry Date</FieldLabel>
-                                    <input
-                                      type="text"
-                                      className="input-field font-mono"
-                                      placeholder="MM/YY"
-                                      maxLength="5"
-                                      value={watched.cardExpiry || ''}
-                                      onChange={(e) => {
-                                        let val = e.target.value.replace(/[^0-9]/g, '');
-                                        if (val.length >= 2) {
-                                          val = val.substring(0, 2) + '/' + val.substring(2, 4);
-                                        }
-                                        setValue('cardExpiry', val);
-                                      }}
-                                    />
-                                  </div>
-                                  <div>
-                                    <FieldLabel required>CVV</FieldLabel>
-                                    <input
-                                      type="password"
-                                      className="input-field font-mono"
-                                      placeholder="•••"
-                                      maxLength="3"
-                                      value={watched.cardCvv || ''}
-                                      onChange={(e) => setValue('cardCvv', e.target.value.replace(/[^0-9]/g, ''))}
-                                      onFocus={() => setValue('cardFlipped', true)}
-                                      onBlur={() => setValue('cardFlipped', false)}
-                                    />
-                                  </div>
-                                </div>
-                                <Button
-                                  type="button"
-                                  variant="gold"
-                                  className="w-full text-xs mt-3 flex justify-center items-center gap-2"
-                                  onClick={handleSimulateCardPayment}
-                                  loading={paymentSimulating}
-                                >
-                                  Authorize & Pay LKR 25,000
-                                </Button>
-                              </div>
-                            )}
+                      {watched.paymentMethod === "online" && (
+                        <div className="rounded-2xl bg-white/[0.02] border border-white/5 p-6 animate-fadeIn text-center space-y-4">
+                          <div>
+                            <h4 className="text-white font-bold text-sm mb-1">
+                              Pay Online via PayHere Gateway
+                            </h4>
+                            <p className="text-slate-400 text-xs">
+                              Click below to securely pay the LKR 25,000 award
+                              registration fee.
+                            </p>
                           </div>
 
-                          {/* Right Panel: Interactive Virtual Card */}
-                          <div className="flex items-center justify-center">
-                            <div className="w-[320px] h-[190px] perspective-1000 shrink-0 font-sans">
-                              <div
-                                className={`w-full h-full relative duration-700 preserve-3d transition-transform ${
-                                  watched.cardFlipped ? 'rotate-y-180' : ''
-                                }`}
+                          {watched.onlinePaymentSimulated ? (
+                            <div className="p-6 rounded-xl bg-emerald-500/15 border border-emerald-500/20 max-w-md mx-auto space-y-3">
+                              <div className="w-12 h-12 bg-emerald-500 rounded-full flex items-center justify-center mx-auto text-white shadow-glow">
+                                <RiCheckLine size={24} />
+                              </div>
+                              <h4 className="text-emerald-400 font-bold text-sm">
+                                Payment Verified
+                              </h4>
+                              <p className="text-slate-300 text-xs">
+                                Your payment has been successfully received and
+                                verified.
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="max-w-xs mx-auto pt-2">
+                              <Button
+                                type="button"
+                                variant="gold"
+                                className="w-full text-xs flex justify-center items-center gap-2"
+                                onClick={handleSimulateCardPayment}
+                                loading={paymentSimulating}
                               >
-                                {/* Card Front */}
-                                <div className="absolute inset-0 backface-hidden rounded-2xl bg-gradient-to-br from-slate-800 via-slate-900 to-indigo-950 border border-white/10 p-5 flex flex-col justify-between shadow-2xl">
-                                  <div className="flex justify-between items-start">
-                                    <div className="w-12 h-9 bg-yellow-500/80 rounded-md opacity-80" /> {/* Chip */}
-                                    <span className="text-white font-mono font-bold tracking-widest text-sm">VISA</span>
-                                  </div>
-                                  <div className="text-white font-mono text-lg tracking-widest my-4">
-                                    {watched.cardNumber || '•••• •••• •••• ••••'}
-                                  </div>
-                                  <div className="flex justify-between text-[10px] text-slate-400">
-                                    <div className="flex-1 truncate pr-2">
-                                      <span className="block uppercase text-[8px] text-slate-500">Cardholder</span>
-                                      <strong className="text-white tracking-wider block truncate">{watched.cardName || 'JOHN DOE'}</strong>
-                                    </div>
-                                    <div className="w-10">
-                                      <span className="block uppercase text-[8px] text-slate-500">Expires</span>
-                                      <strong className="text-white block">{watched.cardExpiry || 'MM/YY'}</strong>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Card Back */}
-                                <div className="absolute inset-0 backface-hidden rotate-y-180 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 border border-white/10 py-5 flex flex-col justify-between shadow-2xl animate-fadeIn">
-                                  <div className="w-full h-10 bg-slate-950 mt-1" />
-                                  <div className="px-5 mt-4">
-                                    <div className="flex items-center gap-2">
-                                      <div className="flex-1 h-8 bg-white/10 rounded flex justify-end items-center pr-3 text-[10px] text-slate-400 font-mono italic">
-                                        Signature Strip
-                                      </div>
-                                      <div className="w-12 h-8 bg-white text-slate-900 rounded font-mono font-bold flex items-center justify-center tracking-wider text-xs">
-                                        {watched.cardCvv || '•••'}
-                                      </div>
-                                    </div>
-                                  </div>
-                                  <div className="px-5 text-[8px] text-slate-500 text-center">
-                                    Secured by National AI Awards System simulation authorization.
-                                  </div>
-                                </div>
-                              </div>
+                                Proceed to Pay LKR 25,000
+                              </Button>
                             </div>
-                          </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -1186,17 +1627,44 @@ const NewApplication = () => {
               </AnimatePresence>
 
               <div className="flex flex-col sm:flex-row justify-between gap-3 border-t border-white/10 mt-8 pt-6">
-                <button type="button" onClick={() => setCurrentStep(step => step - 1)} disabled={currentStep === 0} className="btn-ghost !px-4 !py-2 text-xs flex items-center gap-1.5" style={currentStep === 0 ? { opacity: 0.5, cursor: 'not-allowed' } : {}}>
+                <button
+                  type="button"
+                  onClick={() => setCurrentStep((step) => step - 1)}
+                  disabled={currentStep === 0}
+                  className="btn-ghost !px-4 !py-2 text-xs flex items-center gap-1.5"
+                  style={
+                    currentStep === 0
+                      ? { opacity: 0.5, cursor: "not-allowed" }
+                      : {}
+                  }
+                >
                   <RiArrowLeftLine /> Previous
                 </button>
                 <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
-                  <Button variant="ghost" className="text-xs !px-4 !py-2" onClick={handleSaveDraft} loading={savingDraft}>
+                  <Button
+                    variant="ghost"
+                    className="text-xs !px-4 !py-2"
+                    onClick={handleSaveDraft}
+                    loading={savingDraft}
+                  >
                     Save Draft <RiSave3Line />
                   </Button>
                   {currentStep < activeSteps.length - 1 ? (
-                    <Button variant="primary" className="text-xs" onClick={handleNext}>Save & Continue <RiArrowRightLine /></Button>
+                    <Button
+                      variant="primary"
+                      className="text-xs"
+                      onClick={handleNext}
+                    >
+                      Save & Continue <RiArrowRightLine />
+                    </Button>
                   ) : (
-                    <Button variant="gold" className="text-xs" onClick={handleSubmit(onSubmit)}>Submit Application <RiCheckLine /></Button>
+                    <Button
+                      variant="gold"
+                      className="text-xs"
+                      onClick={handleSubmit(onSubmit)}
+                    >
+                      Submit Application <RiCheckLine />
+                    </Button>
                   )}
                 </div>
               </div>
