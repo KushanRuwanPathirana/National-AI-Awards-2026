@@ -1,6 +1,9 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const { ROLES } = require('../config/constants');
+const Counter = require('./Counter.model');
+
+const buildRegistrationNumber = (sequence) => `NAIA-2026-${String(sequence).padStart(5, '0')}`;
 
 const userSchema = new mongoose.Schema(
   {
@@ -23,6 +26,13 @@ const userSchema = new mongoose.Schema(
       lowercase: true,
       trim: true,
       match: [/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/, 'Please provide a valid email'],
+    },
+    registrationNumber: {
+      type: String,
+      unique: true,
+      sparse: true,
+      trim: true,
+      immutable: true,
     },
     password: {
       type: String,
@@ -97,6 +107,24 @@ const userSchema = new mongoose.Schema(
 // Virtual: full name
 userSchema.virtual('fullName').get(function () {
   return `${this.firstName} ${this.lastName}`;
+});
+
+// Pre-validate: assign a unique registration number to new users.
+userSchema.pre('validate', async function (next) {
+  try {
+    if (!this.isNew || this.registrationNumber || this.role !== ROLES.CANDIDATE) return next();
+
+    const counter = await Counter.findOneAndUpdate(
+      { key: 'user_registration_number' },
+      { $inc: { value: 1 } },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
+
+    this.registrationNumber = buildRegistrationNumber(counter.value);
+    return next();
+  } catch (error) {
+    return next(error);
+  }
 });
 
 // Pre-save: hash password

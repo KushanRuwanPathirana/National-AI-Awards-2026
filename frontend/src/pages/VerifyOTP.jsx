@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useLocation, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
-import { RiAwardLine, RiMailCheckLine, RiRefreshLine } from 'react-icons/ri';
+import { RiMailCheckLine, RiRefreshLine } from 'react-icons/ri';
 import { useAuth } from '../context/AuthContext';
 import Button from '../components/shared/Button';
+import sltMobitelLogo from '../assets/slt-mobitel-logo.png';
 
 const VerifyOTP = () => {
   const location = useLocation();
@@ -70,10 +71,12 @@ const VerifyOTP = () => {
       <div className="relative z-10 w-full max-w-md px-4">
         {/* Logo */}
         <div className="text-center mb-8">
-          <Link to="/" className="inline-flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-accent flex items-center justify-center shadow-glow">
-              <RiAwardLine className="text-white text-3xl" />
-            </div>
+          <Link to="/" className="inline-flex items-center justify-center mb-4">
+            <img
+              src={sltMobitelLogo}
+              alt="SLT Mobitel"
+              className="h-16 w-auto object-contain"
+            />
           </Link>
           <h1 className="font-display font-black text-2xl text-white">Verify Your Email</h1>
           <p className="text-slate-400 text-sm mt-1">

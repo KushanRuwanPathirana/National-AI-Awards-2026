@@ -28,6 +28,11 @@ const evaluationCriteriaSchema = new mongoose.Schema(
       ref: 'Category',
       default: null, // null = applies to all categories
     },
+    criteriaType: {
+      type: String,
+      enum: ['organizational', 'individual'],
+      default: 'organizational',
+    },
     order: {
       type: Number,
       default: 0,

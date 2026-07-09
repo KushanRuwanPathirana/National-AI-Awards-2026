@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
-const { APPLICATION_STATUS, AWARD_CATEGORIES } = require('../config/constants');
+const Counter = require('./Counter.model');
+const { APPLICATION_STATUS } = require('../config/constants');
 
 // ── Sub-schemas ────────────────────────────────────────────────────────────────
 
@@ -37,7 +38,6 @@ const applicationSchema = new mongoose.Schema(
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
-      required: [true, 'Award category is required'],
     },
     assignedJudges: [{
       type: mongoose.Schema.Types.ObjectId,
@@ -56,7 +56,6 @@ const applicationSchema = new mongoose.Schema(
     // Step 1: Basic Info
     projectTitle: {
       type: String,
-      required: [true, 'Project title is required'],
       trim: true,
       maxlength: [150, 'Project title cannot exceed 150 characters'],
     },
@@ -66,33 +65,57 @@ const applicationSchema = new mongoose.Schema(
       maxlength: [250, 'Tagline cannot exceed 250 characters'],
     },
 
+    // Section A: Applicant & Organisation Details
+    organisationName: {
+      type: String,
+      trim: true,
+      maxlength: [200],
+    },
+    registrationNumber: { type: String, trim: true, maxlength: [100] },
+    sectorIndustry: { type: String, trim: true, maxlength: [150] },
+    organisationSize: {
+      type: String,
+      enum: ['Startup <4 yrs', 'SME', 'Large Enterprise', 'Government', 'Academic', ''],
+      default: '',
+    },
+    primaryContactName: { type: String, trim: true, maxlength: [150] },
+    primaryContactDesignation: { type: String, trim: true, maxlength: [150] },
+    primaryContactEmail: { type: String, trim: true, lowercase: true, maxlength: [200] },
+    primaryContactPhone: { type: String, trim: true, maxlength: [50] },
+    authorisedSignatory: { type: String, trim: true, maxlength: [150] },
+    websiteLinkedIn: { type: String, trim: true, maxlength: [500] },
+
     // Step 2: Eligibility
     eligibilityAnswers: [eligibilityAnswerSchema],
     isEligible: {
       type: Boolean,
       default: null, // null = not yet assessed
     },
+    categoryEligibilityConfirmed: {
+      type: Boolean,
+      default: false,
+    },
 
     // Step 3: Application Form
     problemStatement: {
       type: String,
-      maxlength: [2000, 'Problem statement cannot exceed 2000 characters'],
+      maxlength: [3000, 'Problem statement cannot exceed 3000 characters'],
     },
     solution: {
       type: String,
-      maxlength: [2000, 'Solution description cannot exceed 2000 characters'],
+      maxlength: [6000, 'Solution description cannot exceed 6000 characters'],
     },
     aiTechnologies: {
       type: String, // comma-separated or free text
-      maxlength: [500],
+      maxlength: [3000],
     },
     innovationDetails: {
       type: String,
-      maxlength: [2000],
+      maxlength: [3000],
     },
     impactDetails: {
       type: String,
-      maxlength: [2000],
+      maxlength: [3000],
     },
     teamSize: {
       type: Number,
@@ -112,6 +135,28 @@ const applicationSchema = new mongoose.Schema(
       trim: true,
       maxlength: [200],
     },
+    deploymentStatus: {
+      type: String,
+      enum: ['Pilot', 'Live in production', 'Scaling', ''],
+      default: '',
+    },
+    launchDate: { type: Date },
+    customerReferenceRevenue: { type: String, maxlength: [1000] },
+
+    // Section D: Evidence Against Judging Criteria
+    innovationOriginality: { type: String, maxlength: [3000] },
+    measurableImpact: { type: String, maxlength: [3000] },
+    technicalExcellence: { type: String, maxlength: [3000] },
+    responsibleAI: { type: String, maxlength: [3000] },
+    scalabilitySustainability: { type: String, maxlength: [3000] },
+    executionEvidence: { type: String, maxlength: [3000] },
+
+    // Section E/F: Supporting Materials and Sri Lanka relevance
+    demoVideoUrl: { type: String, trim: true, maxlength: [500] },
+    testimonialOne: { type: String, maxlength: [1000] },
+    testimonialTwo: { type: String, maxlength: [1000] },
+    nationalRelevance: { type: String, maxlength: [3000] },
+
     projectStartYear: {
       type: Number,
     },
@@ -124,8 +169,42 @@ const applicationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    verificationConsent: {
+      type: Boolean,
+      default: false,
+    },
+    promotionalConsent: {
+      type: Boolean,
+      default: false,
+    },
+    conflictDisclosure: {
+      type: String,
+      maxlength: [2000],
+    },
+    submissionFeeAcknowledged: {
+      type: Boolean,
+      default: false,
+    },
     declarationDate: {
       type: Date,
+    },
+
+    // Payment fields
+    paymentMethod: {
+      type: String,
+      enum: ['transfer', 'online', 'none', ''],
+      default: '',
+    },
+    paymentSlip: {
+      originalName: { type: String },
+      filePath:     { type: String },
+      mimeType:     { type: String },
+      size:         { type: Number },
+      uploadedAt:   { type: Date },
+    },
+    onlinePaymentSimulated: {
+      type: Boolean,
+      default: false,
     },
 
     // Step tracking for wizard
@@ -133,7 +212,7 @@ const applicationSchema = new mongoose.Schema(
       type: Number,
       default: 0,
       min: 0,
-      max: 5,
+      max: 8,
     },
 
     // Submission metadata
@@ -182,14 +261,53 @@ applicationSchema.virtual('statusLabel').get(function () {
   return labels[this.status] || this.status;
 });
 
+const REFERENCE_PREFIX = 'AIAW2026';
+const REFERENCE_COUNTER_KEY = 'application_reference_number';
+
+const buildReferenceNumber = (sequence) => `${REFERENCE_PREFIX}-${String(sequence).padStart(5, '0')}`;
+
+const getHighestExistingReferenceSequence = async () => {
+  const latestApplication = await mongoose.model('Application')
+    .findOne({ referenceNumber: { $regex: `^${REFERENCE_PREFIX}-\\d+$` } })
+    .sort({ referenceNumber: -1 })
+    .select('referenceNumber')
+    .lean();
+
+  if (!latestApplication?.referenceNumber) return 0;
+
+  const sequence = Number(latestApplication.referenceNumber.replace(`${REFERENCE_PREFIX}-`, ''));
+  return Number.isFinite(sequence) ? sequence : 0;
+};
+
+const generateReferenceNumber = async () => {
+  const highestExistingSequence = await getHighestExistingReferenceSequence();
+
+  await Counter.updateOne(
+    { key: REFERENCE_COUNTER_KEY },
+    { $max: { value: highestExistingSequence } },
+    { upsert: true }
+  );
+
+  const counter = await Counter.findOneAndUpdate(
+    { key: REFERENCE_COUNTER_KEY },
+    { $inc: { value: 1 } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+
+  return buildReferenceNumber(counter.value);
+};
+
 // ── Pre-save: generate reference number ────────────────────────────────────────
 
 applicationSchema.pre('save', async function (next) {
-  if (!this.referenceNumber && this.status !== 'draft') {
-    const count = await mongoose.model('Application').countDocuments();
-    this.referenceNumber = `AIAW2026-${String(count + 1).padStart(5, '0')}`;
+  try {
+    if (!this.referenceNumber && this.status !== APPLICATION_STATUS.DRAFT) {
+      this.referenceNumber = await generateReferenceNumber();
+    }
+    return next();
+  } catch (error) {
+    return next(error);
   }
-  next();
 });
 
 // ── Indexes ────────────────────────────────────────────────────────────────────

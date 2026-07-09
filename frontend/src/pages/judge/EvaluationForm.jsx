@@ -1,13 +1,17 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
+import { motion, AnimatePresence } from 'framer-motion';
 import {
   RiArrowLeftLine, RiAwardLine, RiShieldLine, RiCheckLine,
-  RiStarLine, RiFileTextLine, RiFileWordLine,
+  RiStarLine, RiFileTextLine, RiFileWordLine, RiFileList3Line,
+  RiInformationLine, RiCpuLine, RiTeamLine, RiCalendarLine,
+  RiDownload2Line, RiExternalLinkLine, RiCheckboxCircleLine,
+  RiErrorWarningLine,
 } from 'react-icons/ri';
 import evaluationService from '../../services/evaluation.service';
-import { buildAssetUrl } from '../../services/api';
+import api, { buildAssetUrl, API_ORIGIN } from '../../services/api';
 
 const EvaluationForm = () => {
   const { id } = useParams(); // applicationId
@@ -15,9 +19,11 @@ const EvaluationForm = () => {
   const [app, setApp] = useState(null);
   const [criteria, setCriteria] = useState([]);
   const [evaluation, setEvaluation] = useState(null);
+  const [criteriaType, setCriteriaType] = useState('organizational');
   const [loading, setLoading] = useState(true);
+  const [showConfirmSubmit, setShowConfirmSubmit] = useState(false);
 
-  const { register, handleSubmit, setValue, formState: { isSubmitting } } = useForm();
+  const { register, handleSubmit, setValue, watch, formState: { isSubmitting } } = useForm();
 
   useEffect(() => {
     const fetchEvaluation = async () => {
@@ -26,6 +32,7 @@ const EvaluationForm = () => {
         setApp(data.data.application);
         setCriteria(data.data.criteria);
         setEvaluation(data.data.evaluation);
+        setCriteriaType(data.data.criteriaType || 'organizational');
 
         // Prepopulate scores & forms
         const ev = data.data.evaluation;
@@ -36,10 +43,21 @@ const EvaluationForm = () => {
           setValue('recommendation', ev.recommendation || 'recommend');
           setValue('confidentialityAccepted', ev.confidentialityAccepted || false);
 
-          // Prepopulate score sliders
+          // Track which criteria scores are loaded from DB
+          const loadedCriteriaIds = new Set();
           ev.scores?.forEach(s => {
-            setValue(`score-${s.criteria}`, s.score);
-            setValue(`comment-${s.criteria}`, s.comment || '');
+            const critId = s.criteria._id || s.criteria;
+            setValue(`score-${critId}`, s.score);
+            setValue(`comment-${critId}`, s.comment || '');
+            loadedCriteriaIds.add(critId.toString());
+          });
+
+          // Prepopulate unrated criteria to 0 by default
+          data.data.criteria?.forEach(c => {
+            if (!loadedCriteriaIds.has(c._id.toString())) {
+              setValue(`score-${c._id}`, 0);
+              setValue(`comment-${c._id}`, '');
+            }
           });
         }
       } catch {
@@ -51,6 +69,32 @@ const EvaluationForm = () => {
     fetchEvaluation();
   }, [id, setValue]);
 
+  // Watch scores to calculate real-time totals
+  const watchedValues = watch();
+  const totals = useMemo(() => {
+    if (!criteria.length) return { raw: 0, weighted: 0, maxPossible: 0, completedCount: 0 };
+    let totalScore = 0;
+    let maxPossible = 0;
+    let completedCount = 0;
+
+    criteria.forEach(c => {
+      const maxMark = c.weight || 10; // max marks = weight %
+      maxPossible += maxMark;
+      const val = watchedValues[`score-${c._id}`];
+      if (val !== undefined && val !== '') {
+        totalScore += parseInt(val || 0);
+        completedCount++;
+      }
+    });
+
+    return {
+      totalScore,
+      maxPossible,
+      percentage: maxPossible > 0 ? Math.round((totalScore / maxPossible) * 1000) / 10 : 0,
+      completedCount,
+    };
+  }, [criteria, watchedValues]);
+
   const onSubmitForm = async (formData, submit) => {
     try {
       const scoresPayload = criteria.map(c => ({
@@ -58,6 +102,21 @@ const EvaluationForm = () => {
         score: parseInt(formData[`score-${c._id}`] || 0),
         comment: formData[`comment-${c._id}`] || '',
       }));
+
+      // Validation check for submit
+      if (submit) {
+        // Must accept confidentiality
+        if (!formData.confidentialityAccepted) {
+          toast.error('Please accept the confidentiality declaration.');
+          return;
+        }
+        // Check if all criteria are scored
+        const unanswered = criteria.filter(c => formData[`score-${c._id}`] === undefined || formData[`score-${c._id}`] === '');
+        if (unanswered.length > 0) {
+          toast.error(`Please score all criteria before submitting. (${unanswered.length} remaining)`);
+          return;
+        }
+      }
 
       const payload = {
         scores: scoresPayload,
@@ -74,6 +133,8 @@ const EvaluationForm = () => {
       navigate('/judge-dashboard');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to save evaluation.');
+    } finally {
+      setShowConfirmSubmit(false);
     }
   };
 
@@ -96,178 +157,452 @@ const EvaluationForm = () => {
     );
   }
 
+  const isSubmitted = evaluation?.isSubmitted;
+
   return (
-    <div className="min-h-screen bg-navy-950 pt-28 pb-20">
-      <div className="section-container max-w-5xl">
-        <Link to="/judge-dashboard" className="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 mb-6 transition-colors w-fit">
-          <RiArrowLeftLine /> Back to Dashboard
-        </Link>
-
-        {/* Info summary */}
-        <div className="glass-card p-8 mb-8 !hover:transform-none">
-          <span className="badge-gold uppercase font-mono text-[10px]">{app.category?.name}</span>
-          <h1 className="font-display font-black text-2xl text-white mt-1.5">{app.projectTitle}</h1>
-          <p className="text-slate-400 text-sm mt-1">{app.tagline || 'No tagline provided'}</p>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 border-t border-white/5 pt-6 text-slate-300 text-xs">
-            <div>
-              <span className="block text-slate-500 font-bold uppercase tracking-wider mb-1">Problem Statement</span>
-              <p className="leading-relaxed whitespace-pre-line">{app.problemStatement}</p>
-            </div>
-            <div>
-              <span className="block text-slate-500 font-bold uppercase tracking-wider mb-1">AI Solution & Technical Details</span>
-              <p className="leading-relaxed whitespace-pre-line">{app.solution}</p>
-            </div>
+    <div className="min-h-screen bg-navy-950 pt-24 pb-20">
+      <div className="section-container max-w-7xl">
+        
+        {/* Navigation & Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <Link
+            to="/judge-dashboard"
+            className="text-xs text-slate-400 hover:text-white flex items-center gap-1.5 transition-colors w-fit"
+          >
+            <RiArrowLeftLine /> Back to Dashboard
+          </Link>
+          <div className="flex items-center gap-3">
+            {isSubmitted ? (
+              <span className="badge-green uppercase tracking-wider text-[10px] px-3 py-1 font-bold">
+                <RiCheckLine /> Submitted & Locked
+              </span>
+            ) : (
+              <span className="badge-accent uppercase tracking-wider text-[10px] px-3 py-1 font-bold">
+                Active Evaluation Draft
+              </span>
+            )}
           </div>
-
-          {app.documents?.length > 0 && (
-            <div className="mt-6 border-t border-white/5 pt-6">
-              <span className="block text-slate-500 font-bold uppercase tracking-wider mb-3 text-xs">Attachment Documents</span>
-              <div className="flex flex-wrap gap-3">
-                {app.documents.map(doc => (
-                  <a
-                    key={doc._id}
-                    href={buildAssetUrl(doc.filePath)}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-3.5 py-2 rounded-xl bg-white/5 border border-white/5 hover:border-accent-500/30 hover:bg-white/10 transition-all text-xs"
-                  >
-                    <RiFileTextLine className="text-accent-400" />
-                    <span>{doc.originalName}</span>
-                  </a>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
 
-        {/* Scorecard Form */}
-        <form onSubmit={handleSubmit((data) => onSubmitForm(data, false))} className="space-y-8">
-          <div className="glass-card p-8 !hover:transform-none">
-            <h3 className="font-display font-bold text-white text-lg border-b border-white/10 pb-3 mb-6 flex items-center gap-2">
-              <RiStarLine className="text-gold-400" /> Scoring Sheet
-            </h3>
+        {/* Two Column Layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+          
+          {/* LEFT COLUMN: Nomination Details (5 Cols) */}
+          <div className="lg:col-span-5 space-y-6">
+            <div
+              className="rounded-2xl border border-white/8 p-6 space-y-6"
+              style={{ background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(16px)' }}
+            >
+              <div>
+                <span className="badge-gold uppercase font-mono text-[9px]">{app.category?.name}</span>
+                <h1 className="font-display font-black text-2xl text-white mt-2 leading-tight">{app.projectTitle}</h1>
+                <p className="text-slate-400 text-xs mt-1 italic">"{app.tagline || 'No tagline provided'}"</p>
+              </div>
 
-            <div className="space-y-8">
-              {criteria.map((c) => (
-                <div key={c._id} className="border-b border-white/5 pb-6 last:border-0 last:pb-0">
-                  <div className="flex justify-between items-start mb-2">
-                    <div>
-                      <h4 className="text-white text-sm font-bold">{c.name}</h4>
-                      <p className="text-slate-400 text-xs mt-0.5">{c.description}</p>
+              <div className="divider-glow" />
+
+              {/* Sections */}
+              <div className="space-y-4">
+                <div>
+                  <h4 className="text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 mb-1.5 text-accent-400">
+                    <RiInformationLine /> Problem Statement
+                  </h4>
+                  <p className="text-slate-300 text-xs leading-relaxed whitespace-pre-line bg-white/3 p-3 rounded-xl border border-white/5">
+                    {app.problemStatement || 'Not provided'}
+                  </p>
+                </div>
+
+                <div>
+                  <h4 className="text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 mb-1.5 text-accent-400">
+                    <RiCpuLine /> Solution & AI Technologies
+                  </h4>
+                  <p className="text-slate-300 text-xs leading-relaxed whitespace-pre-line bg-white/3 p-3 rounded-xl border border-white/5">
+                    {app.solution || 'Not provided'}
+                  </p>
+                  {app.aiTechnologies && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {app.aiTechnologies.split(',').map((tech) => (
+                        <span key={tech} className="bg-accent-500/10 text-accent-300 text-[9px] px-2 py-0.5 rounded border border-accent-500/20">
+                          {tech.trim()}
+                        </span>
+                      ))}
                     </div>
-                    <div className="text-right">
-                      <span className="text-xs text-slate-500">Weight: <strong>{c.weight}%</strong></span>
-                    </div>
+                  )}
+                </div>
+
+                {app.innovationDetails && (
+                  <div>
+                    <h4 className="text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 mb-1.5 text-accent-400">
+                      Innovation & Uniqueness
+                    </h4>
+                    <p className="text-slate-300 text-xs leading-relaxed whitespace-pre-line bg-white/3 p-3 rounded-xl border border-white/5">
+                      {app.innovationDetails}
+                    </p>
                   </div>
+                )}
 
-                  <div className="flex flex-col sm:flex-row items-center gap-4 mt-3">
-                    <input
-                      type="range"
-                      min="0"
-                      max="10"
-                      step="1"
-                      className="w-full h-1 bg-white/10 rounded-lg appearance-none cursor-pointer accent-accent-500"
-                      {...register(`score-${c._id}`)}
-                    />
-                    <input
-                      type="text"
-                      className="input-field max-w-[200px]"
-                      placeholder="Comment for this score..."
-                      {...register(`comment-${c._id}`)}
-                    />
+                {app.impactDetails && (
+                  <div>
+                    <h4 className="text-white text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 mb-1.5 text-accent-400">
+                      Business & Social Impact
+                    </h4>
+                    <p className="text-slate-300 text-xs leading-relaxed whitespace-pre-line bg-white/3 p-3 rounded-xl border border-white/5">
+                      {app.impactDetails}
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Team Size</span>
+                    <p className="text-white text-xs font-semibold flex items-center gap-1.5 mt-1">
+                      <RiTeamLine /> {app.teamSize || 1} Member(s)
+                    </p>
+                  </div>
+                  <div>
+                    <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Submitted On</span>
+                    <p className="text-white text-xs font-semibold flex items-center gap-1.5 mt-1">
+                      <RiCalendarLine /> {app.submittedAt ? new Date(app.submittedAt).toLocaleDateString('en-GB') : '—'}
+                    </p>
                   </div>
                 </div>
-              ))}
+
+                {app.teamMembers && (
+                  <div>
+                    <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Team Roster</span>
+                    <p className="text-slate-300 text-xs mt-1 bg-white/2 p-2 rounded-lg border border-white/5 font-mono truncate">
+                      {app.teamMembers}
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              {/* Supporting evidence files */}
+              {app.documents?.length > 0 && (
+                <div className="pt-4 border-t border-white/5">
+                  <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-3">Supporting Documents</h4>
+                  <div className="space-y-2">
+                    {app.documents.map((doc) => {
+                      const handleDownload = async (e) => {
+                        e.preventDefault();
+                        const downloadToast = toast.loading('Preparing download...');
+                        try {
+                          const response = await api.get(`/applications/${app._id}/documents/${doc._id}/download`, {
+                            responseType: 'blob',
+                          });
+                          const url = window.URL.createObjectURL(new Blob([response.data]));
+                          const link = document.createElement('a');
+                          link.href = url;
+                          link.setAttribute('download', doc.originalName);
+                          document.body.appendChild(link);
+                          link.click();
+                          link.parentNode.removeChild(link);
+                          toast.success('Download started', { id: downloadToast });
+                        } catch (err) {
+                          toast.error('Failed to download file. It may no longer exist on the server.', { id: downloadToast });
+                        }
+                      };
+
+                      return (
+                        <button
+                          key={doc._id}
+                          onClick={handleDownload}
+                          className="flex items-center gap-3 p-3 rounded-xl bg-white/4 border border-white/5 hover:border-accent-500/30 hover:bg-white/8 transition-all text-xs text-slate-300 hover:text-white w-full text-left"
+                        >
+                          <RiFileTextLine className="text-accent-400 text-lg shrink-0" />
+                          <span className="truncate flex-1 font-medium">{doc.originalName}</span>
+                          <RiDownload2Line className="text-slate-500 shrink-0 text-sm" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
-          {/* Feedback & Comments */}
-          <div className="glass-card p-8 !hover:transform-none">
-            <h3 className="font-display font-bold text-white text-lg border-b border-white/10 pb-3 mb-6">Evaluator Remarks</h3>
+          {/* RIGHT COLUMN: Evaluation Form (7 Cols) */}
+          <div className="lg:col-span-7 space-y-6">
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="md:col-span-2">
-                <label className="block text-xs text-slate-400 mb-1.5 font-medium">Overall Evaluation Comments</label>
-                <textarea
-                  className="input-field h-28 resize-none"
-                  placeholder="Summarize your evaluation notes here..."
-                  {...register('overallComments')}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-400 mb-1.5 font-medium">Project Strengths</label>
-                <textarea
-                  className="input-field h-20 resize-none"
-                  placeholder="Key strengths of the AI integration/system..."
-                  {...register('strengths')}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-400 mb-1.5 font-medium">Project Weaknesses & Gaps</label>
-                <textarea
-                  className="input-field h-20 resize-none"
-                  placeholder="Any improvements needed or identified issues..."
-                  {...register('weaknesses')}
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs text-slate-400 mb-1.5 font-medium">Panel Recommendation</label>
-                <select className="input-field" {...register('recommendation')}>
-                  <option value="strongly_recommend" className="bg-navy-950">Strongly Recommend</option>
-                  <option value="recommend" className="bg-navy-950">Recommend</option>
-                  <option value="neutral" className="bg-navy-950">Neutral</option>
-                  <option value="not_recommend" className="bg-navy-950">Do Not Recommend</option>
-                </select>
-              </div>
-            </div>
-          </div>
-
-          {/* Confidentiality declaration */}
-          <div className="glass-card p-6 !hover:transform-none flex gap-3 border border-accent-500/20 bg-accent-500/5">
-            <input
-              type="checkbox"
-              id="confirm-confidentiality"
-              className="w-5 h-5 accent-accent-500 mt-0.5"
-              {...register('confidentialityAccepted')}
-            />
-            <label htmlFor="confirm-confidentiality" className="text-slate-300 text-xs leading-relaxed">
-              I agree to the Confidentiality and Conflict of Interest Declaration. I confirm I have no proprietary, personal, or financial interest in this project or its competing products. <span className="text-red-400">*</span>
-            </label>
-          </div>
-
-          {/* Actions */}
-          <div className="flex justify-between items-center bg-white/5 border border-white/5 p-4 rounded-2xl">
-            <button
-              type="button"
-              onClick={() => navigate('/judge-dashboard')}
-              className="btn-ghost !px-4 !py-2 text-xs"
+            {/* Real-time score calculator dashboard */}
+            <div
+              className="rounded-2xl border border-white/8 p-5 relative overflow-hidden"
+              style={{ background: 'linear-gradient(135deg, rgba(0,114,255,0.08) 0%, rgba(0,255,135,0.04) 100%)', backdropFilter: 'blur(16px)' }}
             >
-              Cancel
-            </button>
-            <div className="flex items-center gap-3">
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="btn-ghost text-xs !py-2.5 !px-4 border-slate-700 hover:bg-white/5"
-              >
-                Save Draft
-              </button>
-              <button
-                type="button"
-                onClick={handleSubmit((data) => onSubmitForm(data, true))}
-                disabled={isSubmitting}
-                className="btn-gold text-xs flex items-center gap-1.5"
-              >
-                Submit Scorecard <RiCheckLine />
-              </button>
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <h3 className="font-display font-bold text-white text-sm">Evaluation Summary</h3>
+                  <p className="text-slate-400 text-xs mt-0.5">
+                    Scored {totals.completedCount} of {criteria.length} criteria
+                  </p>
+                </div>
+                <div className="text-right">
+                  <span className="text-slate-500 text-[10px] uppercase font-bold tracking-wider">Total Score</span>
+                  <p className="text-3xl font-display font-black text-white leading-none mt-1">
+                    {totals.totalScore}<span className="text-sm font-normal text-slate-500">/{totals.maxPossible}</span>
+                    <span className="text-xs font-normal text-accent-400 ml-2">({totals.percentage}%)</span>
+                  </p>
+                </div>
+              </div>
+              
+              <div className="h-1.5 rounded-full bg-white/8 overflow-hidden mt-4">
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${totals.maxPossible > 0 ? (totals.totalScore / totals.maxPossible) * 100 : 0}%`,
+                    background: 'linear-gradient(90deg, #0072ff, #00ff87)',
+                  }}
+                />
+              </div>
             </div>
+
+            <form onSubmit={handleSubmit((data) => onSubmitForm(data, false))} className="space-y-6">
+              
+              {/* Scoring criteria */}
+              <div
+                className="rounded-2xl border border-white/8 p-6 space-y-6"
+                style={{ background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(16px)' }}
+              >
+                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                  <h3 className="font-display font-bold text-white text-base flex items-center gap-2">
+                    <RiStarLine className="text-gold-400" /> Criteria Evaluation
+                  </h3>
+                  <span className={`text-[9px] font-bold uppercase tracking-wider px-2.5 py-1 rounded-full border ${
+                    criteriaType === 'individual'
+                      ? 'bg-purple-500/10 text-purple-300 border-purple-500/20'
+                      : 'bg-accent-500/10 text-accent-300 border-accent-500/20'
+                  }`}>
+                    {criteriaType === 'individual' ? '👤 Individual Award Criteria' : '🏢 Organizational Award Criteria'}
+                  </span>
+                </div>
+
+                <div className="space-y-5">
+                  {criteria.map((c, idx) => {
+                    const scoreName = `score-${c._id}`;
+                    const commentName = `comment-${c._id}`;
+                    const maxMark = c.weight || 10; // max marks = weight %
+                    const currentScore = watchedValues[scoreName] || 0;
+
+                    return (
+                      <div
+                        key={c._id}
+                        className="rounded-xl border border-white/5 bg-white/[0.02] p-5 space-y-4 hover:border-white/10 transition-colors"
+                      >
+                        {/* Row 1: Criterion info + Score */}
+                        <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+                          {/* Left: Criterion name, description, weight */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-accent-400 font-mono text-[10px] font-bold w-5 h-5 rounded bg-accent-500/10 flex items-center justify-center shrink-0">
+                                {idx + 1}
+                              </span>
+                              <h4 className="text-white text-sm font-bold truncate">{c.name}</h4>
+                              <span className="text-[9px] font-bold uppercase tracking-wider bg-gold-500/10 text-gold-400 border border-gold-500/15 px-1.5 py-0.5 rounded shrink-0">
+                                Max: {maxMark} marks ({c.weight}%)
+                              </span>
+                            </div>
+                            <p className="text-slate-400 text-xs leading-relaxed pl-7">{c.description}</p>
+                          </div>
+
+                          {/* Right: Score slider + value */}
+                          <div className="flex items-center gap-3 sm:w-[250px] shrink-0 pl-7 sm:pl-0">
+                            <input
+                              type="range"
+                              min="0"
+                              max={maxMark}
+                              step="1"
+                              disabled={isSubmitted}
+                              className="flex-1 h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-accent-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                              {...register(scoreName)}
+                            />
+                            <span className={`min-w-[48px] h-10 px-2 rounded-lg border flex items-center justify-center font-mono font-bold text-sm shrink-0 transition-colors ${
+                              currentScore >= maxMark * 0.8
+                                ? 'bg-emerald-500/10 border-emerald-500/25 text-emerald-300'
+                                : currentScore >= maxMark * 0.5
+                                  ? 'bg-accent-500/10 border-accent-500/20 text-accent-300'
+                                  : currentScore > 0
+                                    ? 'bg-amber-500/10 border-amber-500/20 text-amber-300'
+                                    : 'bg-white/5 border-white/10 text-slate-500'
+                            }`}>
+                              {currentScore}/{maxMark}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Row 2: Comment / Feedback */}
+                        <div className="pl-7">
+                          <label className="block text-[10px] text-slate-500 uppercase tracking-wider font-semibold mb-1.5">
+                            Judge's Comment
+                          </label>
+                          <textarea
+                            placeholder="Provide your feedback for this criterion..."
+                            disabled={isSubmitted}
+                            rows={2}
+                            className="input-field w-full text-xs resize-none disabled:opacity-50"
+                            {...register(commentName)}
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Remarks */}
+              <div
+                className="rounded-2xl border border-white/8 p-6 space-y-5"
+                style={{ background: 'rgba(255,255,255,0.02)', backdropFilter: 'blur(16px)' }}
+              >
+                <h3 className="font-display font-bold text-white text-base border-b border-white/5 pb-3">
+                  Evaluator Recommendations
+                </h3>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1.5 font-medium">Overall Evaluation Comments</label>
+                    <textarea
+                      placeholder="Enter overall critique summary..."
+                      disabled={isSubmitted}
+                      className="input-field h-24 resize-none text-xs disabled:opacity-50"
+                      {...register('overallComments')}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1.5 font-medium">Key Strengths</label>
+                      <textarea
+                        placeholder="Core strengths..."
+                        disabled={isSubmitted}
+                        className="input-field h-20 resize-none text-xs disabled:opacity-50"
+                        {...register('strengths')}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-slate-400 mb-1.5 font-medium">Areas for Improvement</label>
+                      <textarea
+                        placeholder="Weaknesses / improvements..."
+                        disabled={isSubmitted}
+                        className="input-field h-20 resize-none text-xs disabled:opacity-50"
+                        {...register('weaknesses')}
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs text-slate-400 mb-1.5 font-medium">Panel Recommendation</label>
+                    <select
+                      disabled={isSubmitted}
+                      className="input-field text-xs disabled:opacity-50"
+                      {...register('recommendation')}
+                    >
+                      <option value="strongly_recommend" className="bg-navy-950">Strongly Recommend</option>
+                      <option value="recommend" className="bg-navy-950">Recommend</option>
+                      <option value="neutral" className="bg-navy-950">Neutral</option>
+                      <option value="not_recommend" className="bg-navy-950">Do Not Recommend</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Confidentiality agreement declaration */}
+              <div
+                className="p-5 rounded-2xl border border-accent-500/20 flex gap-3.5 bg-accent-500/5 items-start"
+              >
+                <input
+                  type="checkbox"
+                  id="confirm-confidentiality"
+                  disabled={isSubmitted}
+                  className="w-5 h-5 accent-accent-500 mt-0.5 rounded border-white/20 disabled:opacity-50"
+                  {...register('confidentialityAccepted')}
+                />
+                <label htmlFor="confirm-confidentiality" className="text-slate-400 text-xs leading-relaxed select-none">
+                  I agree to the Confidentiality and Conflict of Interest Declaration. I confirm I have no proprietary, personal, or financial interest in this project or its competing products. <span className="text-red-400">*</span>
+                </label>
+              </div>
+
+              {/* Actions panel */}
+              {!isSubmitted && (
+                <div className="flex justify-between items-center p-4 rounded-2xl bg-white/3 border border-white/5">
+                  <button
+                    type="button"
+                    onClick={() => navigate('/judge-dashboard')}
+                    className="btn-ghost !px-4 !py-2.5 text-xs"
+                  >
+                    Cancel
+                  </button>
+                  <div className="flex items-center gap-3">
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="btn-ghost text-xs !py-2.5 !px-4"
+                    >
+                      Save Draft
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmSubmit(true)}
+                      disabled={isSubmitting}
+                      className="btn-gold text-xs flex items-center gap-1.5"
+                    >
+                      Submit Scorecard <RiCheckLine />
+                    </button>
+                  </div>
+                </div>
+              )}
+
+            </form>
           </div>
-        </form>
+
+        </div>
+
       </div>
+
+      {/* CONFIRM SUBMISSION MODAL */}
+      <AnimatePresence>
+        {showConfirmSubmit && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowConfirmSubmit(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+            {/* Modal box */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="relative w-full max-w-md p-6 rounded-2xl border border-white/10 bg-navy-900 shadow-glow flex flex-col items-center text-center"
+            >
+              <div className="w-12 h-12 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center mb-4">
+                <RiErrorWarningLine className="text-amber-400 text-2xl" />
+              </div>
+              <h3 className="font-display font-bold text-white text-lg mb-2">Finalize Scorecard Submission?</h3>
+              <p className="text-slate-400 text-xs leading-relaxed mb-6">
+                Once submitted, this scorecard is locked for compliance logging and cannot be edited or modified under any circumstances.
+              </p>
+              <div className="flex w-full gap-3">
+                <button
+                  onClick={() => setShowConfirmSubmit(false)}
+                  className="flex-1 btn-ghost !py-2.5 text-xs"
+                >
+                  Go Back
+                </button>
+                <button
+                  onClick={handleSubmit((data) => onSubmitForm(data, true))}
+                  disabled={isSubmitting}
+                  className="flex-1 btn-gold !py-2.5 text-xs font-bold"
+                >
+                  Yes, Submit
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

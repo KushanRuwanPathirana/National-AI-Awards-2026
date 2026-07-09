@@ -1,9 +1,14 @@
 const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
 const { validationResult } = require('express-validator');
 const User = require('../models/User.model');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
-const { sendOTPEmail, sendWelcomeEmail, sendPasswordResetEmail } = require('../services/email.service');
+const {
+  sendOTPEmail,
+  sendWelcomeEmail,
+  sendPasswordResetOTPEmail,
+  sendPasswordResetSuccessEmail,
+  sendPasswordChangedEmail,
+} = require('../services/email.service');
 const logger = require('../utils/logger');
 
 // Helper: generate JWT
@@ -244,7 +249,7 @@ const login = async (req, res, next) => {
   }
 };
 
-// @desc    Forgot Password (generates token, emails link)
+// @desc    Forgot Password (generates OTP, emails code)
 // @route   POST /api/auth/forgot-password
 // @access  Public
 const forgotPassword = async (req, res, next) => {
@@ -259,25 +264,24 @@ const forgotPassword = async (req, res, next) => {
     if (!user) {
       // Return 200 for security, preventing account enumeration
       return successResponse(res, {
-        message: 'If an account matches that email, a password reset link has been sent.',
+        message: 'If an account matches that email, a password reset OTP has been sent.',
       });
     }
 
-    // Generate random reset token
-    const resetToken = crypto.randomBytes(32).toString('hex');
-    user.passwordResetToken = resetToken;
+    const resetOtp = generateOTP();
+    user.passwordResetToken = resetOtp;
     user.passwordResetExpires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
     await user.save();
 
     try {
-      await sendPasswordResetEmail(user, resetToken);
-      logger.info(`Password reset link generated for: ${email}`);
+      await sendPasswordResetOTPEmail(user, resetOtp);
+      logger.info(`Password reset OTP generated for: ${email}`);
     } catch (mailErr) {
-      logger.error(`Error sending password reset to ${email}: ${mailErr.message}`);
+      logger.error(`Error sending password reset OTP to ${email}: ${mailErr.message}`);
     }
 
     return successResponse(res, {
-      message: 'If an account matches that email, a password reset link has been sent.',
+      message: 'If an account matches that email, a password reset OTP has been sent.',
     });
   } catch (error) {
     next(error);
@@ -289,23 +293,24 @@ const forgotPassword = async (req, res, next) => {
 // @access  Public
 const resetPassword = async (req, res, next) => {
   try {
-    const { token, password } = req.body;
+    const { email, otp, token, password } = req.body;
 
-    if (!token || !password) {
-      return errorResponse(res, { statusCode: 400, message: 'Token and new password are required.' });
+    if (!password || (!token && (!email || !otp))) {
+      return errorResponse(res, { statusCode: 400, message: 'Email, OTP, and new password are required.' });
     }
 
     if (password.length < 8) {
       return errorResponse(res, { statusCode: 400, message: 'Password must be at least 8 characters long.' });
     }
 
-    const user = await User.findOne({
-      passwordResetToken: token,
-      passwordResetExpires: { $gt: Date.now() },
-    });
+    const resetFilter = token
+      ? { passwordResetToken: token, passwordResetExpires: { $gt: Date.now() } }
+      : { email, passwordResetToken: otp, passwordResetExpires: { $gt: Date.now() } };
+
+    const user = await User.findOne(resetFilter);
 
     if (!user) {
-      return errorResponse(res, { statusCode: 400, message: 'Invalid or expired reset token.' });
+      return errorResponse(res, { statusCode: 400, message: 'Invalid or expired reset OTP.' });
     }
 
     // Update password
@@ -313,6 +318,12 @@ const resetPassword = async (req, res, next) => {
     user.passwordResetToken = undefined;
     user.passwordResetExpires = undefined;
     await user.save();
+
+    try {
+      await sendPasswordResetSuccessEmail(user);
+    } catch (mailErr) {
+      logger.error(`Error sending password reset success email to ${user.email}: ${mailErr.message}`);
+    }
 
     logger.info(`Password reset successfully for: ${user.email}`);
 
@@ -355,6 +366,12 @@ const changePassword = async (req, res, next) => {
     user.password = newPassword;
     await user.save();
 
+    try {
+      await sendPasswordChangedEmail(user);
+    } catch (mailErr) {
+      logger.error(`Error sending password changed email to ${user.email}: ${mailErr.message}`);
+    }
+
     logger.info(`Password changed successfully for user: ${user.email}`);
 
     return successResponse(res, {
@@ -376,11 +393,95 @@ const getMe = async (req, res) => {
   });
 };
 
-// @desc    Logout
-// @route   POST /api/auth/logout
+// @desc    Update current user's profile
+// @route   PATCH /api/auth/profile
 // @access  Private
-const logout = (req, res) => {
-  return successResponse(res, { message: 'Logged out successfully.' });
+const updateProfile = async (req, res, next) => {
+  try {
+    const allowedFields = ['firstName', 'lastName', 'phone', 'organization', 'designation'];
+    const updates = {};
+
+    allowedFields.forEach((field) => {
+      if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+        updates[field] = typeof req.body[field] === 'string' ? req.body[field].trim() : req.body[field];
+      }
+    });
+
+    if (!updates.firstName || !updates.lastName) {
+      return errorResponse(res, { statusCode: 400, message: 'First name and last name are required.' });
+    }
+
+    const user = await User.findByIdAndUpdate(req.user._id, updates, {
+      new: true,
+      runValidators: true,
+    });
+
+    if (!user) {
+      return errorResponse(res, { statusCode: 404, message: 'User not found.' });
+    }
+
+    logger.info(`Profile updated for: ${user.email}`);
+
+    return successResponse(res, {
+      message: 'Profile updated successfully.',
+      data: { user },
+    });
+  } catch (error) {
+    next(error);
+  }
 };
 
-module.exports = { register, login, getMe, logout, verifyOTP, resendOTP, forgotPassword, resetPassword, changePassword };
+// @desc    Logout user / clear cookie
+// @route   POST /api/auth/logout
+// @access  Private
+const logout = async (req, res, next) => {
+  try {
+    res.cookie('token', 'none', {
+      expires: new Date(Date.now() + 10 * 1000),
+      httpOnly: true,
+    });
+
+    if (req.user) {
+      logger.info(`User logged out: ${req.user.email}`);
+    }
+
+    return successResponse(res, {
+      statusCode: 200,
+      message: 'Logged out successfully.',
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+// @desc    Update profile image
+// @route   POST /api/auth/profile-image
+// @access  Private
+const updateProfileImage = async (req, res, next) => {
+  try {
+    if (!req.file) {
+      return errorResponse(res, { statusCode: 400, message: 'Please upload an image file (JPEG, PNG, WebP).' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return errorResponse(res, { statusCode: 404, message: 'User not found.' });
+    }
+
+    // Save relative path: e.g. uploads/profiles/filename.png
+    const relativePath = `uploads/profiles/${req.file.filename}`;
+    user.profileImage = relativePath;
+    await user.save({ validateBeforeSave: false });
+
+    logger.info(`Profile image updated for: ${user.email}`);
+
+    return successResponse(res, {
+      message: 'Profile image updated successfully.',
+      data: { user },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+module.exports = { register, login, getMe, logout, verifyOTP, resendOTP, forgotPassword, resetPassword, changePassword, updateProfile, updateProfileImage };

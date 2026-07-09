@@ -10,9 +10,12 @@ const {
   forgotPassword,
   resetPassword,
   changePassword,
+  updateProfile,
+  updateProfileImage,
 } = require('../controllers/auth.controller');
 const { authenticate } = require('../middleware/auth.middleware');
 const { registerValidator, loginValidator } = require('../validators/auth.validator');
+const upload = require('../middleware/upload.middleware');
 
 // Optional authentication middleware for verify/resend OTP (reads headers if available)
 const optionalAuthenticate = async (req, res, next) => {
@@ -46,6 +49,15 @@ router.post('/reset-password', resetPassword);
 
 // @route   POST /api/auth/change-password
 router.post('/change-password', authenticate, changePassword);
+
+// @route   PATCH /api/auth/profile
+router.patch('/profile', authenticate, updateProfile);
+
+// @route   POST /api/auth/profile-image
+router.post('/profile-image', authenticate, (req, res, next) => {
+  req.uploadSubDir = 'profiles';
+  next();
+}, upload.single('profileImage'), updateProfileImage);
 
 // @route   GET /api/auth/me
 router.get('/me', authenticate, getMe);

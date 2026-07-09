@@ -2,9 +2,10 @@ import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
-import { RiAwardLine, RiEyeLine, RiEyeOffLine, RiArrowRightLine, RiLockLine, RiMailLine } from 'react-icons/ri';
+import { RiEyeLine, RiEyeOffLine, RiArrowRightLine, RiLockLine, RiMailLine } from 'react-icons/ri';
 import { useAuth } from '../context/AuthContext';
 import api from '../services/api';
+import sltMobitelLogo from '../assets/slt-mobitel-logo.png';
 
 const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
@@ -64,19 +65,13 @@ const Login = () => {
           animate={{ opacity: 1, y: 0 }}
           className="text-center mb-10"
         >
-          <Link to="/" className="inline-flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-2xl bg-gradient-accent flex items-center justify-center shadow-glow">
-              <RiAwardLine className="text-white text-3xl" />
-            </div>
+          <Link to="/" className="inline-flex items-center justify-center mb-4">
+            <img
+              src={sltMobitelLogo}
+              alt="SLT Mobitel"
+              className="h-16 w-auto object-contain"
+            />
           </Link>
-          <h1 className="font-display font-black text-2xl text-white">
-            {mode === 'login' ? 'Welcome Back' : 'Create Account'}
-          </h1>
-          <p className="text-slate-400 text-sm mt-1">
-            {mode === 'login'
-              ? 'Sign in to your AI Awards portal'
-              : 'Join the National AI Awards Sri Lanka'}
-          </p>
         </motion.div>
 
         {/* Mode toggle tabs */}

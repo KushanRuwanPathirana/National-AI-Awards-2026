@@ -1,8 +1,10 @@
 const Evaluation = require('../models/Evaluation.model');
 const Application = require('../models/Application.model');
 const EvaluationCriteria = require('../models/EvaluationCriteria.model');
+const Category = require('../models/Category.model');
 const Notification = require('../models/Notification.model');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
+const { INDIVIDUAL_CATEGORIES } = require('../config/constants');
 const logger = require('../utils/logger');
 
 // ── Judge: Get Assigned Applications ──────────────────────────────────────────
@@ -45,10 +47,22 @@ const getOrCreateEvaluation = async (req, res, next) => {
       evaluation = await Evaluation.create({ application: applicationId, judge: req.user._id });
     }
 
-    // Get criteria for the category
-    const criteria = await EvaluationCriteria.find({ isActive: true }).sort({ order: 1 });
+    // Determine if this is an individual category
+    const categoryDoc = await Category.findById(application.category?._id || application.category);
+    const isIndividual = categoryDoc && INDIVIDUAL_CATEGORIES.includes(categoryDoc.name);
+    const criteriaType = isIndividual ? 'individual' : 'organizational';
 
-    return successResponse(res, { data: { application, evaluation, criteria } });
+    // Get criteria matching the category type
+    // For organizational: also match criteria without criteriaType set (backward compat)
+    const criteriaFilter = { isActive: true };
+    if (criteriaType === 'individual') {
+      criteriaFilter.criteriaType = 'individual';
+    } else {
+      criteriaFilter.$or = [{ criteriaType: 'organizational' }, { criteriaType: { $exists: false } }, { criteriaType: null }];
+    }
+    const criteria = await EvaluationCriteria.find(criteriaFilter).sort({ order: 1 });
+
+    return successResponse(res, { data: { application, evaluation, criteria, criteriaType } });
   } catch (error) { next(error); }
 };
 
@@ -75,10 +89,10 @@ const saveEvaluation = async (req, res, next) => {
     if (recommendation !== undefined) evaluation.recommendation = recommendation;
     if (confidentialityAccepted !== undefined) evaluation.confidentialityAccepted = confidentialityAccepted;
 
-    // Calculate scores
+    // Calculate scores (marks = weight %, total always 100)
     if (scores && scores.length > 0) {
       evaluation.totalScore = scores.reduce((sum, s) => sum + (s.score || 0), 0);
-      const maxPossible = scores.length * 10;
+      const maxPossible = 100; // weights sum to 100
       evaluation.weightedScore = maxPossible > 0 ? (evaluation.totalScore / maxPossible) * 100 : 0;
     }
 
@@ -133,4 +147,55 @@ const getEvaluationsByApplication = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
-module.exports = { getAssignedApplications, getOrCreateEvaluation, saveEvaluation, getEvaluationsByApplication };
+// ── Judge: Dashboard Stats ─────────────────────────────────────────────────────
+const getJudgeDashboardStats = async (req, res, next) => {
+  try {
+    const judgeId = req.user._id;
+
+    // Fetch all assigned applications
+    const applications = await Application.find({ assignedJudges: judgeId })
+      .populate('category', 'name')
+      .sort({ updatedAt: -1 })
+      .select('projectTitle category status updatedAt submittedAt');
+
+    // Fetch all evaluations by this judge
+    const evaluations = await Evaluation.find({ judge: judgeId })
+      .populate('application', 'projectTitle')
+      .sort({ updatedAt: -1 });
+
+    const total = applications.length;
+    const completed = evaluations.filter(e => e.isSubmitted).length;
+    const drafted = evaluations.filter(e => e.isDraft && !e.isSubmitted).length;
+    const pending = total - completed;
+
+    const submittedEvals = evaluations.filter(e => e.isSubmitted && e.weightedScore > 0);
+    const avgScore =
+      submittedEvals.length > 0
+        ? submittedEvals.reduce((s, e) => s + (e.weightedScore || 0), 0) / submittedEvals.length
+        : 0;
+
+    // Recent activity: last 5 touched evaluations
+    const recentActivity = evaluations.slice(0, 5).map(e => ({
+      applicationId: e.application?._id,
+      projectTitle: e.application?.projectTitle,
+      status: e.isSubmitted ? 'submitted' : e.isDraft ? 'draft' : 'not_started',
+      score: e.weightedScore,
+      updatedAt: e.updatedAt,
+    }));
+
+    // Assigned categories (unique)
+    const categories = [...new Map(
+      applications.map(a => [a.category?._id?.toString(), a.category?.name])
+    ).entries()].map(([, name]) => name).filter(Boolean);
+
+    return successResponse(res, {
+      data: {
+        stats: { total, completed, pending, drafted, avgScore },
+        recentActivity,
+        categories,
+      },
+    });
+  } catch (error) { next(error); }
+};
+
+module.exports = { getAssignedApplications, getOrCreateEvaluation, saveEvaluation, getEvaluationsByApplication, getJudgeDashboardStats };

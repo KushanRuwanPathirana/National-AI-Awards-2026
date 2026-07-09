@@ -3,9 +3,88 @@ const { successResponse, errorResponse } = require('../utils/apiResponse');
 const { AWARD_CATEGORIES } = require('../config/constants');
 const logger = require('../utils/logger');
 
+const DEPRECATED_CATEGORY_NAMES = [
+  'Core National Awards',
+  'Women in AI Leadership Award',
+  'Innovation & Future-Focused Awards',
+  'AI in Agriculture',
+  'AI in Banking, Finance & Insurance',
+  'AI in Healthcare & Life Sciences',
+  'AI in Export Development',
+  'AI in Education',
+  'AI in Manufacturing & Industry 5.0',
+  'AI in Media',
+];
+
+const buildSlug = (name) => name
+  .toLowerCase()
+  .replace(/[^a-z0-9\s-]/g, '')
+  .replace(/\s+/g, '-')
+  .trim();
+
+const buildDefaultCategory = (name, index) => ({
+  name,
+  slug: buildSlug(name),
+  description: `Applications for AI innovations in the ${name} sector. Submit groundbreaking solutions that leverage AI to transform this domain.`,
+  shortDescription: `AI solutions transforming ${name.toLowerCase()}.`,
+  isActive: true,
+  order: index + 1,
+  eligibilityQuestions: [
+    { question: 'Does your solution use Artificial Intelligence or Machine Learning as a core component?', requiredAnswer: true },
+    { question: 'Is your solution operational or in advanced prototype stage?', requiredAnswer: true },
+    { question: 'Is the primary focus of your solution within this category?', requiredAnswer: true },
+  ],
+});
+
+const buildDefaultCategoryInsert = (name, index) => {
+  const {
+    name: _name,
+    slug: _slug,
+    isActive,
+    order,
+    ...insertFields
+  } = buildDefaultCategory(name, index);
+  return insertFields;
+};
+
+const syncDefaultCategories = async () => {
+  const operations = AWARD_CATEGORIES.map((name, index) => ({
+    updateOne: {
+      filter: { name },
+      update: {
+        $set: {
+          slug: buildSlug(name),
+          isActive: true,
+          order: index + 1,
+        },
+        $setOnInsert: buildDefaultCategoryInsert(name, index),
+      },
+      upsert: true,
+    },
+  }));
+
+  operations.push({
+    updateMany: {
+      filter: { name: { $in: DEPRECATED_CATEGORY_NAMES } },
+      update: { $set: { isActive: false } },
+    },
+  });
+
+  await Category.bulkWrite(operations);
+};
+
 // ── Get All Active Categories (Public) ─────────────────────────────────────────
 const getCategories = async (req, res, next) => {
   try {
+    const [officialActiveCount, deprecatedActiveCount] = await Promise.all([
+      Category.countDocuments({ name: { $in: AWARD_CATEGORIES }, isActive: true }),
+      Category.countDocuments({ name: { $in: DEPRECATED_CATEGORY_NAMES }, isActive: true }),
+    ]);
+
+    if (officialActiveCount < AWARD_CATEGORIES.length || deprecatedActiveCount > 0) {
+      await syncDefaultCategories();
+    }
+
     const categories = await Category.find({ isActive: true })
       .sort({ order: 1, name: 1 })
       .select('-evaluationCriteria');
@@ -59,29 +138,9 @@ const deleteCategory = async (req, res, next) => {
 // ── Admin: Seed Default Categories ─────────────────────────────────────────────
 const seedDefaultCategories = async (req, res, next) => {
   try {
-    const defaults = AWARD_CATEGORIES.map((name, i) => ({
-      name,
-      description: `Applications for AI innovations in the ${name} sector. Submit groundbreaking solutions that leverage AI to transform this domain.`,
-      shortDescription: `AI solutions transforming ${name.toLowerCase()}.`,
-      isActive: true,
-      order: i + 1,
-      eligibilityQuestions: [
-        { question: 'Does your solution use Artificial Intelligence or Machine Learning as a core component?', requiredAnswer: true },
-        { question: 'Is your solution operational or in advanced prototype stage?', requiredAnswer: true },
-        { question: 'Is the primary focus of your solution within this category?', requiredAnswer: true },
-      ],
-    }));
+    await syncDefaultCategories();
 
-    let created = 0;
-    for (const cat of defaults) {
-      const exists = await Category.findOne({ name: cat.name });
-      if (!exists) {
-        await Category.create(cat);
-        created++;
-      }
-    }
-
-    return successResponse(res, { message: `Seeded ${created} new categories (${defaults.length - created} already existed).` });
+    return successResponse(res, { message: `Synced ${AWARD_CATEGORIES.length} default award categories.` });
   } catch (error) { next(error); }
 };
 

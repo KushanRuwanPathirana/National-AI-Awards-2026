@@ -48,17 +48,33 @@ const JWT = {
   COOKIE_MAX_AGE: 7 * 24 * 60 * 60 * 1000,
 };
 
+const APPLICATION_DEADLINE = {
+  // Applications close at the end of 15 August 2026 in Sri Lanka time.
+  CLOSES_AT: process.env.APPLICATION_DEADLINE || '2026-08-16T00:00:00+05:30',
+  DISPLAY_DATE: '15 August 2026',
+};
+
 const AWARD_CATEGORIES = [
-  'AI in Healthcare',
-  'AI in Finance & FinTech',
-  'AI in Agriculture',
-  'AI in Education',
-  'AI in Manufacturing & Industry',
-  'AI in Smart Cities & Infrastructure',
-  'AI in Cybersecurity',
-  'AI Innovation by SMEs',
-  'AI Research Excellence',
-  'AI Startup of the Year',
+  'National AI Excellence Award',
+  'National AI Leadership Excellence Award',
+  'National AI Impact Excellence Award',
+  'National AI Export Excellence Award',
+  'Best AI Solution in Agriculture',
+  'Best AI Solution in Banking, Finance & Insurance',
+  'Best AI Solution in Healthcare & Life Sciences',
+  'Best AI Solution in Export Development',
+  'Best AI Solution in Education',
+  'Best AI Solution in Manufacturing & Industry 5.0',
+  'Best AI Startup / MSME Innovation',
+  'Best Agentic AI Solution',
+  'Best Sinhala/Tamil AI & Localisation Innovation',
+  'University AI Innovation',
+  'Women in AI Leadership',
+];
+
+const INDIVIDUAL_CATEGORIES = [
+  'National AI Leadership Excellence Award',
+  'Women in AI Leadership',
 ];
 
 module.exports = {
@@ -68,6 +84,7 @@ module.exports = {
   PAGINATION,
   FILE_UPLOAD,
   JWT,
+  APPLICATION_DEADLINE,
   AWARD_CATEGORIES,
+  INDIVIDUAL_CATEGORIES,
 };
-

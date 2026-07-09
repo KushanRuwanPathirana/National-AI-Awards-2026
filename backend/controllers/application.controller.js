@@ -4,15 +4,27 @@ const Evaluation = require('../models/Evaluation.model');
 const Notification = require('../models/Notification.model');
 const AuditLog = require('../models/AuditLog.model');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
-const { APPLICATION_STATUS, ALLOWED_TRANSITIONS } = require('../config/constants');
+const { APPLICATION_DEADLINE, APPLICATION_STATUS, ALLOWED_TRANSITIONS } = require('../config/constants');
 const { sendApplicationStatusUpdate } = require('../services/email.service');
 const logger = require('../utils/logger');
 const { buildApplicationsCsv, buildSimplePdf } = require('../utils/reportExporter');
 const path = require('path');
 const fs = require('fs');
+const mongoose = require('mongoose');
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 const getPublicUploadPath = (file) => path.posix.join('uploads', 'documents', file.filename);
+
+const hasApplicationDeadlinePassed = () => Date.now() >= new Date(APPLICATION_DEADLINE.CLOSES_AT).getTime();
+
+const rejectAfterApplicationDeadline = (res) => {
+  if (!hasApplicationDeadlinePassed()) return false;
+  errorResponse(res, {
+    statusCode: 403,
+    message: `Applications can no longer be created, edited, or submitted after the ${APPLICATION_DEADLINE.DISPLAY_DATE} deadline.`,
+  });
+  return true;
+};
 
 const resolveStoredFilePath = (filePath) => {
   if (!filePath) return null;
@@ -40,31 +52,80 @@ const createAuditLog = async ({ action, performedBy, targetId, description, oldV
   }
 };
 
+const removeApplicationRecord = async ({ application, performedBy, req }) => {
+  // Delete associated files from disk
+  if (application.documents && application.documents.length > 0) {
+    application.documents.forEach(doc => {
+      const diskPath = resolveStoredFilePath(doc.filePath);
+      if (diskPath && fs.existsSync(diskPath)) {
+        try {
+          fs.unlinkSync(diskPath);
+        } catch (e) {
+          logger.error(`Failed to delete document file from disk: ${e.message}`);
+        }
+      }
+    });
+  }
+
+  // Delete payment slip from disk if exists
+  if (application.paymentSlip && application.paymentSlip.filePath) {
+    const diskPath = resolveStoredFilePath(application.paymentSlip.filePath);
+    if (diskPath && fs.existsSync(diskPath)) {
+      try {
+        fs.unlinkSync(diskPath);
+      } catch (e) {
+        logger.error(`Failed to delete payment slip from disk: ${e.message}`);
+      }
+    }
+  }
+
+  await Promise.all([
+    Evaluation.deleteMany({ application: application._id }),
+    Notification.deleteMany({ relatedApplication: application._id }),
+    Application.deleteOne({ _id: application._id }),
+  ]);
+
+  await createAuditLog({
+    action: 'application_deleted',
+    performedBy,
+    targetId: application._id,
+    description: `Application deleted: ${application.projectTitle} (${application.status})`,
+    req
+  });
+};
+
 // ── Create Draft ───────────────────────────────────────────────────────────────
 const createApplication = async (req, res, next) => {
   try {
-    const { categoryId, projectTitle, tagline } = req.body;
+    if (rejectAfterApplicationDeadline(res)) return;
 
-    if (!categoryId || !projectTitle) {
-      return errorResponse(res, { statusCode: 400, message: 'Category and project title are required.' });
-    }
+    const { categoryId, projectTitle, tagline, organisationName, organizationName } = req.body;
 
-    const category = await Category.findById(categoryId);
-    if (!category || !category.isActive) {
-      return errorResponse(res, { statusCode: 404, message: 'Category not found or inactive.' });
+    if (categoryId) {
+      if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+        return errorResponse(res, { statusCode: 400, message: 'Please select a valid award category.' });
+      }
+
+      const category = await Category.findById(categoryId);
+      if (!category || !category.isActive) {
+        return errorResponse(res, { statusCode: 404, message: 'Category not found or inactive.' });
+      }
     }
 
     const application = await Application.create({
       candidate: req.user._id,
-      category: categoryId,
+      ...(categoryId ? { category: categoryId } : {}),
       projectTitle,
       tagline,
+      organisationName: organisationName || organizationName,
+      organizationName: organisationName || organizationName,
+      registrationNumber: req.user.registrationNumber || '',
       status: APPLICATION_STATUS.DRAFT,
-      completedStep: 1,
+      completedStep: req.body.completedStep || 0,
       statusHistory: [{ status: APPLICATION_STATUS.DRAFT, changedBy: req.user._id, note: 'Application created' }],
     });
 
-    await createAuditLog({ action: 'application_created', performedBy: req.user._id, targetId: application._id, description: `New draft: ${projectTitle}`, req });
+    await createAuditLog({ action: 'application_created', performedBy: req.user._id, targetId: application._id, description: `New draft: ${projectTitle || organisationName || organizationName || 'Untitled application'}`, req });
 
     return successResponse(res, { statusCode: 201, message: 'Application draft created.', data: { application } });
   } catch (error) { next(error); }
@@ -73,6 +134,8 @@ const createApplication = async (req, res, next) => {
 // ── Update Draft (multi-step) ──────────────────────────────────────────────────
 const updateApplication = async (req, res, next) => {
   try {
+    if (rejectAfterApplicationDeadline(res)) return;
+
     const { id } = req.params;
     const application = await Application.findOne({ _id: id, candidate: req.user._id });
 
@@ -81,16 +144,39 @@ const updateApplication = async (req, res, next) => {
       return errorResponse(res, { statusCode: 400, message: 'Only draft applications can be edited.' });
     }
 
+    if (req.body.categoryId) {
+      if (!mongoose.Types.ObjectId.isValid(req.body.categoryId)) {
+        return errorResponse(res, { statusCode: 400, message: 'Please select a valid award category.' });
+      }
+      const category = await Category.findById(req.body.categoryId);
+      if (!category || !category.isActive) {
+        return errorResponse(res, { statusCode: 404, message: 'Category not found or inactive.' });
+      }
+      application.category = req.body.categoryId;
+    }
+
     const allowedFields = [
       'projectTitle', 'tagline', 'eligibilityAnswers', 'isEligible',
       'problemStatement', 'solution', 'aiTechnologies', 'innovationDetails',
       'impactDetails', 'teamSize', 'teamMembers', 'projectUrl', 'organizationName',
       'projectStartYear', 'declarationAccepted', 'declarationDate', 'completedStep',
+      'organisationName', 'sectorIndustry', 'organisationSize',
+      'primaryContactName', 'primaryContactDesignation', 'primaryContactEmail',
+      'primaryContactPhone', 'authorisedSignatory', 'websiteLinkedIn',
+      'categoryEligibilityConfirmed', 'deploymentStatus', 'launchDate',
+      'customerReferenceRevenue', 'innovationOriginality', 'measurableImpact',
+      'technicalExcellence', 'responsibleAI', 'scalabilitySustainability',
+      'executionEvidence', 'demoVideoUrl', 'testimonialOne', 'testimonialTwo',
+      'nationalRelevance', 'verificationConsent', 'promotionalConsent',
+      'conflictDisclosure', 'submissionFeeAcknowledged',
+      'paymentMethod', 'onlinePaymentSimulated',
     ];
 
     allowedFields.forEach(field => {
       if (req.body[field] !== undefined) application[field] = req.body[field];
     });
+
+    application.registrationNumber = req.user.registrationNumber || '';
 
     await application.save();
     return successResponse(res, { message: 'Application updated.', data: { application } });
@@ -100,6 +186,8 @@ const updateApplication = async (req, res, next) => {
 // ── Submit Application ─────────────────────────────────────────────────────────
 const submitApplication = async (req, res, next) => {
   try {
+    if (rejectAfterApplicationDeadline(res)) return;
+
     const { id } = req.params;
     const application = await Application.findOne({ _id: id, candidate: req.user._id }).populate('category');
 
@@ -107,11 +195,34 @@ const submitApplication = async (req, res, next) => {
     if (application.status !== APPLICATION_STATUS.DRAFT) {
       return errorResponse(res, { statusCode: 400, message: 'Only draft applications can be submitted.' });
     }
+    if (!application.category || !application.projectTitle) {
+      return errorResponse(res, { statusCode: 400, message: 'Please select a category and enter a project title before submitting.' });
+    }
     if (!application.declarationAccepted) {
       return errorResponse(res, { statusCode: 400, message: 'You must accept the declaration before submitting.' });
     }
+    if (!application.verificationConsent || !application.promotionalConsent || !application.submissionFeeAcknowledged) {
+      return errorResponse(res, { statusCode: 400, message: 'Please complete all required declarations and consents before submitting.' });
+    }
     if (!application.problemStatement || !application.solution) {
       return errorResponse(res, { statusCode: 400, message: 'Please complete all required form fields before submitting.' });
+    }
+    if (!application.organisationName || !application.primaryContactName || !application.primaryContactEmail || !application.categoryEligibilityConfirmed) {
+      return errorResponse(res, { statusCode: 400, message: 'Please complete applicant details and category eligibility confirmation before submitting.' });
+    }
+
+    // Validate payment if it's not a free category
+    const isFreeCategory = application.category?.name === 'University AI Innovation';
+    if (!isFreeCategory) {
+      if (!application.paymentMethod) {
+        return errorResponse(res, { statusCode: 400, message: 'Please select a payment method before submitting.' });
+      }
+      if (application.paymentMethod === 'transfer' && (!application.paymentSlip || !application.paymentSlip.filePath)) {
+        return errorResponse(res, { statusCode: 400, message: 'Please upload your bank transfer slip before submitting.' });
+      }
+      if (application.paymentMethod === 'online' && !application.onlinePaymentSimulated) {
+        return errorResponse(res, { statusCode: 400, message: 'Please complete the online payment simulation before submitting.' });
+      }
     }
 
     application.status = APPLICATION_STATUS.SUBMITTED;
@@ -304,6 +415,8 @@ const assignJudges = async (req, res, next) => {
 // ── Upload Documents ───────────────────────────────────────────────────────────
 const uploadDocuments = async (req, res, next) => {
   try {
+    if (rejectAfterApplicationDeadline(res)) return;
+
     const { id } = req.params;
     const application = await Application.findOne({ _id: id, candidate: req.user._id });
 
@@ -314,6 +427,9 @@ const uploadDocuments = async (req, res, next) => {
 
     if (!req.files || req.files.length === 0) {
       return errorResponse(res, { statusCode: 400, message: 'No files uploaded.' });
+    }
+    if (application.documents.length + req.files.length > 2) {
+      return errorResponse(res, { statusCode: 400, message: 'Maximum 2 PDF documents can be uploaded per application.' });
     }
 
     const newDocs = req.files.map(f => ({
@@ -334,10 +450,15 @@ const uploadDocuments = async (req, res, next) => {
 // ── Delete Document ────────────────────────────────────────────────────────────
 const deleteDocument = async (req, res, next) => {
   try {
+    if (rejectAfterApplicationDeadline(res)) return;
+
     const { id, docId } = req.params;
     const application = await Application.findOne({ _id: id, candidate: req.user._id });
 
     if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+    if (application.status !== APPLICATION_STATUS.DRAFT) {
+      return errorResponse(res, { statusCode: 400, message: 'Documents can only be removed from draft applications.' });
+    }
 
     const docIndex = application.documents.findIndex(d => d._id.toString() === docId);
     if (docIndex === -1) return errorResponse(res, { statusCode: 404, message: 'Document not found.' });
@@ -353,6 +474,79 @@ const deleteDocument = async (req, res, next) => {
     await application.save();
 
     return successResponse(res, { message: 'Document deleted.' });
+  } catch (error) { next(error); }
+};
+
+// ── Upload Payment Slip ────────────────────────────────────────────────────────
+const uploadPaymentSlip = async (req, res, next) => {
+  try {
+    if (rejectAfterApplicationDeadline(res)) return;
+
+    const { id } = req.params;
+    const application = await Application.findOne({ _id: id, candidate: req.user._id });
+
+    if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+    if (application.status !== APPLICATION_STATUS.DRAFT) {
+      return errorResponse(res, { statusCode: 400, message: 'Payment slip can only be uploaded to draft applications.' });
+    }
+
+    if (!req.file) {
+      return errorResponse(res, { statusCode: 400, message: 'No file uploaded.' });
+    }
+
+    // Delete existing slip file from disk if exists
+    if (application.paymentSlip && application.paymentSlip.filePath) {
+      const diskPath = resolveStoredFilePath(application.paymentSlip.filePath);
+      if (diskPath && fs.existsSync(diskPath)) {
+        try {
+          fs.unlinkSync(diskPath);
+        } catch (e) {
+          logger.error(`Failed to delete old payment slip from disk: ${e.message}`);
+        }
+      }
+    }
+
+    application.paymentSlip = {
+      originalName: req.file.originalname,
+      filePath: getPublicUploadPath(req.file),
+      mimeType: req.file.mimetype,
+      size: req.file.size,
+      uploadedAt: new Date(),
+    };
+    await application.save();
+
+    return successResponse(res, { message: 'Payment slip uploaded successfully.', data: { paymentSlip: application.paymentSlip } });
+  } catch (error) { next(error); }
+};
+
+// ── Delete Payment Slip ────────────────────────────────────────────────────────
+const deletePaymentSlip = async (req, res, next) => {
+  try {
+    if (rejectAfterApplicationDeadline(res)) return;
+
+    const { id } = req.params;
+    const application = await Application.findOne({ _id: id, candidate: req.user._id });
+
+    if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+    if (application.status !== APPLICATION_STATUS.DRAFT) {
+      return errorResponse(res, { statusCode: 400, message: 'Payment slip can only be deleted from draft applications.' });
+    }
+
+    if (application.paymentSlip && application.paymentSlip.filePath) {
+      const diskPath = resolveStoredFilePath(application.paymentSlip.filePath);
+      if (diskPath && fs.existsSync(diskPath)) {
+        try {
+          fs.unlinkSync(diskPath);
+        } catch (e) {
+          logger.error(`Failed to delete payment slip from disk: ${e.message}`);
+        }
+      }
+    }
+
+    application.paymentSlip = undefined;
+    await application.save();
+
+    return successResponse(res, { message: 'Payment slip removed successfully.' });
   } catch (error) { next(error); }
 };
 
@@ -433,6 +627,7 @@ const publishFinalists = async (req, res, next) => {
     const { ids = [] } = req.body;
     const applications = await Application.find({ _id: { $in: ids } });
     await Promise.all(applications.map(async (app) => {
+      app.status = APPLICATION_STATUS.FINALIST;
       app.publishedAsFinalist = true;
       app.publishedAsWinner = false;
       app.awardCitation = app.awardCitation || `${app.projectTitle} has been recognized as a finalist.`;
@@ -448,6 +643,7 @@ const publishWinners = async (req, res, next) => {
     const { ids = [] } = req.body;
     const applications = await Application.find({ _id: { $in: ids } });
     await Promise.all(applications.map(async (app, index) => {
+      app.status = APPLICATION_STATUS.WINNER;
       app.publishedAsWinner = true;
       app.publishedAsFinalist = true;
       app.certificateNumber = app.certificateNumber || `CERT-${String(Date.now()).slice(-6)}-${String(index + 1).padStart(2, '0')}`;
@@ -482,35 +678,42 @@ const deleteApplication = async (req, res, next) => {
     const application = await Application.findOne({ _id: id, candidate: req.user._id });
 
     if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
-    if (application.status !== APPLICATION_STATUS.DRAFT) {
-      return errorResponse(res, { statusCode: 400, message: 'Only draft applications can be deleted.' });
+
+    await removeApplicationRecord({ application, performedBy: req.user._id, req });
+
+    return successResponse(res, { message: 'Application deleted successfully.' });
+  } catch (error) { next(error); }
+};
+
+const deleteApplicationByAdmin = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const application = await Application.findById(id);
+
+    if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+
+    await removeApplicationRecord({ application, performedBy: req.user._id, req });
+
+    return successResponse(res, { message: 'Application deleted successfully.' });
+  } catch (error) { next(error); }
+};
+
+// ── Download Document (judges/admin) ───────────────────────────────────────────
+const downloadDocument = async (req, res, next) => {
+  try {
+    const { id, docId } = req.params;
+    const application = await Application.findById(id);
+    if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+
+    const doc = application.documents.id(docId);
+    if (!doc) return errorResponse(res, { statusCode: 404, message: 'Document not found.' });
+
+    const diskPath = resolveStoredFilePath(doc.filePath);
+    if (!diskPath || !fs.existsSync(diskPath)) {
+      return errorResponse(res, { statusCode: 404, message: 'File not found on server. It may have been removed.' });
     }
 
-    // Delete associated files from disk
-    if (application.documents && application.documents.length > 0) {
-      application.documents.forEach(doc => {
-        const diskPath = resolveStoredFilePath(doc.filePath);
-        if (diskPath && fs.existsSync(diskPath)) {
-          try {
-            fs.unlinkSync(diskPath);
-          } catch (e) {
-            logger.error(`Failed to delete document file from disk: ${e.message}`);
-          }
-        }
-      });
-    }
-
-    await Application.deleteOne({ _id: id });
-
-    await createAuditLog({
-      action: 'application_deleted',
-      performedBy: req.user._id,
-      targetId: id,
-      description: `Draft deleted: ${application.projectTitle}`,
-      req
-    });
-
-    return successResponse(res, { message: 'Application draft deleted successfully.' });
+    res.download(diskPath, doc.originalName);
   } catch (error) { next(error); }
 };
 
@@ -520,5 +723,6 @@ module.exports = {
   changeApplicationStatus, assignJudges, reviewEligibility,
   getMonitoringOverview, getJudgeProgress, exportApplications,
   publishFinalists, publishWinners, generateCertificates,
-  uploadDocuments, deleteDocument, deleteApplication,
+  uploadDocuments, deleteDocument, deleteApplication, deleteApplicationByAdmin,
+  downloadDocument,
 };

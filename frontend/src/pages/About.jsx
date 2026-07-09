@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import ApplyLink from '../components/shared/ApplyLink';
 import {
   RiAwardLine, RiTeamLine, RiGlobalLine, RiGovernmentLine,
   RiArrowRightLine, RiCheckLine, RiBrainLine,
@@ -9,7 +10,7 @@ import Button from '../components/shared/Button';
 
 const fadeUp = {
   hidden: { opacity: 0, y: 28 },
-  show:   { opacity: 1, y: 0, transition: { duration: 0.6 } },
+  show: { opacity: 1, y: 0, transition: { duration: 0.6 } },
 };
 const stagger = { show: { transition: { staggerChildren: 0.1 } } };
 
@@ -59,7 +60,7 @@ const About = () => (
           transition={{ duration: 0.6, delay: 0.25 }}
           className="text-slate-300 text-lg sm:text-xl max-w-2xl mx-auto leading-relaxed"
         >
-          Sri Lanka's most prestigious recognition programme for Artificial Intelligence innovation — 
+          Sri Lanka's most prestigious recognition programme for Artificial Intelligence innovation
           uniting government, industry, and academia to celebrate our nation's brightest minds.
         </motion.p>
       </div>
@@ -76,13 +77,13 @@ const About = () => (
               <span className="gradient-text">AI Future</span>
             </h2>
             <p className="text-slate-400 text-base leading-relaxed mb-4">
-              Launched by Sri Lanka's leading technology and government bodies, the National AI Awards 
-              exists to shine a spotlight on the extraordinary AI innovations happening across our island 
-              — in hospitals, farms, classrooms, and factories.
+              Launched by Sri Lanka's leading technology and government bodies, the National AI Awards
+              exists to shine a spotlight on the extraordinary AI innovations happening across our island
+              in hospitals, farms, classrooms, and factories.
             </p>
             <p className="text-slate-400 text-base leading-relaxed mb-8">
-              We believe that by recognising excellence today, we inspire the trailblazers of tomorrow. 
-              This programme is more than an awards night — it is a movement to build a sustainable, 
+              We believe that by recognising excellence today, we inspire the trailblazers of tomorrow.
+              This programme is more than an awards night it is a movement to build a sustainable,
               inclusive AI ecosystem in Sri Lanka.
             </p>
             <div className="flex items-center gap-4">
@@ -90,7 +91,7 @@ const About = () => (
                 <RiBrainLine className="text-white text-3xl" />
               </div>
               <div>
-                <p className="text-white font-semibold">Est. 2024</p>
+                <p className="text-white font-semibold">Est. 2026</p>
                 <p className="text-slate-400 text-sm">Sri Lanka's first national AI Awards</p>
               </div>
             </div>
@@ -152,36 +153,6 @@ const About = () => (
       </div>
     </section>
 
-    {/* ── Impact Numbers ── */}
-    <section className="section-py">
-      <div className="section-container">
-        <SectionHeader
-          badge="Our Impact"
-          title="Numbers That"
-          highlight="Tell the Story"
-          subtitle="Since our inaugural edition, the AI Awards has grown into Sri Lanka's foremost technology recognition platform."
-        />
-        <motion.div
-          variants={stagger}
-          initial="hidden"
-          whileInView="show"
-          viewport={{ once: true }}
-          className="grid grid-cols-2 lg:grid-cols-4 gap-6"
-        >
-          {[
-            { value: '2', label: 'Years Running', suffix: '' },
-            { value: '300+', label: 'Applications Received', suffix: '' },
-            { value: '40+', label: 'Companies Recognised', suffix: '' },
-            { value: '15', label: 'Industries Represented', suffix: '' },
-          ].map((s) => (
-            <motion.div key={s.label} variants={fadeUp} className="glass-card p-8 text-center">
-              <p className="gradient-text-gold font-display font-black text-4xl sm:text-5xl">{s.value}</p>
-              <p className="text-slate-400 text-sm mt-2">{s.label}</p>
-            </motion.div>
-          ))}
-        </motion.div>
-      </div>
-    </section>
 
     {/* ── CTA ── */}
     <section className="section-py bg-surface-200/50">
@@ -195,7 +166,7 @@ const About = () => (
             Apply today and let your innovation represent what Sri Lanka is capable of achieving.
           </p>
           <div className="flex items-center justify-center gap-4 flex-wrap">
-            <Link to="/apply"><Button variant="gold" size="lg">Apply Now <RiArrowRightLine /></Button></Link>
+            <ApplyLink><Button variant="gold" size="lg">Apply Now <RiArrowRightLine /></Button></ApplyLink>
             <Link to="/categories"><Button variant="ghost" size="lg">View Categories</Button></Link>
           </div>
         </motion.div>

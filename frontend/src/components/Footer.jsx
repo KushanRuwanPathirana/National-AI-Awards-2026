@@ -1,28 +1,29 @@
 import { Link } from 'react-router-dom';
+import ApplyLink from './shared/ApplyLink';
 import { RiAwardLine, RiMailLine, RiPhoneLine, RiMapPinLine } from 'react-icons/ri';
 import { FaLinkedin, FaTwitter, FaFacebook, FaYoutube } from 'react-icons/fa';
 import { motion } from 'framer-motion';
 
 const footerLinks = {
   'Quick Links': [
-    { label: 'Home',          path: '/' },
-    { label: 'About Awards',  path: '/about' },
-    { label: 'Categories',    path: '/categories' },
-    { label: 'Timeline',      path: '/timeline' },
+    { label: 'Home', path: '/' },
+    { label: 'About Awards', path: '/about' },
+    { label: 'Categories', path: '/categories' },
+    { label: 'Timeline', path: '/timeline' },
   ],
   'Participate': [
-    { label: 'Apply Now',     path: '/apply' },
-    { label: 'Judge Portal',  path: '/judge-portal' },
-    { label: 'FAQs',          path: '/faqs' },
-    { label: 'Contact Us',    path: '/contact' },
+    { label: 'Apply Now', path: '/apply' },
+    { label: 'Judge Portal', path: '/judge-portal' },
+    { label: 'FAQs', path: '/faqs' },
+    { label: 'Contact Us', path: '/contact' },
   ],
 };
 
 const socials = [
-  { icon: FaLinkedin,  href: '#', label: 'LinkedIn' },
-  { icon: FaTwitter,   href: '#', label: 'Twitter' },
-  { icon: FaFacebook,  href: '#', label: 'Facebook' },
-  { icon: FaYoutube,   href: '#', label: 'YouTube' },
+  { icon: FaLinkedin, href: '#', label: 'LinkedIn' },
+  { icon: FaTwitter, href: '#', label: 'Twitter' },
+  { icon: FaFacebook, href: '#', label: 'Facebook' },
+  { icon: FaYoutube, href: '#', label: 'YouTube' },
 ];
 
 const Footer = () => (
@@ -46,7 +47,7 @@ const Footer = () => (
             </div>
           </Link>
           <p className="text-slate-400 text-sm leading-relaxed mb-6">
-            Recognising excellence in Artificial Intelligence innovation across Sri Lanka. 
+            Recognising excellence in Artificial Intelligence innovation across Sri Lanka.
             Celebrating the brightest minds shaping our digital future.
           </p>
           {/* Socials */}
@@ -73,13 +74,20 @@ const Footer = () => (
             <ul className="space-y-3">
               {links.map((link) => (
                 <li key={link.path}>
-                  <Link
-                    to={link.path}
-                    className="text-slate-400 text-sm hover:text-accent-300 transition-colors duration-200 flex items-center gap-2 group"
-                  >
-                    <span className="w-1 h-1 rounded-full bg-accent-500/0 group-hover:bg-accent-400 transition-colors" />
-                    {link.label}
-                  </Link>
+                  {link.path === '/apply' ? (
+                    <ApplyLink className="text-slate-400 text-sm hover:text-accent-300 transition-colors duration-200 flex items-center gap-2 group">
+                      <span className="w-1 h-1 rounded-full bg-accent-500/0 group-hover:bg-accent-400 transition-colors" />
+                      {link.label}
+                    </ApplyLink>
+                  ) : (
+                    <Link
+                      to={link.path}
+                      className="text-slate-400 text-sm hover:text-accent-300 transition-colors duration-200 flex items-center gap-2 group"
+                    >
+                      <span className="w-1 h-1 rounded-full bg-accent-500/0 group-hover:bg-accent-400 transition-colors" />
+                      {link.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
@@ -94,8 +102,8 @@ const Footer = () => (
           <ul className="space-y-4">
             {[
               { icon: RiMapPinLine, text: 'Colombo, Sri Lanka' },
-              { icon: RiMailLine,   text: 'info@aiawards.lk' },
-              { icon: RiPhoneLine,  text: '+94 11 234 5678' },
+              { icon: RiMailLine, text: 'info@aiawards.lk' },
+              { icon: RiPhoneLine, text: '+94 11 234 5678' },
             ].map(({ icon: Icon, text }) => (
               <li key={text} className="flex items-start gap-3 text-sm text-slate-400">
                 <Icon className="text-accent-400 mt-0.5 flex-shrink-0" size={16} />
@@ -106,7 +114,7 @@ const Footer = () => (
 
           <div className="mt-6 p-4 glass-card !hover:transform-none">
             <p className="text-xs text-slate-400 mb-3">Applications Open</p>
-            <p className="gradient-text-gold font-display font-bold text-lg">Jan – Mar 2026</p>
+            <p className="gradient-text-gold font-display font-bold text-lg">15 July - 15 August 2026</p>
           </div>
         </div>
       </div>
