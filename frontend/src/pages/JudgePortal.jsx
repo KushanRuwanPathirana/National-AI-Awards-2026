@@ -251,21 +251,29 @@ const judgesData = [
     "isGrandJury": false
   },
   {
-    "id": "chitranganie-mubarak",
-    "name": "Mrs. Chitranganie Mubarak",
-    "designation": "Former Chairperson",
-    "organization": "ICTA",
-    "category": "AI in Healthcare & Life Sciences",
-    "description": "Dr. Nishan Siriwardhana is a distinguished health informatics specialist, physician, and digital health leader with extensive expertise in healthcare information systems, clinical informatics, digital transformation, and health data governance. As the President of the Sri Lanka College of Health Informatics, he has been at the forefront of advancing health informatics education, research, and the adoption of innovative digital technologies across Sri Lanka's healthcare sector.\n\n                  Throughout his career, Dr. Siriwardhana has contributed to the design, implementation, and enhancement of health information systems that improve clinical workflows, patient care, and evidence-based decision-making. He has worked closely with healthcare institutions, government agencies, academic organizations, and international partners to promote the effective use of health data, interoperability standards, and digital health solutions.\n\n                  A strong advocate for the responsible integration of artificial intelligence into healthcare, Dr. Siriwardhana actively supports the application of AI, machine learning, and data analytics to strengthen disease surveillance, clinical decision support, healthcare management, and public health outcomes. Through his leadership, research, and policy contributions, he continues to drive innovation that enhances healthcare quality, efficiency, and accessibility while fostering the growth of Sri Lanka's digital health ecosystem.",
-    "linkedin": "https://www.linkedin.com/in/chitranganie-mubarak-ab6111119/",
-    "expertise": [
-      "Government",
-      "Healthcare"
+    id: "chitranganie-mubarak",
+    name: "Mrs. Chitranganie Mubarak",
+    designation: "Former Chairperson",
+    organization: "ICTA",
+    category: "AI in Healthcare & Life Sciences",
+    description: `Chitranganie Mubarak is a distinguished technology leader and digital transformation strategist with over 25 years of experience in information and communication technology, public sector modernization, digital governance, and innovation. As the former Chairperson of the Information and Communication Technology Agency (ICTA) of Sri Lanka, she played a key role in advancing the nation's digital transformation agenda by promoting technology-driven public services, innovation, and inclusive digital development.
+
+Throughout her career, she has led numerous national initiatives focused on ICT policy, digital infrastructure, e-government, and the adoption of emerging technologies across both the public and private sectors. Her leadership has contributed to strengthening collaboration between government, industry, academia, and international partners to accelerate technology-enabled economic and social development.
+
+A strong advocate for responsible innovation, Chitranganie actively supports the adoption of artificial intelligence, digital health, data-driven decision-making, and smart technologies to improve healthcare delivery, public services, and citizen engagement. Through her leadership, strategic vision, and commitment to innovation, she continues to contribute to the advancement of Sri Lanka's digital ecosystem and the sustainable application of technology for national development.`,
+    linkedin: "https://www.linkedin.com/in/chitranganie-mubarak-ab6111119/",
+    expertise: [
+      "Digital Transformation",
+      "ICT Strategy",
+      "Digital Governance",
+      "Public Sector Innovation",
+      "Artificial Intelligence",
+      "Digital Health"
     ],
-    "country": "Sri Lanka",
-    "experience": 25,
-    "awardsJudged": 3,
-    "isGrandJury": false
+    country: "Sri Lanka",
+    experience: 25,
+    awardsJudged: 3,
+    isGrandJury: false
   },
   {
     "id": "oshada-senanayake",
@@ -853,20 +861,16 @@ const JudgePortal = () => {
 
         {/* Judges Grid Layout */}
         <div className="relative">
-          <motion.div
-            layout
-            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            <AnimatePresence mode="popLayout">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <AnimatePresence mode="wait">
               {filteredJudges.map((judge) => (
                 <Link key={judge.id} to={`/judge-portal/${judge.id}`}>
                   <motion.div
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.3 }}
-                    className="glass-card p-6 flex flex-col items-center text-center cursor-pointer border border-white/10 hover:border-accent-500/50 hover:shadow-glow transition-all duration-300 group"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    className="glass-card p-6 flex flex-col items-center text-center cursor-pointer border border-white/10 hover:border-accent-500/50 hover:shadow-glow transition-all duration-300 group h-full"
                   >
                     {/* Circular Portrait with Glowing Border */}
                     <JudgeAvatar judge={judge} variant="card" />
@@ -899,7 +903,7 @@ const JudgePortal = () => {
                 </Link>
               ))}
             </AnimatePresence>
-          </motion.div>
+          </div>
 
           {/* Empty Results Placeholder */}
           {filteredJudges.length === 0 && (

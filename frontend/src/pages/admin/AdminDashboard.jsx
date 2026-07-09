@@ -11,14 +11,14 @@ import {
   RiAwardLine, RiLockPasswordLine, RiLogoutBoxLine,
   RiCheckDoubleLine, RiFileList3Line, RiTeamLine,
   RiDashboardLine, RiFileChartLine, RiMailSendLine,
-  RiArrowRightLine, RiFolderShield2Line, RiRefreshLine, RiPulseLine,
-  RiDeleteBinLine,
+  RiArrowRightLine, RiFolderShield2Line, RiRefreshLine, RiPulseLine, RiStarLine,
 } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
 import api from '../../services/api';
 import adminService from '../../services/admin.service';
 import applicationService from '../../services/application.service';
 import categoryService from '../../services/category.service';
+import evaluationCriteriaService from '../../services/evaluationCriteria.service';
 
 const COLORS = ['#0072ff', '#00ff87', '#ffc658', '#ff7300', '#d0ed57', '#a4de6c'];
 
@@ -59,6 +59,17 @@ const AdminDashboard = () => {
   const [categories, setCategories] = useState([]);
   const [monitoring, setMonitoring] = useState(null);
   const [judgeProgress, setJudgeProgress] = useState([]);
+  const [criteria, setCriteria] = useState([]);
+  const [editingCriteriaId, setEditingCriteriaId] = useState(null);
+  const [criteriaForm, setCriteriaForm] = useState({
+    name: '',
+    description: '',
+    weight: 10,
+    maxScore: 10,
+    criteriaType: 'organizational',
+    order: 0,
+    isActive: true,
+  });
   const [loading, setLoading] = useState(true);
 
   // Search & Filters
@@ -146,9 +157,24 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchCriteria = async () => {
+    try {
+      const { data } = await evaluationCriteriaService.getAllCriteria();
+      setCriteria(data.data.criteria);
+    } catch { toast.error('Failed to load evaluation criteria.'); }
+  };
+
   const loadAll = async () => {
     setLoading(true);
-    await Promise.all([fetchStats(), fetchApps(), fetchUsers(), fetchAdmins(), fetchCategories(), fetchMonitoring()]);
+    await Promise.all([
+      fetchStats(),
+      fetchApps(),
+      fetchUsers(),
+      fetchAdmins(),
+      fetchCategories(),
+      fetchMonitoring(),
+      fetchCriteria(),
+    ]);
     setLoading(false);
   };
 
@@ -264,6 +290,65 @@ const AdminDashboard = () => {
       fetchCategories();
     } catch {
       toast.error('Failed to seed default categories.');
+    }
+  };
+
+  // ── Criteria Management Handlers ──
+  const handleSubmitCriteria = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = {
+        ...criteriaForm,
+        weight: Number(criteriaForm.weight || 0),
+        maxScore: Number(criteriaForm.maxScore || 0),
+        order: Number(criteriaForm.order || 0),
+      };
+      if (editingCriteriaId) {
+        await evaluationCriteriaService.updateCriteria(editingCriteriaId, payload);
+        toast.success('Evaluation criteria updated.');
+      } else {
+        await evaluationCriteriaService.createCriteria(payload);
+        toast.success('Evaluation criteria created.');
+      }
+      setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, criteriaType: 'organizational', order: 0, isActive: true });
+      setEditingCriteriaId(null);
+      fetchCriteria();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save evaluation criteria.');
+    }
+  };
+
+  const handleEditCriteria = (c) => {
+    setEditingCriteriaId(c._id);
+    setCriteriaForm({
+      name: c.name || '',
+      description: c.description || '',
+      weight: c.weight || 10,
+      maxScore: c.maxScore || 10,
+      criteriaType: c.criteriaType || 'organizational',
+      order: c.order || 0,
+      isActive: c.isActive !== false,
+    });
+  };
+
+  const handleDeleteCriteria = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this evaluation criterion?')) return;
+    try {
+      await evaluationCriteriaService.deleteCriteria(id);
+      toast.success('Evaluation criteria deleted.');
+      fetchCriteria();
+    } catch {
+      toast.error('Failed to delete criteria.');
+    }
+  };
+
+  const handleSeedCriteria = async () => {
+    try {
+      const { data } = await evaluationCriteriaService.seedDefaults();
+      toast.success(data.message);
+      fetchCriteria();
+    } catch {
+      toast.error('Failed to seed default evaluation criteria.');
     }
   };
 
@@ -402,6 +487,7 @@ const AdminDashboard = () => {
               { id: 'monitoring', label: 'Application Monitoring', icon: RiFileChartLine },
               { id: 'users', label: 'User Directory', icon: RiTeamLine },
               { id: 'categories', label: 'Categories', icon: RiFolderShield2Line },
+              { id: 'criteria', label: 'Evaluation Criteria', icon: RiStarLine },
               { id: 'broadcast', label: 'Broadcast Alerts', icon: RiMailSendLine },
               { id: 'reports', label: 'Reports & Export', icon: RiFileChartLine },
               { id: 'password', label: 'Change Password', icon: RiLockPasswordLine },
@@ -983,6 +1069,160 @@ const AdminDashboard = () => {
                           ))}
                         </div>
                       </div>
+                  </div>
+                )}
+
+                {/* EVALUATION CRITERIA TAB */}
+                {activeTab === 'criteria' && (
+                  <div className="space-y-8">
+                    <div className="flex justify-between items-center">
+                      <div>
+                        <h3 className="font-display font-bold text-white text-xl">Evaluation Criteria</h3>
+                        <p className="text-slate-400 text-xs mt-1">Manage criteria sets and weight distributions for evaluation scorecards.</p>
+                      </div>
+                      <button onClick={handleSeedCriteria} className="btn-primary text-xs">
+                        Seed Default Criteria
+                      </button>
+                    </div>
+
+                    <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
+                        <h4 className="font-display font-bold text-white text-base">
+                          {editingCriteriaId ? 'Edit Evaluation Criterion' : 'Create Evaluation Criterion'}
+                        </h4>
+                        <form onSubmit={handleSubmitCriteria} className="space-y-3">
+                          <div>
+                            <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Name</label>
+                            <input
+                              className="input-field"
+                              placeholder="Criterion name"
+                              value={criteriaForm.name}
+                              onChange={(e) => setCriteriaForm({ ...criteriaForm, name: e.target.value })}
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Description</label>
+                            <textarea
+                              className="input-field h-24 resize-none"
+                              placeholder="Description / judging focus"
+                              value={criteriaForm.description}
+                              onChange={(e) => setCriteriaForm({ ...criteriaForm, description: e.target.value })}
+                              required
+                            />
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Weight (%)</label>
+                              <input
+                                type="number"
+                                className="input-field"
+                                placeholder="Weight"
+                                value={criteriaForm.weight}
+                                onChange={(e) => setCriteriaForm({ ...criteriaForm, weight: e.target.value, maxScore: e.target.value })}
+                                required
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Max Score</label>
+                              <input
+                                type="number"
+                                className="input-field"
+                                placeholder="Max Score (equal to weight)"
+                                value={criteriaForm.maxScore}
+                                disabled
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Category Type</label>
+                              <select
+                                className="input-field"
+                                value={criteriaForm.criteriaType}
+                                onChange={(e) => setCriteriaForm({ ...criteriaForm, criteriaType: e.target.value })}
+                              >
+                                <option value="organizational" className="bg-navy-950">🏢 Organizational Award</option>
+                                <option value="individual" className="bg-navy-950">👤 Individual Award</option>
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Sort Order</label>
+                              <input
+                                type="number"
+                                className="input-field"
+                                placeholder="Sort Order"
+                                value={criteriaForm.order}
+                                onChange={(e) => setCriteriaForm({ ...criteriaForm, order: e.target.value })}
+                              />
+                            </div>
+                          </div>
+                          <label className="flex items-center gap-2 text-sm text-slate-300 select-none">
+                            <input
+                              type="checkbox"
+                              checked={criteriaForm.isActive}
+                              onChange={(e) => setCriteriaForm({ ...criteriaForm, isActive: e.target.checked })}
+                            />
+                            Active & enabled for evaluation
+                          </label>
+                          <div className="flex gap-3 pt-2">
+                            <button type="submit" className="btn-primary text-xs">
+                              {editingCriteriaId ? 'Save Changes' : 'Create Criterion'}
+                            </button>
+                            {editingCriteriaId && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingCriteriaId(null);
+                                  setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, criteriaType: 'organizational', order: 0, isActive: true });
+                                }}
+                                className="btn-ghost text-xs"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                          </div>
+                        </form>
+                      </div>
+
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
+                        <h4 className="font-display font-bold text-white text-base">Criteria Definitions</h4>
+                        <div className="space-y-3 max-h-[500px] overflow-y-auto">
+                          {criteria.map((c) => (
+                            <div key={c._id} className="p-4 rounded-xl bg-white/5 border border-white/10 hover:border-white/20 transition-all space-y-2">
+                              <div className="flex justify-between items-start gap-3">
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <h5 className="font-semibold text-white text-sm truncate">{c.name}</h5>
+                                    <span className={`text-[8px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                                      c.criteriaType === 'individual'
+                                        ? 'bg-purple-500/10 text-purple-300 border-purple-500/20'
+                                        : 'bg-accent-500/10 text-accent-300 border-accent-500/20'
+                                    }`}>
+                                      {c.criteriaType === 'individual' ? '👤 Individual' : '🏢 Org'}
+                                    </span>
+                                  </div>
+                                  <p className="text-slate-400 text-xs mt-1 leading-relaxed">{c.description}</p>
+                                </div>
+                                <div className="flex gap-2 shrink-0">
+                                  <button onClick={() => handleEditCriteria(c)} className="text-accent-400 text-xs hover:text-accent-300 font-medium">Edit</button>
+                                  <button onClick={() => handleDeleteCriteria(c._id)} className="text-red-400 text-xs hover:text-red-300 font-medium">Delete</button>
+                                </div>
+                              </div>
+                              <div className="flex gap-4 pt-1 border-t border-white/5 text-[10px] text-slate-500 font-mono">
+                                <span>Max score: <strong className="text-white">{c.maxScore}</strong></span>
+                                <span>Weight: <strong className="text-white">{c.weight}%</strong></span>
+                                <span>Order: <strong className="text-white">{c.order}</strong></span>
+                                <span className={c.isActive ? 'text-emerald-400' : 'text-red-400'}>{c.isActive ? 'Active' : 'Inactive'}</span>
+                              </div>
+                            </div>
+                          ))}
+                          {criteria.length === 0 && (
+                            <p className="text-slate-500 text-xs text-center py-8">No criteria definitions found.</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
