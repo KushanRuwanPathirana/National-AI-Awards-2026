@@ -3073,7 +3073,7 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="text-xs text-slate-500">This sends an in-app notification immediately.</p>
+                          <p className="text-xs text-slate-500">This sends an in-app notification and email immediately.</p>
                           <button type="submit" disabled={broadcastSubmitting} className="btn-primary min-w-[180px] disabled:cursor-not-allowed disabled:opacity-60">
                             {broadcastSubmitting ? (
                               <><span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Sending...</>
@@ -3116,7 +3116,7 @@ const AdminDashboard = () => {
                             </div>
                             <div className="flex justify-between rounded-xl bg-navy-950/40 px-3 py-2">
                               <span className="text-slate-400">Channel</span>
-                              <span className="font-semibold text-white">In-app alert</span>
+                              <span className="font-semibold text-white">In-app alert + email</span>
                             </div>
                           </div>
                         </div>

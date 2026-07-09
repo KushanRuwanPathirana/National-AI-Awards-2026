@@ -5,6 +5,7 @@ const Category = require('../models/Category.model');
 const AuditLog = require('../models/AuditLog.model');
 const Notification = require('../models/Notification.model');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
+const { sendBroadcastEmail } = require('../services/email.service');
 const logger = require('../utils/logger');
 
 const BROADCAST_APPLICATION_STATUSES = ['submitted', 'under_review', 'eligible', 'shortlisted', 'finalist', 'winner'];
@@ -227,17 +228,33 @@ const broadcastNotification = async (req, res, next) => {
       }
 
       const candidateIds = await Application.distinct('candidate', { status });
-      users = await User.find({ _id: { $in: candidateIds }, role: 'candidate' }).select('_id');
+      users = await User.find({ _id: { $in: candidateIds }, role: 'candidate' }).select('_id firstName email');
     } else {
       const filter = {};
       if (role && role !== 'all') filter.role = role;
-      users = await User.find(filter).select('_id');
+      users = await User.find(filter).select('_id firstName email');
     }
 
-    const notifications = users.map(u => ({ recipient: u._id, type: 'system', title, message, link }));
+    const alertLink = link || '/dashboard';
+    const notifications = users.map(u => ({ recipient: u._id, type: 'system', title, message, link: alertLink }));
     if (notifications.length > 0) await Notification.insertMany(notifications);
 
-    return successResponse(res, { message: `Notification sent to ${users.length} user(s).` });
+    const emailResults = await Promise.allSettled(
+      users
+        .filter(user => user.email)
+        .map(user => sendBroadcastEmail(user, { title, message, link: alertLink }))
+    );
+    const failedEmailCount = emailResults.filter(result => result.status === 'rejected').length;
+    if (failedEmailCount > 0) {
+      logger.error(`Broadcast email failed for ${failedEmailCount} user(s).`);
+    }
+
+    return successResponse(res, {
+      message: failedEmailCount > 0
+        ? `Notification sent to ${users.length} user(s). Email failed for ${failedEmailCount} user(s).`
+        : `Notification and email sent to ${users.length} user(s).`,
+      data: { recipients: users.length, failedEmailCount },
+    });
   } catch (error) { next(error); }
 };
 
