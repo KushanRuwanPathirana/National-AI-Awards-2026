@@ -23,7 +23,7 @@ const baseSteps = [
   { label: 'Consent' },
 ];
 
-const organisationSizes = ['Startup <4 yrs', 'SME', 'Large Enterprise', 'Government', 'Academic'];
+const organisationSizes = ['Univercity student', 'Startup', 'Coparate', 'Gov Institute', 'Acadamic'];
 const deploymentStatuses = ['Pilot', 'Live in production', 'Scaling'];
 const APPLICATION_DEADLINE_CLOSES_AT = '2026-08-16T00:00:00+05:30';
 const APPLICATION_DEADLINE_LABEL = '15 August 2026';
@@ -84,6 +84,8 @@ const defaults = {
 
 const countWords = (value = '') => value.trim().split(/\s+/).filter(Boolean).length;
 const hasApplicationDeadlinePassed = () => Date.now() >= new Date(APPLICATION_DEADLINE_CLOSES_AT).getTime();
+const normalizePhoneNumber = (value = '') => value.replace(/\D/g, '').slice(0, 10);
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const getApiErrorMessage = (error, fallback) => {
   const first = error.response?.data?.errors?.[0];
@@ -316,6 +318,12 @@ const NewApplication = () => {
       ];
       const missing = required.find(([field]) => !values[field]);
       if (missing) return { field: missing[0], message: `Please fill in ${missing[1]}.` };
+      if (!EMAIL_PATTERN.test(values.primaryContactEmail)) {
+        return { field: 'primaryContactEmail', message: 'Please enter a valid email address.' };
+      }
+      if (!/^\d{10}$/.test(values.primaryContactPhone)) {
+        return { field: 'primaryContactPhone', message: 'Please enter a 10 digit phone number.' };
+      }
     }
     if (currentStep === 1) {
       if (!values.categoryId || !categories.some(category => category._id === values.categoryId)) {
@@ -692,8 +700,37 @@ const NewApplication = () => {
                         </div>
                         <div><FieldLabel required>Primary contact name</FieldLabel><input className={fieldClass('primaryContactName')} {...register('primaryContactName')} /><FieldError message={fieldErrors.primaryContactName} /></div>
                         <div><FieldLabel required>Designation</FieldLabel><input className={fieldClass('primaryContactDesignation')} {...register('primaryContactDesignation')} /><FieldError message={fieldErrors.primaryContactDesignation} /></div>
-                        <div><FieldLabel required>Email</FieldLabel><input type="email" className={fieldClass('primaryContactEmail')} {...register('primaryContactEmail')} /><FieldError message={fieldErrors.primaryContactEmail} /></div>
-                        <div><FieldLabel required>Phone</FieldLabel><input className={fieldClass('primaryContactPhone')} {...register('primaryContactPhone')} /><FieldError message={fieldErrors.primaryContactPhone} /></div>
+                        <div>
+                          <FieldLabel required>Email</FieldLabel>
+                          <input
+                            type="email"
+                            className={fieldClass('primaryContactEmail')}
+                            {...register('primaryContactEmail', {
+                              pattern: {
+                                value: EMAIL_PATTERN,
+                                message: 'Please enter a valid email address.',
+                              },
+                              setValueAs: (value) => value.trim(),
+                            })}
+                          />
+                          <FieldError message={fieldErrors.primaryContactEmail} />
+                        </div>
+                        <div>
+                          <FieldLabel required>Phone</FieldLabel>
+                          <input
+                            className={fieldClass('primaryContactPhone')}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            maxLength={10}
+                            {...register('primaryContactPhone', {
+                              setValueAs: normalizePhoneNumber,
+                              onChange: (event) => {
+                                event.target.value = normalizePhoneNumber(event.target.value);
+                              },
+                            })}
+                          />
+                          <FieldError message={fieldErrors.primaryContactPhone} />
+                        </div>
                         <div><FieldLabel>Website/LinkedIn</FieldLabel><input className={inputClass} placeholder="https://..." {...register('websiteLinkedIn')} /></div>
                       </div>
                     </div>

@@ -1652,6 +1652,24 @@ const MAIN_CATEGORIES_MAP = {
   ],
 };
 
+const BROADCAST_STATUS_AUDIENCES = [
+  { value: 'status:submitted', status: 'submitted', label: 'Submitted' },
+  { value: 'status:under_review', status: 'under_review', label: 'Under Review' },
+  { value: 'status:eligible', status: 'eligible', label: 'Eligible' },
+  { value: 'status:shortlisted', status: 'shortlisted', label: 'Shortlisted' },
+  { value: 'status:finalist', status: 'finalist', label: 'Finalist' },
+  { value: 'status:winner', status: 'winner', label: 'Winner' },
+];
+
+const getIntegerTicks = (values = []) => {
+  const maxValue = Math.max(1, ...values.map((value) => Math.ceil(Number(value) || 0)));
+  if (maxValue <= 5) return Array.from({ length: maxValue + 1 }, (_, index) => index);
+
+  const step = Math.ceil(maxValue / 5);
+  const ticks = Array.from({ length: Math.floor(maxValue / step) + 1 }, (_, index) => index * step);
+  return ticks.includes(maxValue) ? ticks : [...ticks, maxValue];
+};
+
 const AdminDashboard = () => {
   const { user, logout, updateUserLocal } = useAuth();
   const navigate = useNavigate();
@@ -1730,7 +1748,7 @@ const AdminDashboard = () => {
   const passwordStrength = passwordRules.filter((rule) => rule.passed).length;
 
   // Broadcast form
-  const { register: regBroadcast, handleSubmit: handleBroadcast, reset: resetBroadcast, watch: watchBroadcast, formState: { isSubmitting: broadcastSubmitting } } = useForm({
+  const { register: regBroadcast, handleSubmit: handleBroadcast, reset: resetBroadcast, watch: watchBroadcast, setValue: setBroadcastValue, formState: { isSubmitting: broadcastSubmitting } } = useForm({
     defaultValues: { role: 'all', title: '', message: '' },
   });
 
@@ -1930,11 +1948,25 @@ const AdminDashboard = () => {
   const broadcastRole = watchBroadcast('role') || 'all';
   const broadcastTitle = watchBroadcast('title') || '';
   const broadcastMessage = watchBroadcast('message') || '';
-  const broadcastAudienceCount = broadcastRole === 'judge'
-    ? judgesList.length
-    : broadcastRole === 'candidate'
-      ? candidatesList.length
-      : users.length;
+  const getStatusAudienceCount = (status) => {
+    const candidateIds = new Set(
+      applications
+        .filter((app) => app.status === status)
+        .map((app) => app.candidate?._id || app.candidate)
+        .filter(Boolean)
+    );
+    return candidateIds.size;
+  };
+  const broadcastStatusAudience = BROADCAST_STATUS_AUDIENCES.find((audience) => audience.value === broadcastRole);
+  const broadcastAudienceLabel = broadcastStatusAudience?.label
+    || (broadcastRole === 'all' ? 'All users' : broadcastRole === 'candidate' ? 'Candidates' : 'Judges');
+  const broadcastAudienceCount = broadcastStatusAudience
+    ? getStatusAudienceCount(broadcastStatusAudience.status)
+    : broadcastRole === 'judge'
+      ? judgesList.length
+      : broadcastRole === 'candidate'
+        ? candidatesList.length
+        : users.length;
 
   // Change Password submit
   const onChangePasswordSubmit = async (data) => {
@@ -2075,7 +2107,12 @@ const AdminDashboard = () => {
   // Broadcast submit
   const onBroadcastSubmit = async (data) => {
     try {
-      await adminService.broadcastNotification(data);
+      const statusAudience = BROADCAST_STATUS_AUDIENCES.find((audience) => audience.value === data.role);
+      const payload = statusAudience
+        ? { ...data, role: 'candidate', status: statusAudience.status }
+        : data;
+
+      await adminService.broadcastNotification(payload);
       toast.success('Broadcast notification sent successfully.');
       resetBroadcast();
     } catch {
@@ -2359,12 +2396,18 @@ const AdminDashboard = () => {
                       </div>
 
                       {/* Category Breakdown chart */}
-                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5 h-80">
+                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5 min-h-80">
                         <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-1.5"><RiAwardLine className="text-gold-400" /> Category Breakdown</h4>
-                        <ResponsiveContainer width="100%" height="85%">
+                        <ResponsiveContainer width="100%" height={210}>
                           <BarChart data={stats.categoryBreakdown}>
                             <XAxis dataKey="name" stroke="#475569" fontSize={8} tickFormatter={(val) => val.split(' ').slice(2).join(' ')} />
-                            <YAxis stroke="#475569" fontSize={10} />
+                            <YAxis
+                              stroke="#475569"
+                              fontSize={10}
+                              allowDecimals={false}
+                              domain={[0, 'dataMax']}
+                              ticks={getIntegerTicks(stats.categoryBreakdown.map((entry) => entry.count))}
+                            />
                             <Tooltip contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #1e293b' }} />
                             <Bar dataKey="count" fill="#00ff87" radius={[4, 4, 0, 0]}>
                               {stats.categoryBreakdown.map((entry, index) => (
@@ -2373,6 +2416,20 @@ const AdminDashboard = () => {
                             </Bar>
                           </BarChart>
                         </ResponsiveContainer>
+                        <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2">
+                          {stats.categoryBreakdown.map((entry, index) => (
+                            <div key={entry.name || index} className="flex items-center justify-between gap-3 rounded-lg bg-navy-950/35 px-3 py-2">
+                              <div className="flex min-w-0 items-center gap-2">
+                                <span
+                                  className="h-2.5 w-2.5 shrink-0 rounded-full"
+                                  style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                                />
+                                <span className="truncate text-[11px] font-medium text-slate-300">{entry.name}</span>
+                              </div>
+                              <span className="shrink-0 font-mono text-[11px] font-semibold text-white">{entry.count}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </div>
 
@@ -2576,6 +2633,7 @@ const AdminDashboard = () => {
                             <th className="p-4">Ref/Title</th>
                             <th className="p-4">Category</th>
                             <th className="p-4">Candidate</th>
+                            <th className="p-4">Phone</th>
                             <th className="p-4">Status</th>
                             <th className="p-4">Judges Panel</th>
                             <th className="p-4 text-center">Score</th>
@@ -2593,6 +2651,9 @@ const AdminDashboard = () => {
                               <td className="p-4">
                                 <div>{app.candidate?.firstName} {app.candidate?.lastName}</div>
                                 <div className="text-[10px] text-slate-500">{app.candidate?.organization}</div>
+                              </td>
+                              <td className="p-4 font-mono text-[11px] text-slate-300">
+                                {app.primaryContactPhone || app.candidate?.phone || 'Not provided'}
                               </td>
                               <td className="p-4">
                                 <select
@@ -3176,7 +3237,7 @@ const AdminDashboard = () => {
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-accent-300">Communication Center</p>
                         <h3 className="mt-1 font-display text-2xl font-black text-white">Send Broadcast Alert</h3>
-                        <p className="mt-1 max-w-2xl text-sm text-slate-400">Dispatch a targeted system notification to candidates, judges, or every registered user.</p>
+                        <p className="mt-1 max-w-2xl text-sm text-slate-400">Dispatch a targeted system notification to candidates, judges, every user, or a selected application status list.</p>
                       </div>
                       <div className="rounded-xl border border-accent-500/20 bg-accent-500/10 px-4 py-3">
                         <div className="text-[10px] font-bold uppercase tracking-wider text-accent-300">Estimated Reach</div>
@@ -3210,6 +3271,23 @@ const AdminDashboard = () => {
                           ))}
                         </div>
 
+                        <div className="mt-5">
+                          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Application Status List</label>
+                          <select
+                            className="input-field"
+                            value={broadcastStatusAudience?.value || ''}
+                            onChange={(event) => setBroadcastValue('role', event.target.value, { shouldDirty: true })}
+                          >
+                            <option value="" disabled>Select application status...</option>
+                            {BROADCAST_STATUS_AUDIENCES.map((audience) => (
+                              <option key={audience.value} value={audience.value}>
+                                {audience.label} ({getStatusAudienceCount(audience.status)})
+                              </option>
+                            ))}
+                          </select>
+                          <p className="mt-2 text-xs text-slate-500">Use this dropdown to message candidates whose applications are currently in that stage.</p>
+                        </div>
+
                         <div className="mt-6 space-y-4">
                           <div>
                             <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">Alert Title</label>
@@ -3227,7 +3305,7 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="text-xs text-slate-500">This sends an in-app notification immediately.</p>
+                          <p className="text-xs text-slate-500">This sends an in-app notification and email immediately.</p>
                           <button type="submit" disabled={broadcastSubmitting} className="btn-primary min-w-[180px] disabled:cursor-not-allowed disabled:opacity-60">
                             {broadcastSubmitting ? (
                               <><span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Sending...</>
@@ -3262,7 +3340,7 @@ const AdminDashboard = () => {
                           <div className="mt-4 space-y-3 text-sm">
                             <div className="flex justify-between rounded-xl bg-navy-950/40 px-3 py-2">
                               <span className="text-slate-400">Audience</span>
-                              <span className="font-semibold text-white">{broadcastRole === 'all' ? 'All users' : broadcastRole === 'candidate' ? 'Candidates' : 'Judges'}</span>
+                              <span className="font-semibold text-white">{broadcastAudienceLabel}</span>
                             </div>
                             <div className="flex justify-between rounded-xl bg-navy-950/40 px-3 py-2">
                               <span className="text-slate-400">Recipients</span>
@@ -3270,7 +3348,7 @@ const AdminDashboard = () => {
                             </div>
                             <div className="flex justify-between rounded-xl bg-navy-950/40 px-3 py-2">
                               <span className="text-slate-400">Channel</span>
-                              <span className="font-semibold text-white">In-app alert</span>
+                              <span className="font-semibold text-white">In-app alert + email</span>
                             </div>
                           </div>
                         </div>

@@ -234,6 +234,33 @@ const sendJudgeReminder = async (judge, pendingCount, deadlineStr) => {
   await sendEmail({ to: judge.email, subject: '⚠️ Action Required: Pending Evaluations Reminder — AI Awards', html });
 };
 
+/**
+ * Send admin broadcast email
+ */
+const sendBroadcastEmail = async (user, { title, message, link }) => {
+  const dashboardUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}${link || '/dashboard'}`;
+  const html = `
+    <div style="font-family:'Segoe UI',sans-serif;max-width:560px;margin:auto;padding:30px;background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:16px;color:#e2e8f0;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <h1 style="color:#818cf8;margin:0;">National AI Awards Sri Lanka</h1>
+        <p style="color:#94a3b8;font-size:13px;">Broadcast Alert</p>
+      </div>
+      <p>Hi <strong>${user.firstName || 'there'}</strong>,</p>
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:18px;margin:18px 0;">
+        <h2 style="color:#f8fafc;font-size:18px;margin:0 0 12px;">${title}</h2>
+        <p style="color:#cbd5e1;font-size:14px;line-height:1.7;margin:0;">${message}</p>
+      </div>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${dashboardUrl}" style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Open Dashboard</a>
+      </div>
+      <p style="color:#94a3b8;font-size:13px;">You can also view this alert in your portal notifications.</p>
+      <hr style="border:1px solid #334155;margin:24px 0;">
+      <p style="color:#64748b;font-size:11px;text-align:center;">National AI Awards Sri Lanka 2026</p>
+    </div>`;
+
+  await sendEmail({ to: user.email, subject: title, html });
+};
+
 module.exports = {
   sendEmail,
   sendOTPEmail,
@@ -244,5 +271,4 @@ module.exports = {
   sendPasswordChangedEmail,
   sendApplicationStatusUpdate,
   sendJudgeInvitation,
-  sendJudgeReminder,
 };

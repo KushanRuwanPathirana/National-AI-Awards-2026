@@ -5,7 +5,10 @@ const Category = require('../models/Category.model');
 const AuditLog = require('../models/AuditLog.model');
 const Notification = require('../models/Notification.model');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
+const { sendBroadcastEmail } = require('../services/email.service');
 const logger = require('../utils/logger');
+
+const BROADCAST_APPLICATION_STATUSES = ['submitted', 'under_review', 'eligible', 'shortlisted', 'finalist', 'winner'];
 
 // ── Dashboard Stats ─────────────────────────────────────────────────────────────
 const getDashboardStats = async (req, res, next) => {
@@ -215,17 +218,44 @@ const getAuditLogs = async (req, res, next) => {
 // ── Broadcast Notification ─────────────────────────────────────────────────────
 const broadcastNotification = async (req, res, next) => {
   try {
-    const { title, message, role, link } = req.body;
+    const { title, message, role, status, link } = req.body;
     if (!title || !message) return errorResponse(res, { statusCode: 400, message: 'Title and message required.' });
 
-    const filter = {};
-    if (role && role !== 'all') filter.role = role;
+    let users = [];
 
-    const users = await User.find(filter).select('_id');
-    const notifications = users.map(u => ({ recipient: u._id, type: 'system', title, message, link }));
-    await Notification.insertMany(notifications);
+    if (status) {
+      if (!BROADCAST_APPLICATION_STATUSES.includes(status)) {
+        return errorResponse(res, { statusCode: 400, message: 'Invalid application status audience.' });
+      }
 
-    return successResponse(res, { message: `Notification sent to ${users.length} user(s).` });
+      const candidateIds = await Application.distinct('candidate', { status });
+      users = await User.find({ _id: { $in: candidateIds }, role: 'candidate' }).select('_id firstName email');
+    } else {
+      const filter = {};
+      if (role && role !== 'all') filter.role = role;
+      users = await User.find(filter).select('_id firstName email');
+    }
+
+    const alertLink = link || '/dashboard';
+    const notifications = users.map(u => ({ recipient: u._id, type: 'system', title, message, link: alertLink }));
+    if (notifications.length > 0) await Notification.insertMany(notifications);
+
+    const emailResults = await Promise.allSettled(
+      users
+        .filter(user => user.email)
+        .map(user => sendBroadcastEmail(user, { title, message, link: alertLink }))
+    );
+    const failedEmailCount = emailResults.filter(result => result.status === 'rejected').length;
+    if (failedEmailCount > 0) {
+      logger.error(`Broadcast email failed for ${failedEmailCount} user(s).`);
+    }
+
+    return successResponse(res, {
+      message: failedEmailCount > 0
+        ? `Notification sent to ${users.length} user(s). Email failed for ${failedEmailCount} user(s).`
+        : `Notification and email sent to ${users.length} user(s).`,
+      data: { recipients: users.length, failedEmailCount },
+    });
   } catch (error) { next(error); }
 };
 
