@@ -310,7 +310,7 @@ const NewApplication = () => {
       const required = [
         ['organisationName', 'Organisation/Individual name'],
         ['sectorIndustry', 'Sector/Industry'],
-        ['organisationSize', 'Organisation size'],
+        ['organisationSize', 'Organization Type'],
         ['primaryContactName', 'Primary contact name'],
         ['primaryContactDesignation', 'Designation'],
         ['primaryContactEmail', 'Email'],
@@ -691,9 +691,9 @@ const NewApplication = () => {
                         </div>
                         <div><FieldLabel required>Sector/Industry</FieldLabel><input className={fieldClass('sectorIndustry')} {...register('sectorIndustry')} /><FieldError message={fieldErrors.sectorIndustry} /></div>
                         <div>
-                          <FieldLabel required>Organisation size</FieldLabel>
+                          <FieldLabel required>Organization Type</FieldLabel>
                           <select className={fieldClass('organisationSize')} {...register('organisationSize')}>
-                            <option value="">Select size...</option>
+                            <option value="">Select Type...</option>
                             {organisationSizes.map(size => <option key={size} value={size} className="bg-navy-950">{size}</option>)}
                           </select>
                           <FieldError message={fieldErrors.organisationSize} />
