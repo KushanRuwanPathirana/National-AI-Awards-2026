@@ -38,7 +38,6 @@ const applicationSchema = new mongoose.Schema(
     category: {
       type: mongoose.Schema.Types.ObjectId,
       ref: 'Category',
-      required: [true, 'Award category is required'],
     },
     assignedJudges: [{
       type: mongoose.Schema.Types.ObjectId,
@@ -57,7 +56,6 @@ const applicationSchema = new mongoose.Schema(
     // Step 1: Basic Info
     projectTitle: {
       type: String,
-      required: [true, 'Project title is required'],
       trim: true,
       maxlength: [150, 'Project title cannot exceed 150 characters'],
     },

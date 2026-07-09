@@ -76,32 +76,31 @@ const createApplication = async (req, res, next) => {
   try {
     const { categoryId, projectTitle, tagline, organisationName, organizationName } = req.body;
 
-    if (!categoryId || !projectTitle) {
-      return errorResponse(res, { statusCode: 400, message: 'Category and project title are required.' });
-    }
-    if (!mongoose.Types.ObjectId.isValid(categoryId)) {
-      return errorResponse(res, { statusCode: 400, message: 'Please select a valid award category.' });
-    }
+    if (categoryId) {
+      if (!mongoose.Types.ObjectId.isValid(categoryId)) {
+        return errorResponse(res, { statusCode: 400, message: 'Please select a valid award category.' });
+      }
 
-    const category = await Category.findById(categoryId);
-    if (!category || !category.isActive) {
-      return errorResponse(res, { statusCode: 404, message: 'Category not found or inactive.' });
+      const category = await Category.findById(categoryId);
+      if (!category || !category.isActive) {
+        return errorResponse(res, { statusCode: 404, message: 'Category not found or inactive.' });
+      }
     }
 
     const application = await Application.create({
       candidate: req.user._id,
-      category: categoryId,
+      ...(categoryId ? { category: categoryId } : {}),
       projectTitle,
       tagline,
       organisationName: organisationName || organizationName,
       organizationName: organisationName || organizationName,
       registrationNumber: req.user.registrationNumber || '',
       status: APPLICATION_STATUS.DRAFT,
-      completedStep: 1,
+      completedStep: req.body.completedStep || 0,
       statusHistory: [{ status: APPLICATION_STATUS.DRAFT, changedBy: req.user._id, note: 'Application created' }],
     });
 
-    await createAuditLog({ action: 'application_created', performedBy: req.user._id, targetId: application._id, description: `New draft: ${projectTitle}`, req });
+    await createAuditLog({ action: 'application_created', performedBy: req.user._id, targetId: application._id, description: `New draft: ${projectTitle || organisationName || organizationName || 'Untitled application'}`, req });
 
     return successResponse(res, { statusCode: 201, message: 'Application draft created.', data: { application } });
   } catch (error) { next(error); }
@@ -118,7 +117,7 @@ const updateApplication = async (req, res, next) => {
       return errorResponse(res, { statusCode: 400, message: 'Only draft applications can be edited.' });
     }
 
-    if (req.body.categoryId !== undefined) {
+    if (req.body.categoryId) {
       if (!mongoose.Types.ObjectId.isValid(req.body.categoryId)) {
         return errorResponse(res, { statusCode: 400, message: 'Please select a valid award category.' });
       }
@@ -165,6 +164,9 @@ const submitApplication = async (req, res, next) => {
     if (!application) return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
     if (application.status !== APPLICATION_STATUS.DRAFT) {
       return errorResponse(res, { statusCode: 400, message: 'Only draft applications can be submitted.' });
+    }
+    if (!application.category || !application.projectTitle) {
+      return errorResponse(res, { statusCode: 400, message: 'Please select a category and enter a project title before submitting.' });
     }
     if (!application.declarationAccepted) {
       return errorResponse(res, { statusCode: 400, message: 'You must accept the declaration before submitting.' });

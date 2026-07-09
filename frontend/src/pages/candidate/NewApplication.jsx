@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { toast } from 'react-hot-toast';
 import {
   RiArrowLeftLine, RiArrowRightLine, RiCheckLine, RiCloseLine,
-  RiFileTextLine, RiShieldCheckLine, RiUploadCloud2Line,
+  RiFileTextLine, RiSave3Line, RiShieldCheckLine, RiUploadCloud2Line,
 } from 'react-icons/ri';
 import Button from '../../components/shared/Button';
 import categoryService from '../../services/category.service';
@@ -106,6 +106,7 @@ const NewApplication = () => {
   const [loadingDraft, setLoadingDraft] = useState(false);
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [savingDraft, setSavingDraft] = useState(false);
   const [fieldErrors, setFieldErrors] = useState({});
 
   const { register, handleSubmit, watch, reset, getValues, setValue } = useForm({ defaultValues: defaults });
@@ -199,63 +200,61 @@ const NewApplication = () => {
     fetchDraft();
   }, [candidateRegistrationNumber, draftQueryId, navigate, reset]);
 
-  const buildPayload = (values) => ({
-    organisationName: values.organisationName,
-    organizationName: values.organisationName,
-    registrationNumber: candidateRegistrationNumber,
-    sectorIndustry: values.sectorIndustry,
-    organisationSize: values.organisationSize,
-    primaryContactName: values.primaryContactName,
-    primaryContactDesignation: values.primaryContactDesignation,
-    primaryContactEmail: values.primaryContactEmail,
-    primaryContactPhone: values.primaryContactPhone,
-    websiteLinkedIn: values.websiteLinkedIn,
-    categoryId: values.categoryId,
-    projectTitle: values.projectTitle,
-    tagline: values.tagline,
-    problemStatement: values.problemStatement,
-    solution: values.solution,
-    deploymentStatus: values.deploymentStatus,
-    launchDate: values.launchDate,
-    customerReferenceRevenue: values.customerReferenceRevenue,
-    innovationOriginality: values.innovationOriginality,
-    measurableImpact: values.measurableImpact,
-    technicalExcellence: values.technicalExcellence,
-    responsibleAI: values.responsibleAI,
-    scalabilitySustainability: values.scalabilitySustainability,
-    executionEvidence: values.executionEvidence,
-    innovationDetails: values.innovationOriginality,
-    impactDetails: values.measurableImpact,
-    aiTechnologies: values.technicalExcellence,
-    projectUrl: values.projectUrl,
-    demoVideoUrl: values.demoVideoUrl,
-    testimonialOne: values.testimonialOne,
-    testimonialTwo: values.testimonialTwo,
-    nationalRelevance: values.nationalRelevance,
-    eligibilityAnswers: [{
-      question: 'I confirm this entry meets the eligibility criteria for the selected category.',
-      answer: !!values.categoryEligibilityConfirmed,
-    }],
-    isEligible: !!values.categoryEligibilityConfirmed,
-    categoryEligibilityConfirmed: !!values.categoryEligibilityConfirmed,
-    declarationAccepted: !!values.declarationAccepted,
-    verificationConsent: !!values.verificationConsent,
-    promotionalConsent: !!values.promotionalConsent,
-    conflictDisclosure: values.conflictDisclosure,
-    submissionFeeAcknowledged: !!values.submissionFeeAcknowledged,
-    completedStep: Math.min(currentStep + 1, steps.length),
-  });
-
-  const ensureDraft = async () => {
-    if (draftId) return draftId;
-    const values = getValues();
-    const { data } = await applicationService.createDraft({
-      categoryId: values.categoryId,
-      projectTitle: values.projectTitle,
-      tagline: values.tagline,
+  const buildPayload = (values, completedStep = Math.min(currentStep + 1, steps.length)) => {
+    const payload = {
       organisationName: values.organisationName,
       organizationName: values.organisationName,
-    });
+      registrationNumber: candidateRegistrationNumber,
+      sectorIndustry: values.sectorIndustry,
+      organisationSize: values.organisationSize,
+      primaryContactName: values.primaryContactName,
+      primaryContactDesignation: values.primaryContactDesignation,
+      primaryContactEmail: values.primaryContactEmail,
+      primaryContactPhone: values.primaryContactPhone,
+      websiteLinkedIn: values.websiteLinkedIn,
+      projectTitle: values.projectTitle,
+      tagline: values.tagline,
+      problemStatement: values.problemStatement,
+      solution: values.solution,
+      deploymentStatus: values.deploymentStatus,
+      customerReferenceRevenue: values.customerReferenceRevenue,
+      innovationOriginality: values.innovationOriginality,
+      measurableImpact: values.measurableImpact,
+      technicalExcellence: values.technicalExcellence,
+      responsibleAI: values.responsibleAI,
+      scalabilitySustainability: values.scalabilitySustainability,
+      executionEvidence: values.executionEvidence,
+      innovationDetails: values.innovationOriginality,
+      impactDetails: values.measurableImpact,
+      aiTechnologies: values.technicalExcellence,
+      projectUrl: values.projectUrl,
+      demoVideoUrl: values.demoVideoUrl,
+      testimonialOne: values.testimonialOne,
+      testimonialTwo: values.testimonialTwo,
+      nationalRelevance: values.nationalRelevance,
+      eligibilityAnswers: [{
+        question: 'I confirm this entry meets the eligibility criteria for the selected category.',
+        answer: !!values.categoryEligibilityConfirmed,
+      }],
+      isEligible: !!values.categoryEligibilityConfirmed,
+      categoryEligibilityConfirmed: !!values.categoryEligibilityConfirmed,
+      declarationAccepted: !!values.declarationAccepted,
+      verificationConsent: !!values.verificationConsent,
+      promotionalConsent: !!values.promotionalConsent,
+      conflictDisclosure: values.conflictDisclosure,
+      submissionFeeAcknowledged: !!values.submissionFeeAcknowledged,
+      completedStep,
+    };
+
+    if (values.categoryId) payload.categoryId = values.categoryId;
+    if (values.launchDate) payload.launchDate = values.launchDate;
+
+    return payload;
+  };
+
+  const ensureDraft = async (values = getValues()) => {
+    if (draftId) return draftId;
+    const { data } = await applicationService.createDraft(buildPayload(values, currentStep));
     const id = data.data.application._id;
     setDraftId(id);
     return id;
@@ -319,13 +318,28 @@ const NewApplication = () => {
 
     try {
       setFieldErrors({});
-      if (currentStep >= 2) {
-        const id = await ensureDraft();
-        await applicationService.updateDraft(id, buildPayload(values));
-      }
+      const id = await ensureDraft(values);
+      await applicationService.updateDraft(id, buildPayload(values));
       setCurrentStep(step => step + 1);
     } catch (e) {
       toast.error(getApiErrorMessage(e, 'Failed to save application progress.'));
+    }
+  };
+
+  const handleSaveDraft = async () => {
+    const values = getValues();
+
+    try {
+      setSavingDraft(true);
+      setFieldErrors({});
+      const id = await ensureDraft(values);
+      await applicationService.updateDraft(id, buildPayload(values, currentStep));
+      toast.success('Draft saved successfully.');
+      navigate('/dashboard?tab=drafts');
+    } catch (e) {
+      toast.error(getApiErrorMessage(e, 'Failed to save draft.'));
+    } finally {
+      setSavingDraft(false);
     }
   };
 
@@ -636,15 +650,20 @@ const NewApplication = () => {
                 </motion.div>
               </AnimatePresence>
 
-              <div className="flex justify-between items-center border-t border-white/10 mt-8 pt-6">
+              <div className="flex flex-col sm:flex-row justify-between gap-3 border-t border-white/10 mt-8 pt-6">
                 <button type="button" onClick={() => setCurrentStep(step => step - 1)} disabled={currentStep === 0} className="btn-ghost !px-4 !py-2 text-xs flex items-center gap-1.5" style={currentStep === 0 ? { opacity: 0.5, cursor: 'not-allowed' } : {}}>
                   <RiArrowLeftLine /> Previous
                 </button>
-                {currentStep < steps.length - 1 ? (
-                  <Button variant="primary" className="text-xs" onClick={handleNext}>Save & Continue <RiArrowRightLine /></Button>
-                ) : (
-                  <Button variant="gold" className="text-xs" onClick={handleSubmit(onSubmit)}>Submit Application <RiCheckLine /></Button>
-                )}
+                <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+                  <Button variant="ghost" className="text-xs !px-4 !py-2" onClick={handleSaveDraft} loading={savingDraft}>
+                    Save Draft <RiSave3Line />
+                  </Button>
+                  {currentStep < steps.length - 1 ? (
+                    <Button variant="primary" className="text-xs" onClick={handleNext}>Save & Continue <RiArrowRightLine /></Button>
+                  ) : (
+                    <Button variant="gold" className="text-xs" onClick={handleSubmit(onSubmit)}>Submit Application <RiCheckLine /></Button>
+                  )}
+                </div>
               </div>
             </div>
           </>

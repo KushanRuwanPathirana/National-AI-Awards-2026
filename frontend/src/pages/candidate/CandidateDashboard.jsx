@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-hot-toast';
@@ -110,6 +110,11 @@ const NAV_ITEMS = [
 ];
 
 const DIVIDER_AFTER = ['submitted']; // visual divider after these IDs
+const VALID_TABS = new Set([
+  ...NAV_ITEMS.map(item => item.id),
+  'profile',
+  'password',
+]);
 
 /* ─── Inline FAQ accordion ───────────────────────────────────────────────── */
 const FAQItem = ({ faq, isOpen, onToggle }) => (
@@ -149,6 +154,7 @@ const FAQItem = ({ faq, isOpen, onToggle }) => (
 const CandidateDashboard = () => {
   const { user, logout, updateUserLocal } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeTab, setActiveTab] = useState('overview');
   const [imageUploading, setImageUploading] = useState(false);
   const [applications, setApplications] = useState([]);
@@ -201,6 +207,13 @@ const CandidateDashboard = () => {
   useEffect(() => {
     fetchApps();
   }, []);
+
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab && VALID_TABS.has(tab)) {
+      setActiveTab(tab);
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     if (activeTab === 'messages') fetchNotifications();
@@ -275,6 +288,7 @@ const CandidateDashboard = () => {
   /* ── Tab switch helper ───────────────────────────────────────────────── */
   const switchTab = (id) => {
     setActiveTab(id);
+    setSearchParams(id === 'overview' ? {} : { tab: id });
     setSidebarOpen(false);
   };
 
