@@ -861,20 +861,16 @@ const JudgePortal = () => {
 
         {/* Judges Grid Layout */}
         <div className="relative">
-          <motion.div
-            layout
-            className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6"
-          >
-            <AnimatePresence mode="popLayout">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <AnimatePresence mode="wait">
               {filteredJudges.map((judge) => (
                 <Link key={judge.id} to={`/judge-portal/${judge.id}`}>
                   <motion.div
-                    layout
-                    initial={{ opacity: 0, scale: 0.95 }}
-                    animate={{ opacity: 1, scale: 1 }}
-                    exit={{ opacity: 0, scale: 0.95 }}
-                    transition={{ duration: 0.3 }}
-                    className="glass-card p-6 flex flex-col items-center text-center cursor-pointer border border-white/10 hover:border-accent-500/50 hover:shadow-glow transition-all duration-300 group"
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    transition={{ duration: 0.2, ease: 'easeInOut' }}
+                    className="glass-card p-6 flex flex-col items-center text-center cursor-pointer border border-white/10 hover:border-accent-500/50 hover:shadow-glow transition-all duration-300 group h-full"
                   >
                     {/* Circular Portrait with Glowing Border */}
                     <JudgeAvatar judge={judge} variant="card" />
@@ -907,7 +903,7 @@ const JudgePortal = () => {
                 </Link>
               ))}
             </AnimatePresence>
-          </motion.div>
+          </div>
 
           {/* Empty Results Placeholder */}
           {filteredJudges.length === 0 && (
