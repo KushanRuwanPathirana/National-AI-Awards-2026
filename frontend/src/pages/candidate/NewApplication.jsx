@@ -75,7 +75,8 @@ const defaults = {
 
 const countWords = (value = '') => value.trim().split(/\s+/).filter(Boolean).length;
 const hasApplicationDeadlinePassed = () => Date.now() >= new Date(APPLICATION_DEADLINE_CLOSES_AT).getTime();
-const digitsOnly = (value = '') => value.replace(/\D/g, '');
+const normalizePhoneNumber = (value = '') => value.replace(/\D/g, '').slice(0, 10);
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 const getApiErrorMessage = (error, fallback) => {
   const first = error.response?.data?.errors?.[0];
@@ -278,8 +279,11 @@ const NewApplication = () => {
       ];
       const missing = required.find(([field]) => !values[field]);
       if (missing) return { field: missing[0], message: `Please fill in ${missing[1]}.` };
-      if (!/^\d+$/.test(values.primaryContactPhone)) {
-        return { field: 'primaryContactPhone', message: 'Please enter numbers only.' };
+      if (!EMAIL_PATTERN.test(values.primaryContactEmail)) {
+        return { field: 'primaryContactEmail', message: 'Please enter a valid email address.' };
+      }
+      if (!/^\d{10}$/.test(values.primaryContactPhone)) {
+        return { field: 'primaryContactPhone', message: 'Please enter a 10 digit phone number.' };
       }
     }
     if (currentStep === 1) {
@@ -539,17 +543,32 @@ const NewApplication = () => {
                         </div>
                         <div><FieldLabel required>Primary contact name</FieldLabel><input className={fieldClass('primaryContactName')} {...register('primaryContactName')} /><FieldError message={fieldErrors.primaryContactName} /></div>
                         <div><FieldLabel required>Designation</FieldLabel><input className={fieldClass('primaryContactDesignation')} {...register('primaryContactDesignation')} /><FieldError message={fieldErrors.primaryContactDesignation} /></div>
-                        <div><FieldLabel required>Email</FieldLabel><input type="email" className={fieldClass('primaryContactEmail')} {...register('primaryContactEmail')} /><FieldError message={fieldErrors.primaryContactEmail} /></div>
+                        <div>
+                          <FieldLabel required>Email</FieldLabel>
+                          <input
+                            type="email"
+                            className={fieldClass('primaryContactEmail')}
+                            {...register('primaryContactEmail', {
+                              pattern: {
+                                value: EMAIL_PATTERN,
+                                message: 'Please enter a valid email address.',
+                              },
+                              setValueAs: (value) => value.trim(),
+                            })}
+                          />
+                          <FieldError message={fieldErrors.primaryContactEmail} />
+                        </div>
                         <div>
                           <FieldLabel required>Phone</FieldLabel>
                           <input
                             className={fieldClass('primaryContactPhone')}
                             inputMode="numeric"
                             pattern="[0-9]*"
+                            maxLength={10}
                             {...register('primaryContactPhone', {
-                              setValueAs: digitsOnly,
+                              setValueAs: normalizePhoneNumber,
                               onChange: (event) => {
-                                event.target.value = digitsOnly(event.target.value);
+                                event.target.value = normalizePhoneNumber(event.target.value);
                               },
                             })}
                           />
