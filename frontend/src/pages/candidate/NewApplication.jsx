@@ -23,7 +23,7 @@ const baseSteps = [
   { label: 'Consent' },
 ];
 
-const organisationSizes = ['Univercity student', 'Startup', 'Coparate', 'Gov Institute', 'Acadamic'];
+const organisationSizes = ['Univercity student', 'Startup', 'Coparate', 'Gov Institute', 'Academic'];
 const deploymentStatuses = ['Pilot', 'Live in production', 'Scaling'];
 const APPLICATION_DEADLINE_CLOSES_AT = '2026-08-16T00:00:00+05:30';
 const APPLICATION_DEADLINE_LABEL = '15 August 2026';
