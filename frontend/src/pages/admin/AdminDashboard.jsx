@@ -30,23 +30,22 @@ const STATUS_LABELS = {
   under_review: 'Under Review',
   eligible: 'Eligible',
   ineligible: 'Ineligible',
-  shortlisted: 'Shortlisted',
+  initial_stage: 'Initial State',
+  f2f_stage: 'Selected to Face-to-Face',
   finalist: 'Finalist',
   winner: 'Winner',
-  runner_up: 'Runner-up',
+  runner_up: '1st Runner-up',
 };
 
-const STATUS_TRANSITIONS = {
-  draft: ['submitted'],
-  submitted: ['under_review', 'draft'],
-  under_review: ['eligible', 'ineligible'],
-  eligible: ['shortlisted', 'under_review'],
-  ineligible: ['under_review'],
-  shortlisted: ['finalist', 'eligible'],
-  finalist: ['winner', 'runner_up', 'shortlisted'],
-  winner: [],
-  runner_up: [],
-};
+const ADMIN_STATUS_OPTIONS = [
+  { value: 'eligible', label: 'Eligible' },
+  { value: 'ineligible', label: 'Ineligible' },
+  { value: 'initial_stage', label: 'Initial State' },
+  { value: 'f2f_stage', label: 'Selected to Face-to-Face' },
+  { value: 'finalist', label: 'Finalist' },
+  { value: 'winner', label: 'Winner' },
+  { value: 'runner_up', label: '1st Runner-up' },
+];
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -817,10 +816,11 @@ const AdminDashboard = () => {
                           <option value="">All Statuses</option>
                           <option value="submitted">Submitted</option>
                           <option value="under_review">Under Review</option>
-                          <option value="eligible">Eligible</option>
-                          <option value="shortlisted">Shortlisted</option>
-                          <option value="finalist">Finalist</option>
-                          <option value="winner">Winner</option>
+                          {ADMIN_STATUS_OPTIONS.map((statusOption) => (
+                            <option key={statusOption.value} value={statusOption.value}>
+                              {statusOption.label}
+                            </option>
+                          ))}
                         </select>
                       </div>
                     </div>
@@ -851,24 +851,22 @@ const AdminDashboard = () => {
                                 <div className="text-[10px] text-slate-500">{app.candidate?.organization}</div>
                               </td>
                               <td className="p-4">
-                                {(() => {
-                                  const nextStatuses = STATUS_TRANSITIONS[app.status] || [];
-                                  return (
                                 <select
                                   className="bg-navy-900 border border-white/10 rounded px-2 py-1 text-[10px]"
                                   value={app.status}
                                   onChange={(e) => handleStatusChange(app._id, e.target.value)}
-                                  disabled={nextStatuses.length === 0}
                                 >
-                                  <option value={app.status}>{app.statusLabel || STATUS_LABELS[app.status] || app.status}</option>
-                                  {nextStatuses.map(status => (
-                                    <option key={status} value={status}>
-                                      {STATUS_LABELS[status] || status}
+                                  {!ADMIN_STATUS_OPTIONS.some((statusOption) => statusOption.value === app.status) && (
+                                    <option value={app.status}>
+                                      {app.statusLabel || STATUS_LABELS[app.status] || app.status}
+                                    </option>
+                                  )}
+                                  {ADMIN_STATUS_OPTIONS.map((statusOption) => (
+                                    <option key={statusOption.value} value={statusOption.value}>
+                                      {statusOption.label}
                                     </option>
                                   ))}
                                 </select>
-                                  );
-                                })()}
                               </td>
                               <td className="p-4">
                                 <div className="space-y-1">
