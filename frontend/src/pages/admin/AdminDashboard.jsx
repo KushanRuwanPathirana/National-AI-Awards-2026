@@ -1185,7 +1185,7 @@ const AdminDashboard = () => {
             animate={{ opacity: 1, y: 0 }}
             className={`glass-card p-8 !hover:transform-none ${
               activeTab === 'judge-management'
-                ? 'h-[calc(100vh-10rem)] min-h-[500px] min-w-0 overflow-hidden'
+                ? 'h-[calc(100vh-4rem)] min-h-[640px] min-w-0 overflow-hidden'
                 : ['applications', 'users'].includes(activeTab) ? '' : 'min-h-[500px]'
             }`}
           >
