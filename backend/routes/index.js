@@ -11,6 +11,8 @@ const contentRoutes      = require('./content.routes');
 const notificationRoutes = require('./notification.routes');
 const adminRoutes        = require('./admin.routes');
 const judgeRoutes        = require('./judge.routes');
+const awardImageRoutes   = require('./awardImage.routes');
+const awardImageCategoryRoutes = require('./awardImageCategory.routes');
 
 // Mount routes
 router.use('/auth',          authRoutes);
@@ -24,6 +26,8 @@ router.use('/notifications', notificationRoutes);
 router.use('/admin',         adminRoutes);
 router.use('/judges',        judgeRoutes);
 router.use('/payment',       require('./payment.routes'));
+router.use('/award-images',  awardImageRoutes);
+router.use('/award-image-categories', awardImageCategoryRoutes);
 // Health check
 router.get("/health", (req, res) => {
   res.status(200).json({

@@ -38,9 +38,17 @@ const errorHandler = (err, req, res, next) => {
       message = 'Uploaded file is too large. Maximum allowed size is 10MB.';
     } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
       message = 'Unexpected upload field. Please upload documents using the documents field.';
+    } else if (err.code === 'LIMIT_FILE_COUNT') {
+      message = 'Too many files uploaded.';
     } else {
       message = err.message || 'File upload failed.';
     }
+  }
+
+  // Multer file filter errors (custom errors from fileFilter)
+  if (err.message && err.message.includes('File type not allowed')) {
+    statusCode = 400;
+    message = err.message;
   }
 
   // JWT errors

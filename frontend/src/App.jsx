@@ -20,6 +20,7 @@ import ResetPassword  from './pages/ResetPassword';
 import ScrollToTop   from './components/shared/ScrollToTop';
 import PrivacyPolicy from './pages/PrivacyPolicy';
 import TermsOfUse    from './pages/TermsOfUse';
+import AwardImages  from './pages/AwardImages';
 
 // Dashboards & Wizards
 import CandidateDashboard from './pages/candidate/CandidateDashboard';
@@ -69,6 +70,7 @@ const App = () => (
           <Route path="apply"       element={<ApplyNow />} />
           <Route path="judge-portal" element={<JudgePortal />} />
           <Route path="judge-portal/:id" element={<JudgeDetail />} />
+          <Route path="award-images" element={<AwardImages />} />
           <Route path="login"       element={<Login />} />
           <Route path="forgot-password" element={<ForgotPassword />} />
           <Route path="reset-password"  element={<ResetPassword />} />

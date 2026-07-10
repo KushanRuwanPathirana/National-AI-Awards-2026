@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import ApplyLink from '../components/shared/ApplyLink';
 import { motion, useScroll, useTransform } from 'framer-motion';
@@ -8,12 +8,14 @@ import {
   RiShieldLine, RiBarChartLine, RiStarLine, RiArrowRightLine,
   RiCheckLine, RiCalendarLine, RiPhoneLine, RiLightbulbLine,
   RiMicroscopeLine, RiCameraLensLine, RiTranslate2, RiCommunityLine,
-  RiUserLine,
+  RiUserLine, RiImageLine,
 } from 'react-icons/ri';
 import { FaQuoteLeft } from 'react-icons/fa';
 import SectionHeader from '../components/shared/SectionHeader';
 import Button from '../components/shared/Button';
 import heroBackground from '../assets/ai-awards-hero-bg.png';
+import { awardImageService } from '../services/awardImage.service';
+import { buildAssetUrl } from '../services/api';
 
 
 // ─── Data ──────────────────────────────────────────────────────────────────────
@@ -116,9 +118,28 @@ const stagger = { show: { transition: { staggerChildren: 0.1 } } };
 // ─── Component ─────────────────────────────────────────────────────────────────
 const Home = () => {
   const heroRef = useRef(null);
+  const [homepageImages, setHomepageImages] = useState([]);
+  const [imagesLoading, setImagesLoading] = useState(true);
+
   const { scrollYProgress } = useScroll({ target: heroRef, offset: ['start start', 'end start'] });
   const heroY = useTransform(scrollYProgress, [0, 1], ['0%', '30%']);
   const heroOpacity = useTransform(scrollYProgress, [0, 0.7], [1, 0]);
+
+  useEffect(() => {
+    fetchHomepageImages();
+  }, []);
+
+  const fetchHomepageImages = async () => {
+    try {
+      setImagesLoading(true);
+      const response = await awardImageService.getHomepageImages(12);
+      setHomepageImages(response.data.data.images);
+    } catch (error) {
+      console.error('Error fetching homepage images:', error);
+    } finally {
+      setImagesLoading(false);
+    }
+  };
 
   return (
     <div className="overflow-x-hidden">
@@ -587,6 +608,64 @@ const Home = () => {
         </div>
       </section>
 
+      {/* ═══════════════ AWARD IMAGES ═══════════════════════════════════════════ */}
+      <section className="section-py">
+        <div className="section-container">
+          <SectionHeader
+            badge="Gallery"
+            title="Award"
+            highlight="Images"
+            subtitle="Explore official images from the AI Awards, including launch events, judges, keynote speakers, networking sessions, award ceremony highlights, media coverage, and other memorable moments."
+          />
+          
+          {imagesLoading ? (
+            <div className="flex items-center justify-center py-20">
+              <div className="w-12 h-12 border-4 border-accent-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : homepageImages.length === 0 ? (
+            <div className="text-center py-20">
+              <RiImageLine className="w-16 h-16 text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-400 text-lg">No images available yet</p>
+              <p className="text-gray-500 text-sm mt-2">Check back soon for event highlights</p>
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 mb-8">
+                {homepageImages.slice(0, 8).map((image, index) => (
+                  <motion.div
+                    key={image._id}
+                    initial={{ opacity: 0, scale: 0.9 }}
+                    whileInView={{ opacity: 1, scale: 1 }}
+                    viewport={{ once: true }}
+                    transition={{ duration: 0.4, delay: index * 0.05 }}
+                    className="relative group cursor-pointer overflow-hidden rounded-2xl bg-white/5 border border-white/10 aspect-square"
+                  >
+                    <img
+                      src={buildAssetUrl(image.imageUrl)}
+                      alt={image.altText || image.title}
+                      loading="lazy"
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                      <div className="absolute bottom-0 left-0 right-0 p-3">
+                        <p className="text-white font-medium text-sm line-clamp-1">{image.title}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                ))}
+              </div>
+              
+              <div className="text-center">
+                <Link to="/award-images">
+                  <Button variant="ghost">
+                    View Full Gallery <RiArrowRightLine />
+                  </Button>
+                </Link>
+              </div>
+            </>
+          )}
+        </div>
+      </section>
 
       {/* ═══════════════ FAQ ════════════════════════════════════════════════════ */}
       <section className="section-py bg-surface-200/50">

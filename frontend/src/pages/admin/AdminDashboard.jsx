@@ -14,7 +14,7 @@ import {
   RiArrowRightLine, RiFolderShield2Line, RiRefreshLine, RiPulseLine, RiStarLine,
   RiUserLine, RiShieldUserLine, RiPencilLine, RiDeleteBin6Line, RiUploadCloud2Line,
   RiEyeLine, RiSearchLine, RiDeleteBinLine, RiBankCardLine,
-  RiCloseLine, RiFileTextLine,
+  RiCloseLine, RiFileTextLine, RiImageLine, RiFolderLine,
 } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
 import api, { buildAssetUrl } from '../../services/api';
@@ -26,6 +26,7 @@ import judgeService from '../../services/judge.service';
 import { judgeImages } from '../../assets/judges';
 import JudgeAvatar from '../../components/judge/JudgeAvatar';
 import evaluationService from '../../services/evaluation.service';
+import { awardImageService, awardImageCategoryService } from '../../services/awardImage.service';
 
 const COLORS = ['#0072ff', '#00ff87', '#ffc658', '#ff7300', '#d0ed57', '#a4de6c'];
 
@@ -136,6 +137,787 @@ const ADMIN_STATUS_OPTIONS = [
   { value: 'runner_up', label: '1st Runner-up' },
   { value: 'runner_up_2nd', label: '2nd Runner-up' },
 ];
+
+// ─── Award Images Tab Component ─────────────────────────────────────────────────
+const AwardImagesTab = () => {
+  const [images, setImages] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedImage, setSelectedImage] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterYear, setFilterYear] = useState('all');
+
+  useEffect(() => {
+    fetchImages();
+    fetchCategories();
+  }, []);
+
+  const fetchImages = async () => {
+    try {
+      setLoading(true);
+      const response = await awardImageService.getAllImages();
+      setImages(response.data.data.images);
+    } catch (error) {
+      toast.error('Failed to load images');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategories = async () => {
+    try {
+      const response = await awardImageCategoryService.getAllCategories();
+      setCategories(response.data.data.categories);
+    } catch (error) {
+      console.error('Error fetching categories:', error);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this image?')) return;
+    try {
+      await awardImageService.deleteImage(id);
+      toast.success('Image deleted successfully');
+      fetchImages();
+    } catch (error) {
+      toast.error('Failed to delete image');
+    }
+  };
+
+  const handleEdit = (image) => {
+    setSelectedImage(image);
+    setEditModalOpen(true);
+  };
+
+  const filteredImages = images.filter(img => {
+    if (filterCategory !== 'all' && img.categoryId?._id !== filterCategory) return false;
+    if (filterYear !== 'all' && img.eventYear !== parseInt(filterYear)) return false;
+    return true;
+  });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-accent-300">Content Management</p>
+          <h3 className="mt-1 font-display text-2xl font-black text-white">Award Images</h3>
+          <p className="mt-1 max-w-2xl text-sm text-slate-400">Manage gallery images for the AI Awards website.</p>
+        </div>
+        <button
+          onClick={() => setUploadModalOpen(true)}
+          className="flex items-center gap-2 rounded-xl bg-accent-500 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-600 transition-colors"
+        >
+          <RiUploadCloud2Line size={18} />
+          Upload Image
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap gap-4">
+        <select
+          value={filterCategory}
+          onChange={(e) => setFilterCategory(e.target.value)}
+          className="rounded-lg bg-white/5 border border-white/10 px-4 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
+        >
+          <option value="all">All Categories</option>
+          {categories.map(cat => (
+            <option key={cat._id} value={cat._id}>{cat.name}</option>
+          ))}
+        </select>
+        <select
+          value={filterYear}
+          onChange={(e) => setFilterYear(e.target.value)}
+          className="rounded-lg bg-white/5 border border-white/10 px-4 py-2 text-white text-sm focus:outline-none focus:ring-2 focus:ring-accent-500"
+        >
+          <option value="all">All Years</option>
+          {[2026, 2027, 2028, 2029, 2030].map(year => (
+            <option key={year} value={year}>{year}</option>
+          ))}
+        </select>
+      </div>
+
+      {/* Images Table */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="w-12 h-12 border-4 border-accent-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/10">
+                <th className="px-4 py-3 text-left font-semibold text-slate-400">Image</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-400">Title</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-400">Category</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-400">Year</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-400">Featured</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-400">Status</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-400">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filteredImages.map(image => (
+                <tr key={image._id} className="border-b border-white/5 hover:bg-white/5">
+                  <td className="px-4 py-3">
+                    <img
+                      src={buildAssetUrl(image.imageUrl)}
+                      alt={image.title}
+                      className="h-16 w-16 rounded-lg object-cover"
+                    />
+                  </td>
+                  <td className="px-4 py-3 font-medium text-white">{image.title}</td>
+                  <td className="px-4 py-3 text-slate-400">{image.categoryId?.name || '-'}</td>
+                  <td className="px-4 py-3 text-slate-400">{image.eventYear}</td>
+                  <td className="px-4 py-3">
+                    {image.featuredOnHomepage ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/20 px-2 py-1 text-emerald-400 text-xs">
+                        <RiCheckDoubleLine size={12} /> Yes
+                      </span>
+                    ) : (
+                      <span className="text-slate-500 text-xs">No</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex rounded-full px-2 py-1 text-xs ${
+                      image.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'
+                    }`}>
+                      {image.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEdit(image)}
+                        className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                      >
+                        <RiPencilLine size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(image._id)}
+                        className="p-2 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"
+                      >
+                        <RiDeleteBinLine size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {filteredImages.length === 0 && (
+            <div className="text-center py-12 text-slate-400">No images found</div>
+          )}
+        </div>
+      )}
+
+      {/* Upload Modal */}
+      {uploadModalOpen && (
+        <ImageUploadModal
+          onClose={() => setUploadModalOpen(false)}
+          onSuccess={() => {
+            setUploadModalOpen(false);
+            fetchImages();
+          }}
+          categories={categories}
+        />
+      )}
+
+      {/* Edit Modal */}
+      {editModalOpen && selectedImage && (
+        <ImageEditModal
+          image={selectedImage}
+          onClose={() => setEditModalOpen(false)}
+          onSuccess={() => {
+            setEditModalOpen(false);
+            fetchImages();
+          }}
+          categories={categories}
+        />
+      )}
+    </div>
+  );
+};
+
+// ─── Image Upload Modal ─────────────────────────────────────────────────────────
+const ImageUploadModal = ({ onClose, onSuccess, categories }) => {
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [formData, setFormData] = useState({
+    title: '',
+    caption: '',
+    categoryId: '',
+    eventYear: 2026,
+    featuredOnHomepage: false,
+    altText: '',
+    status: 'active',
+  });
+
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setPreview(URL.createObjectURL(selectedFile));
+      setFormData(prev => ({ ...prev, title: selectedFile.name.split('.')[0] }));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!file) {
+      toast.error('Please select an image');
+      return;
+    }
+
+    const data = new FormData();
+    data.append('image', file);
+    Object.entries(formData).forEach(([key, value]) => {
+      if (typeof value === 'boolean') {
+        data.append(key, value.toString());
+      } else {
+        data.append(key, value);
+      }
+    });
+
+    try {
+      setUploading(true);
+      const response = await awardImageService.uploadImage(data);
+      console.log('Upload response:', response);
+      toast.success('Image uploaded successfully');
+      onSuccess();
+    } catch (error) {
+      console.error('Upload error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to upload image';
+      toast.error(errorMessage);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+      <div className="glass-card max-w-lg w-full p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="font-display text-xl font-bold text-white">Upload Image</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white">
+            <RiCloseLine size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* File Upload */}
+          <div className="border-2 border-dashed border-white/20 rounded-xl p-6 text-center hover:border-accent-500/50 transition-colors">
+            <input
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              onChange={handleFileChange}
+              className="hidden"
+              id="image-upload"
+            />
+            <label htmlFor="image-upload" className="cursor-pointer">
+              {preview ? (
+                <img src={preview} alt="Preview" className="h-48 w-full object-contain rounded-lg" />
+              ) : (
+                <div>
+                  <RiUploadCloud2Line size={48} className="mx-auto text-slate-400 mb-2" />
+                  <p className="text-slate-400 text-sm">Click to upload or drag and drop</p>
+                  <p className="text-slate-500 text-xs mt-1">JPG, PNG, WEBP (max 10MB)</p>
+                </div>
+              )}
+            </label>
+          </div>
+
+          {/* Form Fields */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Title *</label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              className="input-field"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Caption</label>
+            <textarea
+              value={formData.caption}
+              onChange={(e) => setFormData(prev => ({ ...prev, caption: e.target.value }))}
+              className="input-field"
+              rows={2}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Category</label>
+            <select
+              value={formData.categoryId}
+              onChange={(e) => setFormData(prev => ({ ...prev, categoryId: e.target.value }))}
+              className="input-field"
+            >
+              <option value="">Select category</option>
+              {categories.map(cat => (
+                <option key={cat._id} value={cat._id}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Event Year</label>
+            <select
+              value={formData.eventYear}
+              onChange={(e) => setFormData(prev => ({ ...prev, eventYear: parseInt(e.target.value) }))}
+              className="input-field"
+            >
+              {[2026, 2027, 2028, 2029, 2030].map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="featured"
+              checked={formData.featuredOnHomepage}
+              onChange={(e) => setFormData(prev => ({ ...prev, featuredOnHomepage: e.target.checked }))}
+              className="w-4 h-4 rounded border-white/20 bg-white/5 text-accent-500 focus:ring-accent-500"
+            />
+            <label htmlFor="featured" className="text-sm text-slate-300">Feature on Homepage</label>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-xl bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={uploading}
+              className="flex-1 rounded-xl bg-accent-500 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-600 disabled:opacity-50 transition-colors"
+            >
+              {uploading ? 'Uploading...' : 'Upload'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// ─── Image Edit Modal ───────────────────────────────────────────────────────────
+const ImageEditModal = ({ image, onClose, onSuccess, categories }) => {
+  const [file, setFile] = useState(null);
+  const [preview, setPreview] = useState(null);
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    title: image.title,
+    caption: image.caption || '',
+    categoryId: image.categoryId?._id || '',
+    eventYear: image.eventYear,
+    featuredOnHomepage: image.featuredOnHomepage,
+    altText: image.altText || '',
+    status: image.status,
+  });
+
+  const handleFileChange = (e) => {
+    const selectedFile = e.target.files[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      setPreview(URL.createObjectURL(selectedFile));
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const data = new FormData();
+    if (file) data.append('image', file);
+    Object.entries(formData).forEach(([key, value]) => {
+      if (typeof value === 'boolean') {
+        data.append(key, value.toString());
+      } else {
+        data.append(key, value);
+      }
+    });
+
+    try {
+      setSaving(true);
+      const response = await awardImageService.updateImage(image._id, data);
+      console.log('Update response:', response);
+      toast.success('Image updated successfully');
+      onSuccess();
+    } catch (error) {
+      console.error('Update error:', error);
+      const errorMessage = error.response?.data?.message || error.message || 'Failed to update image';
+      toast.error(errorMessage);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+      <div className="glass-card max-w-lg w-full p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="font-display text-xl font-bold text-white">Edit Image</h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white">
+            <RiCloseLine size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {/* Current Image */}
+          <div className="border border-white/10 rounded-xl p-4">
+            <img
+              src={preview || buildAssetUrl(image.imageUrl)}
+              alt="Preview"
+              className="h-48 w-full object-contain rounded-lg"
+            />
+            <input
+              type="file"
+              accept="image/jpeg,image/jpg,image/png,image/webp"
+              onChange={handleFileChange}
+              className="mt-3 text-sm text-slate-400"
+            />
+          </div>
+
+          {/* Form Fields */}
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Title *</label>
+            <input
+              type="text"
+              value={formData.title}
+              onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+              className="input-field"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Caption</label>
+            <textarea
+              value={formData.caption}
+              onChange={(e) => setFormData(prev => ({ ...prev, caption: e.target.value }))}
+              className="input-field"
+              rows={2}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Category</label>
+            <select
+              value={formData.categoryId}
+              onChange={(e) => setFormData(prev => ({ ...prev, categoryId: e.target.value }))}
+              className="input-field"
+            >
+              <option value="">Select category</option>
+              {categories.map(cat => (
+                <option key={cat._id} value={cat._id}>{cat.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Event Year</label>
+            <select
+              value={formData.eventYear}
+              onChange={(e) => setFormData(prev => ({ ...prev, eventYear: parseInt(e.target.value) }))}
+              className="input-field"
+            >
+              {[2026, 2027, 2028, 2029, 2030].map(year => (
+                <option key={year} value={year}>{year}</option>
+              ))}
+            </select>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <input
+              type="checkbox"
+              id="featured"
+              checked={formData.featuredOnHomepage}
+              onChange={(e) => setFormData(prev => ({ ...prev, featuredOnHomepage: e.target.checked }))}
+              className="w-4 h-4 rounded border-white/20 bg-white/5 text-accent-500 focus:ring-accent-500"
+            />
+            <label htmlFor="featured" className="text-sm text-slate-300">Feature on Homepage</label>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Status</label>
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+              className="input-field"
+            >
+              <option value="active">Active</option>
+              <option value="hidden">Hidden</option>
+            </select>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-xl bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 rounded-xl bg-accent-500 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-600 disabled:opacity-50 transition-colors"
+            >
+              {saving ? 'Saving...' : 'Save Changes'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+// ─── Award Image Categories Tab Component ───────────────────────────────────────
+const AwardImageCategoriesTab = () => {
+  const [categories, setCategories] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState(null);
+
+  useEffect(() => {
+    fetchCategories();
+  }, []);
+
+  const fetchCategories = async () => {
+    try {
+      setLoading(true);
+      const response = await awardImageCategoryService.getAllCategories();
+      setCategories(response.data.data.categories);
+    } catch (error) {
+      toast.error('Failed to load categories');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    const category = categories.find(c => c._id === id);
+    if (!category) return;
+
+    // Check if category has images
+    const hasImages = window.confirm(`Are you sure you want to delete "${category.name}"?`);
+    if (!hasImages) return;
+
+    try {
+      await awardImageCategoryService.deleteCategory(id);
+      toast.success('Category deleted successfully');
+      fetchCategories();
+    } catch (error) {
+      toast.error('Failed to delete category');
+    }
+  };
+
+  const handleEdit = (category) => {
+    setSelectedCategory(category);
+    setEditModalOpen(true);
+  };
+
+  const handleCreate = () => {
+    setSelectedCategory(null);
+    setEditModalOpen(true);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wider text-accent-300">Content Management</p>
+          <h3 className="mt-1 font-display text-2xl font-black text-white">Image Categories</h3>
+          <p className="mt-1 max-w-2xl text-sm text-slate-400">Manage categories for organizing award images.</p>
+        </div>
+        <button
+          onClick={handleCreate}
+          className="flex items-center gap-2 rounded-xl bg-accent-500 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-600 transition-colors"
+        >
+          <RiFolderLine size={18} />
+          Add Category
+        </button>
+      </div>
+
+      {/* Categories Table */}
+      {loading ? (
+        <div className="flex items-center justify-center py-20">
+          <div className="w-12 h-12 border-4 border-accent-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+      ) : (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-white/10">
+                <th className="px-4 py-3 text-left font-semibold text-slate-400">Name</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-400">Slug</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-400">Display Order</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-400">Status</th>
+                <th className="px-4 py-3 text-left font-semibold text-slate-400">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {categories.map(category => (
+                <tr key={category._id} className="border-b border-white/5 hover:bg-white/5">
+                  <td className="px-4 py-3 font-medium text-white">{category.name}</td>
+                  <td className="px-4 py-3 text-slate-400">{category.slug}</td>
+                  <td className="px-4 py-3 text-slate-400">{category.displayOrder}</td>
+                  <td className="px-4 py-3">
+                    <span className={`inline-flex rounded-full px-2 py-1 text-xs ${
+                      category.status === 'active' ? 'bg-emerald-500/20 text-emerald-400' : 'bg-slate-500/20 text-slate-400'
+                    }`}>
+                      {category.status}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={() => handleEdit(category)}
+                        className="p-2 rounded-lg hover:bg-white/10 text-slate-400 hover:text-white transition-colors"
+                      >
+                        <RiPencilLine size={16} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(category._id)}
+                        className="p-2 rounded-lg hover:bg-red-500/10 text-slate-400 hover:text-red-400 transition-colors"
+                      >
+                        <RiDeleteBinLine size={16} />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {categories.length === 0 && (
+            <div className="text-center py-12 text-slate-400">No categories found</div>
+          )}
+        </div>
+      )}
+
+      {/* Edit/Create Modal */}
+      {editModalOpen && (
+        <CategoryEditModal
+          category={selectedCategory}
+          onClose={() => setEditModalOpen(false)}
+          onSuccess={() => {
+            setEditModalOpen(false);
+            fetchCategories();
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+// ─── Category Edit Modal ─────────────────────────────────────────────────────────
+const CategoryEditModal = ({ category, onClose, onSuccess }) => {
+  const [saving, setSaving] = useState(false);
+  const [formData, setFormData] = useState({
+    name: category?.name || '',
+    displayOrder: category?.displayOrder || 0,
+    status: category?.status || 'active',
+  });
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      setSaving(true);
+      if (category) {
+        await awardImageCategoryService.updateCategory(category._id, formData);
+        toast.success('Category updated successfully');
+      } else {
+        await awardImageCategoryService.createCategory(formData);
+        toast.success('Category created successfully');
+      }
+      onSuccess();
+    } catch (error) {
+      toast.error('Failed to save category');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4">
+      <div className="glass-card max-w-md w-full p-6">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="font-display text-xl font-bold text-white">
+            {category ? 'Edit Category' : 'Add Category'}
+          </h3>
+          <button onClick={onClose} className="text-slate-400 hover:text-white">
+            <RiCloseLine size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Name *</label>
+            <input
+              type="text"
+              value={formData.name}
+              onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              className="input-field"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Display Order</label>
+            <input
+              type="number"
+              value={formData.displayOrder}
+              onChange={(e) => setFormData(prev => ({ ...prev, displayOrder: parseInt(e.target.value) }))}
+              className="input-field"
+              min={0}
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400 mb-1">Status</label>
+            <select
+              value={formData.status}
+              onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value }))}
+              className="input-field"
+            >
+              <option value="active">Active</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </div>
+
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 rounded-xl bg-white/5 px-4 py-2 text-sm font-semibold text-white hover:bg-white/10 transition-colors"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="flex-1 rounded-xl bg-accent-500 px-4 py-2 text-sm font-semibold text-white hover:bg-accent-600 disabled:opacity-50 transition-colors"
+            >
+              {saving ? 'Saving...' : 'Save'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
 
 const AdminDashboard = () => {
   const { user, logout } = useAuth();
@@ -1301,6 +2083,8 @@ const AdminDashboard = () => {
               { id: 'users', label: 'User Directory', icon: RiTeamLine },
               { id: 'categories', label: 'Categories', icon: RiFolderShield2Line },
               { id: 'criteria', label: 'Evaluation Criteria', icon: RiStarLine },
+              { id: 'award-images', label: 'Award Images', icon: RiImageLine },
+              { id: 'award-image-categories', label: 'Image Categories', icon: RiFolderLine },
               { id: 'broadcast', label: 'Broadcast Alerts', icon: RiMailSendLine },
               { id: 'reports', label: 'Reports & Export', icon: RiFileChartLine },
               { id: 'password', label: 'Change Password', icon: RiLockPasswordLine },
@@ -2941,6 +3725,16 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   </div>
+                )}
+
+                {/* AWARD IMAGES TAB */}
+                {activeTab === 'award-images' && (
+                  <AwardImagesTab />
+                )}
+
+                {/* AWARD IMAGE CATEGORIES TAB */}
+                {activeTab === 'award-image-categories' && (
+                  <AwardImageCategoriesTab />
                 )}
 
                 {/* 7. CHANGE PASSWORD */}
