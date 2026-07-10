@@ -24,6 +24,15 @@ import evaluationService from '../../services/evaluation.service';
 
 const COLORS = ['#0072ff', '#00ff87', '#ffc658', '#ff7300', '#d0ed57', '#a4de6c'];
 
+const BROADCAST_STATUS_AUDIENCES = [
+  { value: 'status:submitted', status: 'submitted', label: 'Submitted' },
+  { value: 'status:under_review', status: 'under_review', label: 'Under Review' },
+  { value: 'status:eligible', status: 'eligible', label: 'Eligible' },
+  { value: 'status:shortlisted', status: 'shortlisted', label: 'Shortlisted' },
+  { value: 'status:finalist', status: 'finalist', label: 'Finalist' },
+  { value: 'status:winner', status: 'winner', label: 'Winner' },
+];
+
 const STATUS_LABELS = {
   draft: 'Draft',
   submitted: 'Submitted',
@@ -193,11 +202,25 @@ const AdminDashboard = () => {
   const broadcastRole = watchBroadcast('role') || 'all';
   const broadcastTitle = watchBroadcast('title') || '';
   const broadcastMessage = watchBroadcast('message') || '';
-  const broadcastAudienceCount = broadcastRole === 'judge'
-    ? judgesList.length
-    : broadcastRole === 'candidate'
-      ? candidatesList.length
-      : users.length;
+  const getStatusAudienceCount = (status) => {
+    const candidateIds = new Set(
+      applications
+        .filter((app) => app.status === status)
+        .map((app) => app.candidate?._id || app.candidate)
+        .filter(Boolean)
+    );
+    return candidateIds.size;
+  };
+  const broadcastStatusAudience = BROADCAST_STATUS_AUDIENCES.find((audience) => audience.value === broadcastRole);
+  const broadcastAudienceLabel = broadcastStatusAudience?.label
+    || (broadcastRole === 'all' ? 'All users' : broadcastRole === 'candidate' ? 'Candidates' : 'Judges');
+  const broadcastAudienceCount = broadcastStatusAudience
+    ? getStatusAudienceCount(broadcastStatusAudience.status)
+    : broadcastRole === 'judge'
+      ? judgesList.length
+      : broadcastRole === 'candidate'
+        ? candidatesList.length
+        : users.length;
 
   // Change Password submit
   const onChangePasswordSubmit = async (data) => {
@@ -361,7 +384,11 @@ const AdminDashboard = () => {
   // Broadcast submit
   const onBroadcastSubmit = async (data) => {
     try {
-      await adminService.broadcastNotification(data);
+      const statusAudience = BROADCAST_STATUS_AUDIENCES.find((audience) => audience.value === data.role);
+      const payload = statusAudience
+        ? { ...data, role: 'candidate', status: statusAudience.status }
+        : data;
+      await adminService.broadcastNotification(payload);
       toast.success('Broadcast notification sent successfully.');
       resetBroadcast();
     } catch {
@@ -547,42 +574,42 @@ const AdminDashboard = () => {
                       </button>
                     </h3>
 
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Total Applications</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display">{stats.stats.totalApplications}</p>
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                      <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                        <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Total Applications</span>
+                        <p className="text-white text-xl font-black mt-1 font-display">{stats.stats.totalApplications}</p>
                       </div>
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Draft Applications</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display">{stats.stats.draftApps || 0}</p>
+                      <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                        <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Draft Applications</span>
+                        <p className="text-white text-xl font-black mt-1 font-display">{stats.stats.draftApps || 0}</p>
                       </div>
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Submitted</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display text-accent-400">{stats.stats.submittedApps}</p>
+                      <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                        <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Submitted</span>
+                        <p className="text-white text-xl font-black mt-1 font-display text-accent-400">{stats.stats.submittedApps}</p>
                       </div>
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Selected to Next Round</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display text-cyan-400">{stats.stats.selectedToNextRoundApps || 0}</p>
+                      <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                        <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Selected to Next Round</span>
+                        <p className="text-white text-xl font-black mt-1 font-display text-cyan-400">{stats.stats.selectedToNextRoundApps || 0}</p>
                       </div>
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Finalists</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display text-gold-400">{stats.stats.finalistApps}</p>
+                      <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                        <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Finalists</span>
+                        <p className="text-white text-xl font-black mt-1 font-display text-gold-400">{stats.stats.finalistApps}</p>
                       </div>
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Winners</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display text-emerald-400">{stats.stats.winnerApps || 0}</p>
+                      <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                        <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Winners</span>
+                        <p className="text-white text-xl font-black mt-1 font-display text-emerald-400">{stats.stats.winnerApps || 0}</p>
                       </div>
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Judges</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display">{stats.stats.totalJudges}</p>
+                      <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                        <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Judges</span>
+                        <p className="text-white text-xl font-black mt-1 font-display">{stats.stats.totalJudges}</p>
                       </div>
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Pending Evaluations</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display text-amber-400">{stats.stats.pendingEvaluations}</p>
+                      <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                        <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Pending Evaluations</span>
+                        <p className="text-white text-xl font-black mt-1 font-display text-amber-400">{stats.stats.pendingEvaluations}</p>
                       </div>
-                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
-                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Completed Evaluations</span>
-                        <p className="text-white text-3xl font-black mt-2 font-display text-emerald-400">{stats.stats.completedEvaluations}</p>
+                      <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                        <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Completed Evaluations</span>
+                        <p className="text-white text-xl font-black mt-1 font-display text-emerald-400">{stats.stats.completedEvaluations}</p>
                       </div>
                     </div>
 
@@ -1257,28 +1284,55 @@ const AdminDashboard = () => {
 
                     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
                       <form onSubmit={handleBroadcast(onBroadcastSubmit)} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
-                        <div className="grid gap-4 sm:grid-cols-3">
-                          {[
-                            { value: 'all', label: 'All Users', count: users.length, helper: 'Full platform notice' },
-                            { value: 'candidate', label: 'Candidates', count: candidatesList.length, helper: 'Applicants only' },
-                            { value: 'judge', label: 'Judges', count: judgesList.length, helper: 'Evaluation panel' },
-                          ].map((audience) => (
-                            <label
-                              key={audience.value}
-                              className={`cursor-pointer rounded-xl border p-4 transition-all ${
-                                broadcastRole === audience.value
-                                  ? 'border-accent-500 bg-accent-500/10 shadow-glow'
-                                  : 'border-white/10 bg-navy-950/30 hover:border-white/20 hover:bg-white/5'
-                              }`}
-                            >
-                              <input type="radio" value={audience.value} className="sr-only" {...regBroadcast('role')} />
-                              <div className="flex items-center justify-between gap-3">
-                                <span className="text-sm font-bold text-white">{audience.label}</span>
-                                <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold text-slate-300">{audience.count}</span>
-                              </div>
-                              <p className="mt-2 text-xs text-slate-500">{audience.helper}</p>
-                            </label>
-                          ))}
+                        <div>
+                          <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400">User Audience</label>
+                          <div className="grid gap-4 sm:grid-cols-3">
+                            {[
+                              { value: 'all', label: 'All Users', count: users.length, helper: 'Full platform notice' },
+                              { value: 'candidate', label: 'Candidates', count: candidatesList.length, helper: 'Applicants only' },
+                              { value: 'judge', label: 'Judges', count: judgesList.length, helper: 'Evaluation panel' },
+                            ].map((audience) => (
+                              <label
+                                key={audience.value}
+                                className={`cursor-pointer rounded-xl border p-4 transition-all ${
+                                  broadcastRole === audience.value
+                                    ? 'border-accent-500 bg-accent-500/10 shadow-glow'
+                                    : 'border-white/10 bg-navy-950/30 hover:border-white/20 hover:bg-white/5'
+                                }`}
+                              >
+                                <input type="radio" value={audience.value} className="sr-only" {...regBroadcast('role')} />
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-sm font-bold text-white">{audience.label}</span>
+                                  <span className="rounded-full bg-white/10 px-2 py-1 text-[10px] font-bold text-slate-300">{audience.count}</span>
+                                </div>
+                                <p className="mt-2 text-xs text-slate-500">{audience.helper}</p>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="mt-5">
+                          <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400">Application Status List</label>
+                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            {BROADCAST_STATUS_AUDIENCES.map((audience) => (
+                              <label
+                                key={audience.value}
+                                className={`cursor-pointer rounded-xl border p-3 transition-all ${
+                                  broadcastRole === audience.value
+                                    ? 'border-gold-500 bg-gold-500/10'
+                                    : 'border-white/10 bg-navy-950/30 hover:border-white/20 hover:bg-white/5'
+                                }`}
+                              >
+                                <input type="radio" value={audience.value} className="sr-only" {...regBroadcast('role')} />
+                                <div className="flex items-center justify-between gap-3">
+                                  <span className="text-xs font-bold text-white">{audience.label}</span>
+                                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-slate-300">
+                                    {getStatusAudienceCount(audience.status)}
+                                  </span>
+                                </div>
+                              </label>
+                            ))}
+                          </div>
                         </div>
 
                         <div className="mt-6 space-y-4">
@@ -1333,7 +1387,7 @@ const AdminDashboard = () => {
                           <div className="mt-4 space-y-3 text-sm">
                             <div className="flex justify-between rounded-xl bg-navy-950/40 px-3 py-2">
                               <span className="text-slate-400">Audience</span>
-                              <span className="font-semibold text-white">{broadcastRole === 'all' ? 'All users' : broadcastRole === 'candidate' ? 'Candidates' : 'Judges'}</span>
+                              <span className="font-semibold text-white">{broadcastAudienceLabel}</span>
                             </div>
                             <div className="flex justify-between rounded-xl bg-navy-950/40 px-3 py-2">
                               <span className="text-slate-400">Recipients</span>
