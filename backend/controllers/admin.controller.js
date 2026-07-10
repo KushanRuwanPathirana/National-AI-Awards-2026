@@ -5,8 +5,9 @@ const Category = require('../models/Category.model');
 const AuditLog = require('../models/AuditLog.model');
 const Notification = require('../models/Notification.model');
 const Setting = require('../models/Setting.model');
+const Judge = require('../models/Judge.model');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
-const { sendBroadcastEmail, sendJudgeReminder } = require('../services/email.service');
+const { sendBroadcastEmail } = require('../services/email.service');
 const {
   getPendingJudgeAudience: getPendingJudgeReminderAudience,
   sendPendingJudgeReminderBatch,
@@ -308,7 +309,7 @@ const getAuditLogs = async (req, res, next) => {
 // ── Broadcast Notification ─────────────────────────────────────────────────────
 const broadcastNotification = async (req, res, next) => {
   try {
-    const { title, message, role, status, audience, link } = req.body;
+    const { title, message, role, status, audience, link, judgeFilters = {} } = req.body;
     if (!title || !message) return errorResponse(res, { statusCode: 400, message: 'Title and message required.' });
 
     let users = [];
@@ -327,6 +328,19 @@ const broadcastNotification = async (req, res, next) => {
     } else {
       const filter = {};
       if (role && role !== 'all') filter.role = role;
+      if (role === 'judge' && Object.values(judgeFilters).some(Boolean)) {
+        const judgeProfileFilter = { isDeleted: false };
+        if (judgeFilters.mainAwardCategory) judgeProfileFilter.mainAwardCategory = judgeFilters.mainAwardCategory;
+        if (judgeFilters.awardSubCategory) judgeProfileFilter.awardSubCategories = judgeFilters.awardSubCategory;
+        if (judgeFilters.country) judgeProfileFilter.country = judgeFilters.country;
+        if (judgeFilters.status) judgeProfileFilter.status = judgeFilters.status;
+        if (judgeFilters.isGrandJury !== undefined && judgeFilters.isGrandJury !== '') {
+          judgeProfileFilter.isGrandJury = judgeFilters.isGrandJury === true || judgeFilters.isGrandJury === 'true';
+        }
+
+        const judgeEmails = await Judge.distinct('email', judgeProfileFilter);
+        filter.email = { $in: judgeEmails };
+      }
       users = await User.find(filter).select('_id firstName email');
     }
 

@@ -249,7 +249,13 @@ const AdminDashboard = () => {
 
   // Broadcast form
   const { register: regBroadcast, handleSubmit: handleBroadcast, reset: resetBroadcast, watch: watchBroadcast, formState: { isSubmitting: broadcastSubmitting } } = useForm({
-    defaultValues: { role: 'all', title: '', message: '' },
+    defaultValues: {
+      role: 'all',
+      title: '',
+      message: '',
+      judgeMainAwardCategory: '',
+      judgeAwardSubCategory: '',
+    },
   });
 
   // ─── Judge Management States ──────────────────────────────────────────────────
@@ -751,6 +757,7 @@ const AdminDashboard = () => {
       fetchUsers(),
       fetchAdmins(),
       fetchCategories(),
+      fetchJudges(),
       fetchMonitoring(),
       fetchPendingJudgeAudience(),
       fetchPendingJudgeReminderSchedule(),
@@ -773,6 +780,8 @@ const AdminDashboard = () => {
   const broadcastRole = watchBroadcast('role') || 'all';
   const broadcastTitle = watchBroadcast('title') || '';
   const broadcastMessage = watchBroadcast('message') || '';
+  const broadcastJudgeMainCategory = watchBroadcast('judgeMainAwardCategory') || '';
+  const broadcastJudgeSubCategory = watchBroadcast('judgeAwardSubCategory') || '';
   const pendingJudgeCount = pendingJudgeAudience.judgeCount || 0;
   const pendingJudgeEvaluationCount = pendingJudgeAudience.pendingEvaluations || 0;
   const toDatetimeLocalValue = (date) => {
@@ -799,15 +808,36 @@ const AdminDashboard = () => {
     );
     return candidateIds.size;
   };
+  const broadcastJudgeSubCategoryOptions = broadcastJudgeMainCategory
+    ? (JUDGE_MAIN_CATEGORIES_MAP[broadcastJudgeMainCategory] || [])
+    : Object.values(JUDGE_MAIN_CATEGORIES_MAP).flat();
+  const hasBroadcastJudgeFilters = [
+    broadcastJudgeMainCategory,
+    broadcastJudgeSubCategory,
+  ].some(Boolean);
+  const getFilteredJudgeAudienceCount = () => {
+    if (!hasBroadcastJudgeFilters) return judgesList.length;
+    const matchingEmails = new Set(
+      judges
+        .filter((judge) => {
+          if (broadcastJudgeMainCategory && judge.mainAwardCategory !== broadcastJudgeMainCategory) return false;
+          if (broadcastJudgeSubCategory && !(judge.awardSubCategories || []).includes(broadcastJudgeSubCategory)) return false;
+          return true;
+        })
+        .map((judge) => judge.email?.toLowerCase())
+        .filter(Boolean)
+    );
+    return judgesList.filter((judgeUser) => matchingEmails.has(judgeUser.email?.toLowerCase())).length;
+  };
   const broadcastStatusAudience = BROADCAST_STATUS_AUDIENCES.find((audience) => audience.value === broadcastRole);
   const broadcastAudienceLabel = broadcastStatusAudience?.label
-    || (broadcastRole === 'pending_judges' ? 'Judges with pending evaluations' : broadcastRole === 'all' ? 'All users' : broadcastRole === 'candidate' ? 'Candidates' : 'Judges');
+    || (broadcastRole === 'pending_judges' ? 'Judges with pending evaluations' : broadcastRole === 'all' ? 'All users' : broadcastRole === 'candidate' ? 'Candidates' : hasBroadcastJudgeFilters ? 'Filtered judges' : 'Judges');
   const broadcastAudienceCount = broadcastStatusAudience
     ? getStatusAudienceCount(broadcastStatusAudience.status)
     : broadcastRole === 'pending_judges'
       ? pendingJudgeCount
       : broadcastRole === 'judge'
-      ? judgesList.length
+      ? getFilteredJudgeAudienceCount()
       : broadcastRole === 'candidate'
         ? candidatesList.length
         : users.length;
@@ -1038,6 +1068,14 @@ const AdminDashboard = () => {
         ? { ...data, role: 'candidate', status: statusAudience.status }
         : data.role === 'pending_judges'
           ? { ...data, audience: 'pending_judges', role: 'judge', link: '/judge-dashboard' }
+        : data.role === 'judge'
+          ? {
+              ...data,
+              judgeFilters: {
+                mainAwardCategory: data.judgeMainAwardCategory || undefined,
+                awardSubCategory: data.judgeAwardSubCategory || undefined,
+              },
+            }
         : data;
       const { data: response } = await adminService.broadcastNotification(payload);
       toast.success(response.message || 'Broadcast notification sent successfully.');
@@ -2569,6 +2607,34 @@ const AdminDashboard = () => {
                             ))}
                           </div>
                         </div>
+
+                        {broadcastRole === 'judge' && (
+                          <div className="mt-5 rounded-2xl border border-white/10 bg-navy-950/30 p-4">
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                              <div>
+                                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Judge Filters</label>
+                                <p className="mt-1 text-[11px] text-slate-500">Narrow the broadcast by judge profile details.</p>
+                              </div>
+                              <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-slate-300">
+                                {broadcastAudienceCount} match{broadcastAudienceCount === 1 ? '' : 'es'}
+                              </span>
+                            </div>
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <select className="input-field !py-2 text-xs" {...regBroadcast('judgeMainAwardCategory')}>
+                                <option value="">All main categories</option>
+                                {Object.keys(JUDGE_MAIN_CATEGORIES_MAP).map((category) => (
+                                  <option key={category} value={category}>{category}</option>
+                                ))}
+                              </select>
+                              <select className="input-field !py-2 text-xs" {...regBroadcast('judgeAwardSubCategory')}>
+                                <option value="">All subcategories</option>
+                                {broadcastJudgeSubCategoryOptions.map((subcategory) => (
+                                  <option key={subcategory} value={subcategory}>{getSubCategoryDisplayName(subcategory)}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="mt-5">
                           <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400">Application Status List</label>
