@@ -553,12 +553,24 @@ const AdminDashboard = () => {
                         <p className="text-white text-3xl font-black mt-2 font-display">{stats.stats.totalApplications}</p>
                       </div>
                       <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
+                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Draft Applications</span>
+                        <p className="text-white text-3xl font-black mt-2 font-display">{stats.stats.draftApps || 0}</p>
+                      </div>
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
                         <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Submitted</span>
                         <p className="text-white text-3xl font-black mt-2 font-display text-accent-400">{stats.stats.submittedApps}</p>
                       </div>
                       <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
+                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Selected to Next Round</span>
+                        <p className="text-white text-3xl font-black mt-2 font-display text-cyan-400">{stats.stats.selectedToNextRoundApps || 0}</p>
+                      </div>
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
                         <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Finalists</span>
                         <p className="text-white text-3xl font-black mt-2 font-display text-gold-400">{stats.stats.finalistApps}</p>
+                      </div>
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
+                        <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Winners</span>
+                        <p className="text-white text-3xl font-black mt-2 font-display text-emerald-400">{stats.stats.winnerApps || 0}</p>
                       </div>
                       <div className="p-5 rounded-2xl bg-white/5 border border-white/5 text-center">
                         <span className="text-slate-400 text-xs font-bold uppercase tracking-wider">Judges</span>
