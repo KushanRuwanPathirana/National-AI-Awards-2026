@@ -1353,13 +1353,14 @@ const AdminDashboard = () => {
                             onChange={(e) => setAppStatusFilter(e.target.value)}
                           >
                             <option value="">All Statuses</option>
-                            <option value="submitted">Submitted</option>
-                            <option value="under_review">Under Review</option>
+                            <option value="draft">Draft</option>
                             <option value="eligible">Eligible</option>
-                            <option value="initial_stage">Initial Stage</option>
-                            <option value="f2f_stage">Face-to-Face Stage</option>
+                            <option value="ineligible">Ineligible</option>
+                            <option value="initial_stage">Initial State</option>
+                            <option value="f2f_stage">Selected to Face-to-Face</option>
                             <option value="finalist">Finalist</option>
                             <option value="winner">Winner</option>
+                            <option value="runner_up">1st Runner-up</option>
                           </select>
                         </div>
                       </div>
@@ -1388,14 +1389,15 @@ const AdminDashboard = () => {
                         </button>
                       </div>
 
-                      <div className="overflow-x-auto">
-                        <table className="w-full text-xs text-left text-slate-300">
-                          <thead className="bg-white/5 text-[10px] uppercase font-bold text-slate-400">
+                      <div className="overflow-x-auto max-h-[65vh] lg:max-h-[calc(100vh-22rem)] overflow-auto overscroll-contain">
+                        <table className="w-full min-w-[860px] text-xs text-left text-slate-300">
+                          <thead className="bg-blue-500/20 text-[10px] uppercase font-bold text-white">
                             {nominationsStageTab === 'f2f' ? (
                               <tr>
                                 <th className="p-4 text-left">Ref/Title</th>
                                 <th className="p-4 text-left">Category</th>
                                 <th className="p-4 text-left">Candidate</th>
+                                <th className="p-4 text-left">Email</th>
                                 <th className="p-4 text-left">Phone</th>
                                 <th className="p-4 text-left">Status</th>
                                 <th className="p-4 text-left">Stage 2 Deadline</th>
@@ -1409,6 +1411,7 @@ const AdminDashboard = () => {
                                 <th className="p-4 text-left">Ref/Title</th>
                                 <th className="p-4 text-left">Category</th>
                                 <th className="p-4 text-left">Candidate</th>
+                                <th className="p-4 text-left">Email</th>
                                 <th className="p-4 text-left">Phone</th>
                                 <th className="p-4 text-left">Status</th>
                                 <th className="p-4 text-left">Deadline</th>
@@ -1432,6 +1435,9 @@ const AdminDashboard = () => {
                                     <div>{app.candidate?.firstName} {app.candidate?.lastName}</div>
                                     <div className="text-[10px] text-slate-500">{app.candidate?.organization}</div>
                                   </td>
+                                  <td className="p-4 text-[11px] text-blue-400">
+                                    {app.candidate?.email || 'Not provided'}
+                                  </td>
                                   <td className="p-4 font-mono text-[11px] text-slate-300">
                                     {app.primaryContactPhone || app.candidate?.phone || 'Not provided'}
                                   </td>
@@ -1442,13 +1448,25 @@ const AdminDashboard = () => {
                                       onChange={(e) => handleStatusChange(app._id, e.target.value)}
                                     >
                                       <option value={app.status}>{app.statusLabel}</option>
-                                      <option value="under_review">Under Review</option>
-                                      <option value="eligible">Eligible</option>
-                                      <option value="ineligible">Ineligible</option>
-                                      <option value="initial_stage">Initial Stage</option>
-                                      <option value="f2f_stage">Face-to-Face Stage</option>
-                                      <option value="finalist">Finalist</option>
-                                      <option value="winner">Winner</option>
+                                      {isF2F ? (
+                                        <>
+                                          <option value="f2f_stage">Selected to Face-to-Face</option>
+                                          <option value="finalist">Finalist</option>
+                                          <option value="winner">Winner</option>
+                                          <option value="runner_up">1st Runner-up</option>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <option value="draft">Draft</option>
+                                          <option value="eligible">Eligible</option>
+                                          <option value="ineligible">Ineligible</option>
+                                          <option value="initial_stage">Initial State</option>
+                                          <option value="f2f_stage">Selected to Face-to-Face</option>
+                                          <option value="finalist">Finalist</option>
+                                          <option value="winner">Winner</option>
+                                          <option value="runner_up">1st Runner-up</option>
+                                        </>
+                                      )}
                                     </select>
                                   </td>
                                   <td className="p-4">
@@ -1520,8 +1538,8 @@ const AdminDashboard = () => {
                                   </td>
                                   {isF2F ? (
                                     <>
-                                      <td className="p-4 text-center font-mono font-bold text-slate-400">
-                                        {app.averageScore !== undefined && app.averageScore !== null ? app.averageScore.toFixed(1) : '-'}
+                                      <td className="p-4 text-center font-mono font-bold text-white">
+                                        {app.averageScore !== undefined && app.averageScore !== null ? app.averageScore.toFixed(1) : '0'}
                                       </td>
                                       <td className="p-4 text-center">
                                         {app.averageScoreF2F !== undefined && app.averageScoreF2F !== null && app.evaluationCountF2F > 0 ? (
@@ -1533,7 +1551,7 @@ const AdminDashboard = () => {
                                             {app.averageScoreF2F?.toFixed(1)}
                                           </button>
                                         ) : (
-                                          <span className="text-slate-500">-</span>
+                                          <span className="text-white">0</span>
                                         )}
                                       </td>
                                     </>
@@ -1548,7 +1566,7 @@ const AdminDashboard = () => {
                                           {app.averageScore?.toFixed(1)}
                                         </button>
                                       ) : (
-                                        <span className="text-slate-500">-</span>
+                                        <span className="text-white">0</span>
                                       )}
                                     </td>
                                   )}
@@ -4432,7 +4450,7 @@ export default AdminDashboard;
 //                       ) : (
 //                         <div className="overflow-x-auto">
 //                           <table className="w-full text-xs text-left text-slate-300">
-//                             <thead className="bg-white/5 text-[10px] uppercase font-bold text-slate-400">
+//                             <thead className="bg-blue-500/20 text-[10px] uppercase font-bold text-white">
 //                               <tr>
 //                                 <th className="p-3">Title/Nominee</th>
 //                                 <th className="p-3">Award Category</th>
