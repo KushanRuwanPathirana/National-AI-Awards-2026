@@ -14,7 +14,7 @@ const {
 } = require('../services/pendingJudgeReminder.service');
 const logger = require('../utils/logger');
 
-const BROADCAST_APPLICATION_STATUSES = ['submitted', 'under_review', 'eligible', 'shortlisted', 'finalist', 'winner'];
+const BROADCAST_APPLICATION_STATUSES = ['submitted', 'under_review', 'eligible', 'initial_stage', 'f2f_stage', 'finalist', 'winner'];
 const F2F_ACTIVE_STATUSES = ['f2f_stage'];
 
 const getPendingJudgeAudience = async () => {
@@ -329,17 +329,21 @@ const broadcastNotification = async (req, res, next) => {
       const filter = {};
       if (role && role !== 'all') filter.role = role;
       if (role === 'judge' && Object.values(judgeFilters).some(Boolean)) {
-        const judgeProfileFilter = { isDeleted: false };
-        if (judgeFilters.mainAwardCategory) judgeProfileFilter.mainAwardCategory = judgeFilters.mainAwardCategory;
-        if (judgeFilters.awardSubCategory) judgeProfileFilter.awardSubCategories = judgeFilters.awardSubCategory;
-        if (judgeFilters.country) judgeProfileFilter.country = judgeFilters.country;
-        if (judgeFilters.status) judgeProfileFilter.status = judgeFilters.status;
-        if (judgeFilters.isGrandJury !== undefined && judgeFilters.isGrandJury !== '') {
-          judgeProfileFilter.isGrandJury = judgeFilters.isGrandJury === true || judgeFilters.isGrandJury === 'true';
-        }
+        if (judgeFilters.judgeId) {
+          filter._id = judgeFilters.judgeId;
+        } else {
+          const judgeProfileFilter = { isDeleted: false };
+          if (judgeFilters.mainAwardCategory) judgeProfileFilter.mainAwardCategory = judgeFilters.mainAwardCategory;
+          if (judgeFilters.awardSubCategory) judgeProfileFilter.awardSubCategories = judgeFilters.awardSubCategory;
+          if (judgeFilters.country) judgeProfileFilter.country = judgeFilters.country;
+          if (judgeFilters.status) judgeProfileFilter.status = judgeFilters.status;
+          if (judgeFilters.isGrandJury !== undefined && judgeFilters.isGrandJury !== '') {
+            judgeProfileFilter.isGrandJury = judgeFilters.isGrandJury === true || judgeFilters.isGrandJury === 'true';
+          }
 
-        const judgeEmails = await Judge.distinct('email', judgeProfileFilter);
-        filter.email = { $in: judgeEmails };
+          const judgeEmails = await Judge.distinct('email', judgeProfileFilter);
+          filter.email = { $in: judgeEmails };
+        }
       }
       users = await User.find(filter).select('_id firstName email');
     }

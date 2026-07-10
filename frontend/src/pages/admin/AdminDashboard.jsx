@@ -106,7 +106,8 @@ const BROADCAST_STATUS_AUDIENCES = [
   { value: 'status:submitted', status: 'submitted', label: 'Submitted' },
   { value: 'status:under_review', status: 'under_review', label: 'Under Review' },
   { value: 'status:eligible', status: 'eligible', label: 'Eligible' },
-  { value: 'status:shortlisted', status: 'shortlisted', label: 'Shortlisted' },
+  { value: 'status:initial_stage', status: 'initial_stage', label: 'Initial Stage' },
+  { value: 'status:f2f_stage', status: 'f2f_stage', label: 'Face to Face Stage' },
   { value: 'status:finalist', status: 'finalist', label: 'Finalist' },
   { value: 'status:winner', status: 'winner', label: 'Winner' },
 ];
@@ -247,7 +248,6 @@ const AdminDashboard = () => {
   ];
   const passwordStrength = passwordRules.filter((rule) => rule.passed).length;
 
-  // Broadcast form
   const { register: regBroadcast, handleSubmit: handleBroadcast, reset: resetBroadcast, watch: watchBroadcast, formState: { isSubmitting: broadcastSubmitting } } = useForm({
     defaultValues: {
       role: 'all',
@@ -255,6 +255,7 @@ const AdminDashboard = () => {
       message: '',
       judgeMainAwardCategory: '',
       judgeAwardSubCategory: '',
+      judgeId: '',
     },
   });
 
@@ -782,6 +783,7 @@ const AdminDashboard = () => {
   const broadcastMessage = watchBroadcast('message') || '';
   const broadcastJudgeMainCategory = watchBroadcast('judgeMainAwardCategory') || '';
   const broadcastJudgeSubCategory = watchBroadcast('judgeAwardSubCategory') || '';
+  const broadcastJudgeId = watchBroadcast('judgeId') || '';
   const pendingJudgeCount = pendingJudgeAudience.judgeCount || 0;
   const pendingJudgeEvaluationCount = pendingJudgeAudience.pendingEvaluations || 0;
   const toDatetimeLocalValue = (date) => {
@@ -814,8 +816,12 @@ const AdminDashboard = () => {
   const hasBroadcastJudgeFilters = [
     broadcastJudgeMainCategory,
     broadcastJudgeSubCategory,
+    broadcastJudgeId,
   ].some(Boolean);
   const getFilteredJudgeAudienceCount = () => {
+    if (broadcastJudgeId) {
+      return judgesList.filter((judgeUser) => judgeUser._id === broadcastJudgeId).length;
+    }
     if (!hasBroadcastJudgeFilters) return judgesList.length;
     const matchingEmails = new Set(
       judges
@@ -1074,6 +1080,7 @@ const AdminDashboard = () => {
               judgeFilters: {
                 mainAwardCategory: data.judgeMainAwardCategory || undefined,
                 awardSubCategory: data.judgeAwardSubCategory || undefined,
+                judgeId: data.judgeId || undefined,
               },
             }
         : data;
@@ -2620,6 +2627,23 @@ const AdminDashboard = () => {
                               </span>
                             </div>
                             <div className="grid gap-3 md:grid-cols-2">
+                              <select className="input-field !py-2 text-xs md:col-span-2" {...regBroadcast('judgeId')}>
+                                <option value="">All individual judges</option>
+                                {judgesList
+                                  .filter((judgeUser) => {
+                                    if (!broadcastJudgeMainCategory && !broadcastJudgeSubCategory) return true;
+                                    const profile = judges.find((j) => j.email?.toLowerCase() === judgeUser.email?.toLowerCase());
+                                    if (!profile) return false;
+                                    if (broadcastJudgeMainCategory && profile.mainAwardCategory !== broadcastJudgeMainCategory) return false;
+                                    if (broadcastJudgeSubCategory && !(profile.awardSubCategories || []).includes(broadcastJudgeSubCategory)) return false;
+                                    return true;
+                                  })
+                                  .map((judgeUser) => (
+                                    <option key={judgeUser._id} value={judgeUser._id}>
+                                      {judgeUser.firstName} {judgeUser.lastName} ({judgeUser.email})
+                                    </option>
+                                  ))}
+                              </select>
                               <select className="input-field !py-2 text-xs" {...regBroadcast('judgeMainAwardCategory')}>
                                 <option value="">All main categories</option>
                                 {Object.keys(JUDGE_MAIN_CATEGORIES_MAP).map((category) => (
@@ -2636,29 +2660,31 @@ const AdminDashboard = () => {
                           </div>
                         )}
 
-                        <div className="mt-5">
-                          <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400">Application Status List</label>
-                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                            {BROADCAST_STATUS_AUDIENCES.map((audience) => (
-                              <label
-                                key={audience.value}
-                                className={`cursor-pointer rounded-xl border p-3 transition-all ${
-                                  broadcastRole === audience.value
-                                    ? 'border-gold-500 bg-gold-500/10'
-                                    : 'border-white/10 bg-navy-950/30 hover:border-white/20 hover:bg-white/5'
-                                }`}
-                              >
-                                <input type="radio" value={audience.value} className="sr-only" {...regBroadcast('role')} />
-                                <div className="flex items-center justify-between gap-3">
-                                  <span className="text-xs font-bold text-white">{audience.label}</span>
-                                  <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-slate-300">
-                                    {getStatusAudienceCount(audience.status)}
-                                  </span>
-                                </div>
-                              </label>
-                            ))}
+                        {broadcastRole !== 'judge' && broadcastRole !== 'pending_judges' && (
+                          <div className="mt-5">
+                            <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400">Application Status List</label>
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                              {BROADCAST_STATUS_AUDIENCES.map((audience) => (
+                                <label
+                                  key={audience.value}
+                                  className={`cursor-pointer rounded-xl border p-3 transition-all ${
+                                    broadcastRole === audience.value
+                                      ? 'border-gold-500 bg-gold-500/10'
+                                      : 'border-white/10 bg-navy-950/30 hover:border-white/20 hover:bg-white/5'
+                                  }`}
+                                >
+                                  <input type="radio" value={audience.value} className="sr-only" {...regBroadcast('role')} />
+                                  <div className="flex items-center justify-between gap-3">
+                                    <span className="text-xs font-bold text-white">{audience.label}</span>
+                                    <span className="rounded-full bg-white/10 px-2 py-0.5 text-[10px] font-bold text-slate-300">
+                                      {getStatusAudienceCount(audience.status)}
+                                    </span>
+                                  </div>
+                                </label>
+                              ))}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
                         <div className="mt-6 space-y-4">
                           <div>
