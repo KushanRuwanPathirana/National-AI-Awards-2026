@@ -152,6 +152,9 @@ const AdminDashboard = () => {
   const [pendingJudgeAudience, setPendingJudgeAudience] = useState({ judgeCount: 0, pendingEvaluations: 0, judges: [] });
   const [sendingPendingJudgeReminders, setSendingPendingJudgeReminders] = useState(false);
   const [sentReminderEmails, setSentReminderEmails] = useState([]);
+  const [pendingReminderSchedule, setPendingReminderSchedule] = useState(null);
+  const [reminderScheduleAt, setReminderScheduleAt] = useState('');
+  const [schedulingPendingJudgeReminder, setSchedulingPendingJudgeReminder] = useState(false);
   const [criteria, setCriteria] = useState([]);
   const [criteriaStageFilter, setCriteriaStageFilter] = useState('initial');
   const [imageUploading, setImageUploading] = useState(false);
@@ -682,6 +685,15 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchPendingJudgeReminderSchedule = async () => {
+    try {
+      const { data } = await adminService.getPendingJudgeReminderSchedule();
+      setPendingReminderSchedule(data.data?.schedule || null);
+    } catch {
+      toast.error('Failed to load reminder schedule.');
+    }
+  };
+
   const fetchCriteria = useCallback(async () => {
     try {
       const { data } = await evaluationCriteriaService.getAllCriteria({ stage: criteriaStageFilter });
@@ -737,6 +749,7 @@ const AdminDashboard = () => {
       fetchCategories(),
       fetchMonitoring(),
       fetchPendingJudgeAudience(),
+      fetchPendingJudgeReminderSchedule(),
       fetchCriteria(),
     ]);
     setLoading(false);
@@ -758,6 +771,21 @@ const AdminDashboard = () => {
   const broadcastMessage = watchBroadcast('message') || '';
   const pendingJudgeCount = pendingJudgeAudience.judgeCount || 0;
   const pendingJudgeEvaluationCount = pendingJudgeAudience.pendingEvaluations || 0;
+  const toDatetimeLocalValue = (date) => {
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return localDate.toISOString().slice(0, 16);
+  };
+  const reminderScheduleMin = toDatetimeLocalValue(new Date(Date.now() + 60 * 1000));
+  const formatScheduleDate = (value) => {
+    if (!value) return 'Not scheduled';
+    return new Date(value).toLocaleString([], {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
   const getStatusAudienceCount = (status) => {
     const candidateIds = new Set(
       applications
@@ -1033,6 +1061,33 @@ const AdminDashboard = () => {
       toast.error(err.response?.data?.message || 'Failed to send pending judge reminders.');
     } finally {
       setSendingPendingJudgeReminders(false);
+    }
+  };
+
+  const handleSchedulePendingJudgeReminders = async () => {
+    if (!reminderScheduleAt) {
+      toast.error('Select a reminder date and time first.');
+      return;
+    }
+
+    const scheduledDate = new Date(reminderScheduleAt);
+    if (Number.isNaN(scheduledDate.getTime()) || scheduledDate <= new Date()) {
+      toast.error('Reminder schedule time must be in the future.');
+      return;
+    }
+
+    try {
+      setSchedulingPendingJudgeReminder(true);
+      const { data } = await adminService.schedulePendingJudgeReminders({
+        runAt: scheduledDate.toISOString(),
+      });
+      setPendingReminderSchedule(data.data?.schedule || null);
+      setReminderScheduleAt('');
+      toast.success(data.message || 'Pending judge reminders scheduled.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to schedule pending judge reminders.');
+    } finally {
+      setSchedulingPendingJudgeReminder(false);
     }
   };
 
@@ -2621,6 +2676,39 @@ const AdminDashboard = () => {
                               <><RiMailSendLine /> Send Reminder Emails</>
                             )}
                           </button>
+                          <div className="mt-4 rounded-xl border border-white/10 bg-navy-950/35 p-3">
+                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              Schedule Reminder
+                            </label>
+                            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                              <input
+                                type="datetime-local"
+                                min={reminderScheduleMin}
+                                value={reminderScheduleAt}
+                                onChange={(e) => setReminderScheduleAt(e.target.value)}
+                                className="input-field !py-2 text-xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={handleSchedulePendingJudgeReminders}
+                                disabled={schedulingPendingJudgeReminder || !reminderScheduleAt || pendingJudgeCount === 0}
+                                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {schedulingPendingJudgeReminder ? 'Scheduling...' : 'Schedule'}
+                              </button>
+                            </div>
+                            <div className="mt-3 rounded-lg bg-white/5 px-3 py-2 text-[11px] text-slate-400">
+                              {pendingReminderSchedule?.status === 'scheduled' ? (
+                                <>Scheduled for <span className="font-semibold text-amber-300">{formatScheduleDate(pendingReminderSchedule.runAt)}</span></>
+                              ) : pendingReminderSchedule?.status === 'completed' ? (
+                                <>Last scheduled run completed at <span className="font-semibold text-emerald-300">{formatScheduleDate(pendingReminderSchedule.completedAt || pendingReminderSchedule.lastRunAt)}</span></>
+                              ) : pendingReminderSchedule?.status === 'failed' ? (
+                                <>Last scheduled run failed. Choose a new date and time to retry.</>
+                              ) : (
+                                <>No manual reminder schedule set.</>
+                              )}
+                            </div>
+                          </div>
                           {sentReminderEmails.length > 0 && (
                             <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3">
                               <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">

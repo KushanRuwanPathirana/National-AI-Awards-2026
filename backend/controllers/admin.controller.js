@@ -4,8 +4,13 @@ const Evaluation = require('../models/Evaluation.model');
 const Category = require('../models/Category.model');
 const AuditLog = require('../models/AuditLog.model');
 const Notification = require('../models/Notification.model');
+const Setting = require('../models/Setting.model');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
 const { sendBroadcastEmail, sendJudgeReminder } = require('../services/email.service');
+const {
+  getPendingJudgeAudience: getPendingJudgeReminderAudience,
+  sendPendingJudgeReminderBatch,
+} = require('../services/pendingJudgeReminder.service');
 const logger = require('../utils/logger');
 
 const BROADCAST_APPLICATION_STATUSES = ['submitted', 'under_review', 'eligible', 'shortlisted', 'finalist', 'winner'];
@@ -349,7 +354,7 @@ const broadcastNotification = async (req, res, next) => {
 
 const getPendingJudgeAudienceSummary = async (req, res, next) => {
   try {
-    const audience = await getPendingJudgeAudience();
+    const audience = await getPendingJudgeReminderAudience();
     return successResponse(res, {
       data: {
         judges: audience.map((entry) => ({
@@ -369,62 +374,77 @@ const getPendingJudgeAudienceSummary = async (req, res, next) => {
 
 const sendPendingJudgeReminders = async (req, res, next) => {
   try {
-    const audience = await getPendingJudgeAudience();
-    if (audience.length === 0) {
+    const result = await sendPendingJudgeReminderBatch({
+      performedBy: req.user._id,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      source: 'manual',
+    });
+    if (result.recipients === 0) {
       return successResponse(res, {
         message: 'No judges have pending evaluations.',
         data: { recipients: 0, failedEmailCount: 0, pendingEvaluations: 0 },
       });
     }
 
-    const notifications = audience.map((entry) => ({
-      recipient: entry.user._id,
-      type: 'evaluation_reminder',
-      title: 'Action Required: Pending Nomination Evaluation',
-      message: `You have ${entry.pendingCount} assigned nomination evaluation(s) still pending. Please log in to the Judge Portal and submit your scorecards.`,
-      link: '/judge-dashboard',
-      metadata: {
-        pendingCount: entry.pendingCount,
-        closestProjectTitle: entry.closestProjectTitle,
-        closestDeadline: entry.closestDeadline,
-      },
-    }));
-    await Notification.insertMany(notifications);
+    return successResponse(res, {
+      message: result.failedEmailCount > 0
+        ? `Reminder sent to ${result.recipients} judge(s). Email failed for ${result.failedEmailCount} judge(s).`
+        : `Reminder email sent to ${result.recipients} judge(s).`,
+      data: result,
+    });
+  } catch (error) { next(error); }
+};
 
-    const emailResults = await Promise.allSettled(
-      audience
-        .filter((entry) => entry.user.email)
-        .map((entry) => sendJudgeReminder(
-          entry.user,
-          entry.pendingCount,
-          entry.closestDeadline ? entry.closestDeadline.toISOString() : null,
-          entry.closestProjectTitle
-        ))
-    );
-    const failedEmailCount = emailResults.filter((result) => result.status === 'rejected').length;
-    if (failedEmailCount > 0) {
-      logger.error(`Pending judge reminder email failed for ${failedEmailCount} judge(s).`);
+const getPendingJudgeReminderSchedule = async (req, res, next) => {
+  try {
+    const setting = await Setting.findOne({ key: 'pending_judge_reminder_schedule' });
+    return successResponse(res, { data: { schedule: setting?.value || null } });
+  } catch (error) { next(error); }
+};
+
+const schedulePendingJudgeReminders = async (req, res, next) => {
+  try {
+    const { runAt } = req.body;
+    const runAtDate = runAt ? new Date(runAt) : null;
+    if (!runAtDate || Number.isNaN(runAtDate.getTime())) {
+      return errorResponse(res, { statusCode: 400, message: 'A valid reminder date and time is required.' });
     }
+    if (runAtDate <= new Date()) {
+      return errorResponse(res, { statusCode: 400, message: 'Reminder schedule time must be in the future.' });
+    }
+
+    const value = {
+      status: 'scheduled',
+      runAt: runAtDate,
+      createdBy: req.user._id,
+      createdAt: new Date(),
+      lastRunAt: null,
+      lastResult: null,
+    };
+
+    await Setting.findOneAndUpdate(
+      { key: 'pending_judge_reminder_schedule' },
+      {
+        key: 'pending_judge_reminder_schedule',
+        value,
+        description: 'Admin scheduled pending judge reminder dispatch',
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
 
     await AuditLog.create({
       action: 'admin_action',
       performedBy: req.user._id,
-      targetModel: 'User',
-      description: `Sent pending evaluation reminders to ${audience.length} judge(s).`,
+      targetModel: 'Setting',
+      description: `Scheduled pending judge reminders for ${runAtDate.toISOString()}.`,
       ipAddress: req.ip,
       userAgent: req.get('user-agent'),
     });
 
     return successResponse(res, {
-      message: failedEmailCount > 0
-        ? `Reminder sent to ${audience.length} judge(s). Email failed for ${failedEmailCount} judge(s).`
-        : `Reminder email sent to ${audience.length} judge(s).`,
-      data: {
-        recipients: audience.length,
-        failedEmailCount,
-        pendingEvaluations: audience.reduce((sum, entry) => sum + entry.pendingCount, 0),
-        recipientEmails: audience.map((entry) => entry.user.email).filter(Boolean),
-      },
+      message: `Pending judge reminders scheduled for ${runAtDate.toLocaleString()}.`,
+      data: { schedule: value },
     });
   } catch (error) { next(error); }
 };
@@ -447,5 +467,6 @@ const createUser = async (req, res, next) => {
 module.exports = {
   getDashboardStats, getUsers, createUser, toggleUserStatus, deleteUser,
   updateUserRole, getReports, getAuditLogs, broadcastNotification,
-  getPendingJudgeAudienceSummary, sendPendingJudgeReminders
+  getPendingJudgeAudienceSummary, sendPendingJudgeReminders,
+  getPendingJudgeReminderSchedule, schedulePendingJudgeReminders
 };

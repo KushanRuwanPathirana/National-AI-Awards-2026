@@ -11,6 +11,8 @@ const adminService = {
   getAuditLogs: (params) => api.get('/admin/audit-logs', { params }),
   getPendingJudgeAudience: () => api.get('/admin/pending-judge-audience'),
   sendPendingJudgeReminders: () => api.post('/admin/reminders/pending-judges'),
+  getPendingJudgeReminderSchedule: () => api.get('/admin/reminders/pending-judges/schedule'),
+  schedulePendingJudgeReminders: (data) => api.post('/admin/reminders/pending-judges/schedule', data),
   broadcastNotification: (data) => api.post('/admin/broadcast', data),
 };
 
