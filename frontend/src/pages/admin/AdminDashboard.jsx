@@ -527,7 +527,9 @@ const AdminDashboard = () => {
             key={activeTab}
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
-            className="glass-card p-8 !hover:transform-none h-full min-h-[500px]"
+            className={`glass-card p-8 !hover:transform-none ${
+              ['applications', 'users'].includes(activeTab) ? '' : 'min-h-[500px]'
+            }`}
           >
             {loading ? (
               <div className="flex items-center justify-center h-96">
@@ -620,9 +622,9 @@ const AdminDashboard = () => {
                       </div>
 
                       {/* Category Breakdown chart */}
-                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5 h-80">
+                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5 h-80 flex flex-col">
                         <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-1.5"><RiAwardLine className="text-gold-400" /> Category Breakdown</h4>
-                        <ResponsiveContainer width="100%" height="85%">
+                        <ResponsiveContainer width="100%" height="68%">
                           <BarChart data={stats.categoryBreakdown}>
                             <XAxis dataKey="name" stroke="#475569" fontSize={8} tickFormatter={(val) => val.split(' ').slice(2).join(' ')} />
                             <YAxis stroke="#475569" fontSize={10} />
@@ -634,27 +636,18 @@ const AdminDashboard = () => {
                             </Bar>
                           </BarChart>
                         </ResponsiveContainer>
-                      </div>
-                    </div>
-
-                    <div>
-                      <div className="p-6 rounded-2xl bg-white/5 border border-white/5">
-                        <h4 className="text-white text-xs font-bold uppercase tracking-wider mb-4 flex items-center gap-1.5"><RiMailSendLine className="text-accent-400" /> Notifications</h4>
-                        <div className="space-y-3">
-                          {(stats.notifications || []).slice(0, 5).map((notification) => (
-                            <div key={notification._id} className="border-b border-white/5 pb-2.5 last:border-0 last:pb-0 text-slate-300">
-                              <div className="flex justify-between items-start gap-3">
-                                <div>
-                                  <div className="text-white text-xs font-semibold">{notification.title}</div>
-                                  <div className="text-[11px] text-slate-400 mt-1">{notification.message}</div>
-                                </div>
-                                <span className="text-[10px] text-slate-500 font-mono whitespace-nowrap">{new Date(notification.createdAt).toLocaleTimeString()}</span>
-                              </div>
+                        <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 overflow-y-auto pr-1 text-[10px] text-slate-300">
+                          {stats.categoryBreakdown.map((entry, index) => (
+                            <div key={entry.name || index} className="flex min-w-0 items-center gap-2">
+                              <span
+                                className="h-2.5 w-2.5 shrink-0 rounded-sm"
+                                style={{ backgroundColor: COLORS[index % COLORS.length] }}
+                              />
+                              <span className="truncate" title={`${entry.name}: ${entry.count}`}>
+                                {entry.name} ({entry.count})
+                              </span>
                             </div>
                           ))}
-                          {(!stats.notifications || stats.notifications.length === 0) && (
-                            <div className="text-sm text-slate-500">No notifications yet.</div>
-                          )}
                         </div>
                       </div>
                     </div>
