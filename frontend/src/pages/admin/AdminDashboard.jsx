@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
@@ -173,6 +173,20 @@ const AdminDashboard = () => {
   const [appSearch, setAppSearch] = useState('');
   const [appStatusFilter, setAppStatusFilter] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('');
+
+  // Evaluation Tracker state
+  const [trackerStage, setTrackerStage] = useState('initial');
+  const [trackerMainCategory, setTrackerMainCategory] = useState('all');
+  const [trackerSubCategory, setTrackerSubCategory] = useState('all');
+  const [trackerSearch, setTrackerSearch] = useState('');
+  const [trackerApps, setTrackerApps] = useState([]);
+  const [trackerStats, setTrackerStats] = useState(null);
+  const [trackerLoading, setTrackerLoading] = useState(false);
+  const [selectedJudgeEval, setSelectedJudgeEval] = useState(null);
+  const [evaluationsModalOpen, setEvaluationsModalOpen] = useState(false);
+  const [evaluationsList, setEvaluationsList] = useState([]);
+  const [evaluationsApp, setEvaluationsApp] = useState(null);
+  const [evalsLoading, setEvalsLoading] = useState(false);
 
   // Assign Judge Modal
   const [selectedApp, setSelectedApp] = useState(null);
@@ -541,12 +555,12 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchCriteria = async () => {
+  const fetchCriteria = useCallback(async () => {
     try {
       const { data } = await evaluationCriteriaService.getAllCriteria({ stage: criteriaStageFilter });
       setCriteria(data.data.criteria);
     } catch { toast.error('Failed to load evaluation criteria.'); }
-  };
+  }, [criteriaStageFilter]);
 
   const fetchTracker = async () => {
     try {
@@ -578,7 +592,7 @@ const AdminDashboard = () => {
     if (activeTab === 'criteria') {
       fetchCriteria();
     }
-  }, [criteriaStageFilter, activeTab]);
+  }, [criteriaStageFilter, activeTab, fetchCriteria]);
   const loadAll = async () => {
     setLoading(true);
     await Promise.all([
@@ -876,6 +890,21 @@ const AdminDashboard = () => {
       fetchMonitoring();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to auto-assign judges.');
+    }
+  };
+
+  const openEvaluationsModal = async (app) => {
+    setEvaluationsApp(app);
+    setEvaluationsList([]);
+    setEvaluationsModalOpen(true);
+    setEvalsLoading(true);
+    try {
+      const { data } = await evaluationService.getEvaluationsByApplication(app._id);
+      setEvaluationsList(data.data.evaluations || []);
+    } catch {
+      toast.error('Failed to load judge evaluations.');
+    } finally {
+      setEvalsLoading(false);
     }
   };
 
