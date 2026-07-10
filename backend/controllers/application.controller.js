@@ -11,6 +11,7 @@ const {
   sendWinnerEmail,
   sendFinalistEmail,
   sendRunnerUpEmail,
+  sendRunnerUp2ndEmail,
 } = require('../services/email.service');
 const logger = require('../utils/logger');
 const { buildApplicationsCsv, buildSimplePdf } = require('../utils/reportExporter');
@@ -107,6 +108,11 @@ const sendStatusEmailForApplication = async (application, status) => {
 
   if (status === APPLICATION_STATUS.RUNNER_UP) {
     await sendRunnerUpEmail(candidate, application, categoryName);
+    return;
+  }
+
+  if (status === APPLICATION_STATUS.RUNNER_UP_2ND) {
+    await sendRunnerUp2ndEmail(candidate, application, categoryName);
     return;
   }
 
@@ -428,6 +434,12 @@ const submitApplication = async (req, res, next) => {
     application.status = APPLICATION_STATUS.SUBMITTED;
     application.submittedAt = new Date();
     application.declarationDate = new Date();
+    
+    // Set payment status to pending if payment method is provided
+    if (application.paymentMethod && !isFreeCategory) {
+      application.paymentStatus = 'pending';
+    }
+    
     application.statusHistory.push({
       status: APPLICATION_STATUS.SUBMITTED,
       changedBy: req.user._id,

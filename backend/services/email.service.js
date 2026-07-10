@@ -170,7 +170,7 @@ const sendApplicationStatusUpdate = async (user, application, newStatus) => {
     draft: 'Draft', submitted: 'Submitted', under_review: 'Under Review',
     eligible: 'Eligible', ineligible: 'Ineligible',
     initial_stage: 'Initial State', f2f_stage: 'Selected to Face-to-Face',
-    finalist: 'Finalist', winner: '🏆 Winner', runner_up: '🥈 1st Runner-up',
+    finalist: 'Finalist', winner: '🏆 Winner', runner_up: '🥈 1st Runner-up', runner_up_2nd: '🥉 2nd Runner-up',
   };
   const label = statusLabels[newStatus] || newStatus;
   const html = `
@@ -349,6 +349,29 @@ const sendRunnerUpEmail = async (user, application, categoryName) => {
   await sendEmail({ to: user.email, subject: '🥈 Congratulations! 1st Runner-Up — National AI Awards 2026', html });
 };
 
+const sendRunnerUp2ndEmail = async (user, application, categoryName) => {
+  const html = `
+    <div style="font-family:'Segoe UI',sans-serif;max-width:560px;margin:auto;padding:30px;background:linear-gradient(135deg,#1a1a2e,#16213e);border-radius:16px;color:#e2e8f0;">
+      <div style="text-align:center;margin-bottom:24px;">
+        <div style="font-size:64px;margin-bottom:12px;">🥉</div>
+        <h1 style="color:#cd7f32;margin:0;font-size:28px;">Congratulations!</h1>
+        <p style="color:#94a3b8;font-size:14px;margin-top:8px;">2nd Runner-Up</p>
+      </div>
+      <p>Hi <strong>${user.firstName}</strong>,</p>
+      <p>We are pleased to announce that your project has been selected as the <strong style="color:#cd7f32;">2nd Runner-Up</strong> in the National AI Awards Sri Lanka 2026!</p>
+      <div style="background:linear-gradient(135deg,#cd7f3220,#e5e7eb10);border:2px solid #cd7f32;border-radius:12px;padding:20px;margin:20px 0;">
+        <p style="margin:8px 0;"><strong>Project:</strong> ${application.projectTitle}</p>
+        <p style="margin:8px 0;color:#94a3b8;font-size:13px;"><strong>Reference:</strong> ${application.referenceNumber || 'N/A'}</p>
+        <p style="margin:8px 0;color:#94a3b8;font-size:13px;"><strong>Category:</strong> ${categoryName || 'N/A'}</p>
+      </div>
+      <p>Your remarkable achievement and dedication to AI innovation have earned you this prestigious recognition. Your contribution to Sri Lanka's AI ecosystem is truly commendable.</p>
+      <p style="color:#94a3b8;font-size:13px;">Please log in to your dashboard for further details about the award ceremony and next steps.</p>
+      <hr style="border:1px solid #334155;margin:24px 0;">
+      <p style="color:#64748b;font-size:11px;text-align:center;">National AI Awards Sri Lanka 2026</p>
+    </div>`;
+  await sendEmail({ to: user.email, subject: '🥉 Congratulations! 2nd Runner-Up — National AI Awards 2026', html });
+};
+
 module.exports = {
   sendEmail,
   sendOTPEmail,
@@ -364,4 +387,5 @@ module.exports = {
   sendWinnerEmail,
   sendFinalistEmail,
   sendRunnerUpEmail,
+  sendRunnerUp2ndEmail,
 };

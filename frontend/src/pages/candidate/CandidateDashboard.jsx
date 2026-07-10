@@ -374,6 +374,25 @@ const CandidateDashboard = () => {
             Can only edit until {APPLICATION_EDIT_TIME_LABEL}
           </p>
         )}
+        {/* Payment Status */}
+        {app.paymentMethod && app.paymentMethod !== 'none' && (
+          <div className="mt-2 flex items-center gap-2">
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+              app.paymentStatus === 'approved' 
+                ? 'bg-emerald-500/10 text-emerald-400' 
+                : app.paymentStatus === 'rejected'
+                ? 'bg-red-500/10 text-red-400'
+                : 'bg-yellow-500/10 text-yellow-400'
+            }`}>
+              Payment: {app.paymentStatus || 'Pending'}
+            </span>
+            {app.paymentStatus === 'rejected' && app.rejectionReason && (
+              <span className="text-[10px] text-red-300 truncate max-w-[200px]" title={app.rejectionReason}>
+                {app.rejectionReason}
+              </span>
+            )}
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-3 shrink-0">
         <StatusBadge status={app.status} label={app.statusLabel || STATUS_LABELS[app.status] || app.status} />

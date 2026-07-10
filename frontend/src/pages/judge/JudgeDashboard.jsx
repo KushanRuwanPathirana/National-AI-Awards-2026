@@ -11,7 +11,7 @@ import {
   RiCheckLine, RiEditLine, RiEyeLine,
   RiTrophyLine, RiBarChartBoxLine, RiCalendarLine,
   RiFilterLine, RiSortAsc, RiArrowUpLine, RiShieldLine,
-  RiLightbulbLine, RiFlashlightLine,
+  RiLightbulbLine, RiFlashlightLine, RiFileTextLine,
 } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
 import api, { buildAssetUrl } from '../../services/api';
@@ -770,6 +770,23 @@ const JudgeDashboard = () => {
                                   <p className="text-slate-500 text-xs mt-0.5">
                                     Score: <span className="text-accent-300 font-mono">{app.myEvaluation.weightedScore?.toFixed(1)}/100</span>
                                   </p>
+                                )}
+                                {app.documents && app.documents.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 mt-2">
+                                    {app.documents.map((doc, idx) => (
+                                      <a
+                                        key={doc._id || idx}
+                                        href={buildAssetUrl(doc.filePath)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 hover:border-accent-500/30 hover:bg-white/10 text-[9px] text-slate-300 hover:text-white transition-all whitespace-nowrap"
+                                        title={doc.originalName}
+                                      >
+                                        <RiFileTextLine size={10} className="text-accent-400" />
+                                        Doc {idx + 1}
+                                      </a>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
 
