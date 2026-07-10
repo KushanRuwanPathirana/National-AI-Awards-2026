@@ -1292,6 +1292,8 @@ const AdminDashboard = () => {
             className={`glass-card p-8 !hover:transform-none ${
               activeTab === 'judge-management'
                 ? 'h-[calc(100vh-4rem)] min-h-[640px] min-w-0 overflow-hidden'
+                : activeTab === 'broadcast'
+                  ? 'h-[calc(100vh-4rem)] min-h-[640px] min-w-0 overflow-hidden'
                 : ['applications', 'users'].includes(activeTab) ? '' : 'min-h-[500px]'
             }`}
           >
@@ -2524,8 +2526,8 @@ const AdminDashboard = () => {
 
                 {/* 5. BROADCAST TAB */}
                 {activeTab === 'broadcast' && (
-                  <div className="space-y-6">
-                    <div className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="flex h-full min-h-0 flex-col gap-6">
+                    <div className="flex shrink-0 flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-accent-300">Communication Center</p>
                         <h3 className="mt-1 font-display text-2xl font-black text-white">Send Broadcast Alert</h3>
@@ -2537,6 +2539,7 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2 custom-scrollbar">
                     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
                       <form onSubmit={handleBroadcast(onBroadcastSubmit)} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
                         <div>
@@ -2776,6 +2779,7 @@ const AdminDashboard = () => {
                           )}
                         </div>
                       </div>
+                    </div>
                     </div>
                   </div>
                 )}
