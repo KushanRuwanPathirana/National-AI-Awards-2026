@@ -42,7 +42,7 @@
     color: #fff;
   }
 
-  ::-webkit-scrollbar { width: 8px; }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
   ::-webkit-scrollbar-track { background: #0A1628; }
   ::-webkit-scrollbar-thumb {
     background: rgba(0,114,255,0.5);

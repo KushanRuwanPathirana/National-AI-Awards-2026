@@ -13,10 +13,11 @@ import {
   RiDashboardLine, RiFileChartLine, RiMailSendLine,
   RiArrowRightLine, RiFolderShield2Line, RiRefreshLine, RiPulseLine, RiStarLine,
   RiUserLine, RiShieldUserLine, RiPencilLine, RiDeleteBin6Line, RiUploadCloud2Line,
-  RiEyeLine, RiSearchLine, RiDeleteBinLine,
+  RiEyeLine, RiSearchLine, RiDeleteBinLine, RiBankCardLine,
+  RiCloseLine, RiFileTextLine,
 } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api';
+import api, { buildAssetUrl } from '../../services/api';
 import adminService from '../../services/admin.service';
 import applicationService from '../../services/application.service';
 import categoryService from '../../services/category.service';
@@ -116,7 +117,7 @@ const STATUS_LABELS = {
   under_review: 'Under Review',
   eligible: 'Eligible',
   ineligible: 'Ineligible',
-  initial_stage: 'Initial State',
+  initial_stage: 'Selected to Initial Stage',
   f2f_stage: 'Selected to Face-to-Face',
   finalist: 'Finalist',
   winner: 'Winner',
@@ -127,7 +128,7 @@ const STATUS_LABELS = {
 const ADMIN_STATUS_OPTIONS = [
   { value: 'eligible', label: 'Eligible' },
   { value: 'ineligible', label: 'Ineligible' },
-  { value: 'initial_stage', label: 'Initial State' },
+  { value: 'initial_stage', label: 'Selected to Initial Stage' },
   { value: 'f2f_stage', label: 'Selected to Face-to-Face' },
   { value: 'finalist', label: 'Finalist' },
   { value: 'winner', label: 'Winner' },
@@ -169,7 +170,26 @@ const AdminDashboard = () => {
     order: 0,
     isActive: true,
   });
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    description: '',
+  });
+  const [categorySaving, setCategorySaving] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Payment Verification state
+  const [paymentSubmissions, setPaymentSubmissions] = useState([]);
+  const [paymentStats, setPaymentStats] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentFilter, setPaymentFilter] = useState('all');
+  const [paymentSearch, setPaymentSearch] = useState('');
+  const [paymentPage, setPaymentPage] = useState(1);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectingPayment, setRejectingPayment] = useState(null);
+  const [approvingPayment, setApprovingPayment] = useState(null);
 
   // Search & Filters
   const [appSearch, setAppSearch] = useState('');
@@ -332,6 +352,99 @@ const AdminDashboard = () => {
       fetchJudges();
     }
   }, [activeTab]);
+
+  // Payment Verification functions
+  const fetchPaymentSubmissions = async () => {
+    try {
+      setPaymentLoading(true);
+      const params = {
+        page: paymentPage,
+        limit: 20,
+      };
+      if (paymentFilter !== 'all') params.status = paymentFilter;
+      if (paymentSearch) params.search = paymentSearch;
+
+      const { data } = await api.get('/payment/submissions', { params });
+      setPaymentSubmissions(data.data.applications);
+    } catch (error) {
+      toast.error('Failed to load payment submissions.');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const fetchPaymentStats = async () => {
+    try {
+      const { data } = await api.get('/payment/stats');
+      setPaymentStats(data.data.stats);
+    } catch (error) {
+      console.error('Failed to load payment stats:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'payment-verification') {
+      fetchPaymentSubmissions();
+      fetchPaymentStats();
+    }
+  }, [activeTab, paymentFilter, paymentSearch, paymentPage]);
+
+  const handleViewPayment = async (application) => {
+    try {
+      const { data } = await api.get(`/payment/submissions/${application._id}`);
+      setSelectedPayment(data.data.application);
+      setPaymentModalOpen(true);
+    } catch (error) {
+      toast.error('Failed to load payment details.');
+    }
+  };
+
+  const handleApprovePayment = async (applicationId) => {
+    if (!window.confirm('Are you sure you want to approve this payment? This will move the application to the Initial Stage.')) return;
+
+    try {
+      setApprovingPayment(applicationId);
+      const { data } = await api.post(`/payment/submissions/${applicationId}/approve`, {
+        adminRemarks: '',
+      });
+      toast.success('Payment approved successfully.');
+      fetchPaymentSubmissions();
+      fetchPaymentStats();
+      setPaymentModalOpen(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to approve payment.');
+    } finally {
+      setApprovingPayment(null);
+    }
+  };
+
+  const handleRejectPayment = async () => {
+    if (!rejectReason.trim()) {
+      toast.error('Please provide a rejection reason.');
+      return;
+    }
+
+    try {
+      const { data } = await api.post(`/payment/submissions/${rejectingPayment._id}/reject`, {
+        rejectionReason: rejectReason,
+      });
+      toast.success('Payment rejected successfully.');
+      fetchPaymentSubmissions();
+      fetchPaymentStats();
+      setRejectModalOpen(false);
+      setRejectReason('');
+      setRejectingPayment(null);
+      setPaymentModalOpen(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to reject payment.');
+    }
+  };
+
+  const openRejectModal = (application) => {
+    setRejectingPayment(application);
+    setRejectReason('');
+    setRejectModalOpen(true);
+  };
 
   const [sendingWelcomes, setSendingWelcomes] = useState(false);
 
@@ -782,6 +895,25 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleCreateCategory = async (e) => {
+    e.preventDefault();
+    if (!categoryForm.name.trim() || !categoryForm.description.trim()) {
+      toast.error('Name and description are required.');
+      return;
+    }
+    try {
+      setCategorySaving(true);
+      await categoryService.createCategory(categoryForm);
+      toast.success('Category created successfully.');
+      setCategoryForm({ name: '', description: '' });
+      fetchCategories();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create category.');
+    } finally {
+      setCategorySaving(false);
+    }
+  };
+
   // ── Criteria Management Handlers ──
   const handleSubmitCriteria = async (e) => {
     e.preventDefault();
@@ -1012,6 +1144,7 @@ const AdminDashboard = () => {
             {[
               { id: 'overview', label: 'Dashboard Overview', icon: RiDashboardLine },
               { id: 'applications', label: 'Manage Nominations', icon: RiFileList3Line },
+              { id: 'payment-verification', label: 'Payment Verification', icon: RiBankCardLine },
               { id: 'monitoring', label: 'Application Monitoring', icon: RiFileChartLine },
               { id: 'judge-management', label: 'Judge Management', icon: RiShieldUserLine },
               { id: 'users', label: 'User Directory', icon: RiTeamLine },
@@ -1330,8 +1463,17 @@ const AdminDashboard = () => {
                   const filteredApps = applications.filter(app => {
                     if (nominationsStageTab === 'f2f') {
                       return app.status === 'f2f_stage';
+                    } else if (nominationsStageTab === 'payment-verified') {
+                      // Payment verified: Show apps with approved payment
+                      return app.paymentStatus === 'approved';
                     } else {
-                      return app.status !== 'f2f_stage' && app.status !== 'draft';
+                      // Initial stage: Show apps that are NOT f2f_stage, NOT draft, AND
+                      // either have approved payment OR are legacy apps (no paymentStatus field)
+                      const isPaymentApproved = app.paymentStatus === 'approved';
+                      const isLegacyApp = !app.paymentStatus || app.paymentStatus === undefined;
+                      return app.status !== 'f2f_stage' &&
+                             app.status !== 'draft' &&
+                             (isPaymentApproved || isLegacyApp);
                     }
                   });
                   return (
@@ -1358,7 +1500,7 @@ const AdminDashboard = () => {
                             <option value="draft">Draft</option>
                             <option value="eligible">Eligible</option>
                             <option value="ineligible">Ineligible</option>
-                            <option value="initial_stage">Initial State</option>
+                            <option value="initial_stage">Selected to Initial Stage</option>
                             <option value="f2f_stage">Selected to Face-to-Face</option>
                             <option value="finalist">Finalist</option>
                             <option value="winner">Winner</option>
@@ -1370,6 +1512,16 @@ const AdminDashboard = () => {
 
                       {/* Stage Tabs */}
                       <div className="flex border-b border-white/10 mb-6 gap-6">
+                        <button
+                          onClick={() => setNominationsStageTab('payment-verified')}
+                          className={`pb-3 text-sm font-semibold transition-all relative ${
+                            nominationsStageTab === 'payment-verified'
+                              ? 'text-accent-400 border-b-2 border-accent-400'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                           Payment Verified
+                        </button>
                         <button
                           onClick={() => setNominationsStageTab('initial')}
                           className={`pb-3 text-sm font-semibold transition-all relative ${
@@ -1432,6 +1584,23 @@ const AdminDashboard = () => {
                                   <td className="p-4">
                                     <div className="font-bold text-white truncate max-w-[150px]">{app.projectTitle}</div>
                                     <div className="text-[10px] font-mono text-slate-500">{app.referenceNumber || 'Draft'}</div>
+                                    {app.documents && app.documents.length > 0 && (
+                                      <div className="flex flex-wrap gap-1.5 mt-2 max-w-[200px]">
+                                        {app.documents.map((doc, idx) => (
+                                          <a
+                                            key={doc._id || idx}
+                                            href={buildAssetUrl(doc.filePath)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 hover:border-accent-500/30 hover:bg-white/10 text-[9px] text-slate-300 hover:text-white transition-all whitespace-nowrap"
+                                            title={doc.originalName}
+                                          >
+                                            <RiFileTextLine size={10} className="text-accent-400" />
+                                            Doc {idx + 1}
+                                          </a>
+                                        ))}
+                                      </div>
+                                    )}
                                   </td>
                                   <td className="p-4 truncate max-w-[120px]">{app.category?.name}</td>
                                   <td className="p-4">
@@ -1450,28 +1619,25 @@ const AdminDashboard = () => {
                                       value={app.status}
                                       onChange={(e) => handleStatusChange(app._id, e.target.value)}
                                     >
-                                      <option value={app.status}>{app.statusLabel}</option>
-                                      {isF2F ? (
-                                        <>
-                                          <option value="f2f_stage">Selected to Face-to-Face</option>
-                                          <option value="finalist">Finalist</option>
-                                          <option value="winner">Winner</option>
-                                          <option value="runner_up">1st Runner-up</option>
-                                          {app.category?.name?.toLowerCase().includes('university') && (
-                                            <option value="runner_up_2nd">2nd Runner-up</option>
-                                          )}
-                                        </>
-                                      ) : (
+                                      <option value={app.status}>{app.statusLabel || STATUS_LABELS[app.status] || app.status}</option>
+                                      {nominationsStageTab === 'payment-verified' ? (
                                         <>
                                           <option value="draft">Draft</option>
                                           <option value="eligible">Eligible</option>
                                           <option value="ineligible">Ineligible</option>
-                                          <option value="initial_stage">Initial State</option>
+                                          <option value="initial_stage">Selected to Initial Stage</option>
+                                        </>
+                                      ) : nominationsStageTab === 'initial' ? (
+                                        <>
+                                          <option value="initial_stage">Selected to Initial Stage</option>
                                           <option value="f2f_stage">Selected to Face-to-Face</option>
-                                          <option value="finalist">Finalist</option>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <option value="f2f_stage">Selected to Face-to-Face</option>
                                           <option value="winner">Winner</option>
                                           <option value="runner_up">1st Runner-up</option>
-                                          {app.category?.name?.toLowerCase().includes('university') && (
+                                          {(app.category?.name?.toLowerCase().includes('university') || app.category?.name?.toLowerCase().includes('univercity') || app.organisationSize === 'Univercity student') && (
                                             <option value="runner_up_2nd">2nd Runner-up</option>
                                           )}
                                         </>
@@ -1600,6 +1766,152 @@ const AdminDashboard = () => {
                     </div>
                   );
                 })()}
+
+                {/* PAYMENT VERIFICATION TAB */}
+                {activeTab === 'payment-verification' && (
+                  <div className="space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div>
+                        <h3 className="font-display font-bold text-white text-xl">Payment Verification</h3>
+                        <p className="text-slate-400 text-xs mt-1">Review and verify payment submissions from candidates.</p>
+                      </div>
+                    </div>
+
+                    {/* Stats Cards */}
+                    {paymentStats && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                          <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Total</span>
+                          <p className="text-white text-xl font-black mt-1 font-display">{paymentStats.total}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                          <span className="text-yellow-400 text-[10px] font-bold uppercase tracking-wider">Pending</span>
+                          <p className="text-white text-xl font-black mt-1 font-display text-amber-400">{paymentStats.pending}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                          <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider">Approved</span>
+                          <p className="text-white text-xl font-black mt-1 font-display text-emerald-400">{paymentStats.approved}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                          <span className="text-red-400 text-[10px] font-bold uppercase tracking-wider">Rejected</span>
+                          <p className="text-white text-xl font-black mt-1 font-display text-red-400">{paymentStats.rejected}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Filters */}
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <select
+                        value={paymentFilter}
+                        onChange={(e) => setPaymentFilter(e.target.value)}
+                        className="bg-navy-900 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:border-accent-500 focus:outline-none"
+                      >
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="Search by name, email, organization..."
+                        value={paymentSearch}
+                        onChange={(e) => setPaymentSearch(e.target.value)}
+                        className="flex-1 bg-navy-900 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-500 focus:border-accent-500 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Payment Table */}
+                    {paymentLoading ? (
+                      <div className="flex justify-center py-10">
+                        <div className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    ) : paymentSubmissions.length === 0 ? (
+                      <div className="text-center py-10">
+                        <div className="text-slate-400 text-sm">No payment submissions found.</div>
+                      </div>
+                    ) : (
+                      <div className="overflow-auto max-h-[60vh] lg:max-h-[calc(100vh-22rem)] custom-scrollbar">
+                        <table className="w-full min-w-[1000px] text-xs text-left text-slate-300">
+                          <thead className="bg-blue-500/20 text-[10px] uppercase font-bold text-white">
+                            <tr>
+                              <th className="p-4">Candidate</th>
+                              <th className="p-4">Organization</th>
+                              <th className="p-4">Category</th>
+                              <th className="p-4">Email</th>
+                              <th className="p-4">Payment Ref</th>
+                              <th className="p-4">Upload Date</th>
+                              <th className="p-4">Status</th>
+                              <th className="p-4">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paymentSubmissions.map((app) => (
+                              <tr key={app._id} className="border-b border-white/5 hover:bg-white/5">
+                                <td className="p-4">
+                                  <div className="font-semibold text-white">
+                                    {app.candidate?.firstName} {app.candidate?.lastName}
+                                  </div>
+                                  <div className="text-[10px] text-slate-500">{app.candidate?.phone}</div>
+                                </td>
+                                <td className="p-4">{app.organisationName || '-'}</td>
+                                <td className="p-4">
+                                  <span className="px-2 py-1 rounded bg-accent-500/10 border border-accent-500/20 text-accent-400 text-[10px] whitespace-nowrap">
+                                    {app.category?.name}
+                                  </span>
+                                </td>
+                                <td className="p-4 text-blue-400">{app.candidate?.email}</td>
+                                <td className="p-4">{app.paymentReference || '-'}</td>
+                                <td className="p-4">
+                                  {app.paymentSlip?.uploadedAt 
+                                    ? new Date(app.paymentSlip.uploadedAt).toLocaleDateString()
+                                    : '-'}
+                                </td>
+                                <td className="p-4">
+                                  <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
+                                    app.paymentStatus === 'approved' 
+                                      ? 'bg-emerald-500/10 text-emerald-400' 
+                                      : app.paymentStatus === 'rejected'
+                                      ? 'bg-red-500/10 text-red-400'
+                                      : 'bg-yellow-500/10 text-yellow-400'
+                                  }`}>
+                                    {app.paymentStatus || 'Pending'}
+                                  </span>
+                                </td>
+                                <td className="p-4">
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => handleViewPayment(app)}
+                                      className="text-accent-400 hover:text-accent-300 text-[10px] flex items-center gap-1"
+                                    >
+                                      <RiEyeLine size={14} /> View
+                                    </button>
+                                    {app.paymentStatus !== 'approved' && (
+                                      <button
+                                        onClick={() => handleApprovePayment(app._id)}
+                                        disabled={approvingPayment === app._id}
+                                        className="text-emerald-400 hover:text-emerald-300 text-[10px] flex items-center gap-1 disabled:opacity-50"
+                                      >
+                                        {approvingPayment === app._id ? '...' : 'Approve'}
+                                      </button>
+                                    )}
+                                    {app.paymentStatus !== 'rejected' && (
+                                      <button
+                                        onClick={() => openRejectModal(app)}
+                                        className="text-red-400 hover:text-red-300 text-[10px] flex items-center gap-1"
+                                      >
+                                        Reject
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* 3. APPLICATION MONITORING TAB */}
                 {activeTab === 'monitoring' && (
@@ -1867,29 +2179,74 @@ const AdminDashboard = () => {
                         <h3 className="font-display font-bold text-white text-xl">Award Categories</h3>
                         <p className="text-slate-400 text-xs mt-1">Manage award categories available for nominations.</p>
                       </div>
-                      <button onClick={handleSeedCategories} className="btn-primary text-xs">
+                      <button onClick={handleSeedCategories} className="btn-primary text-xs !py-2 !px-4">
                         Seed Default Categories
                       </button>
                     </div>
 
-                    <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
-                        <h4 className="font-display font-bold text-white text-base">Existing Categories</h4>
-                        <div className="space-y-3 max-h-[420px] overflow-y-auto">
-                          {categories.map(c => (
-                            <div key={c._id} className="p-3 rounded-xl bg-white/5 border border-white/10">
-                              <div className="flex justify-between items-start gap-3">
-                                <div>
-                                  <h5 className="font-semibold text-white text-sm">{c.name}</h5>
-                                  <p className="text-slate-400 text-[11px] mt-1">{c.description}</p>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Left: Create Category Form */}
+                      <div className="lg:col-span-1 p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4 h-fit">
+                        <h4 className="font-display font-bold text-white text-base">Create Category</h4>
+                        <form onSubmit={handleCreateCategory} className="space-y-4">
+                          <div>
+                            <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Category Name</label>
+                            <input
+                              className="input-field"
+                              placeholder="e.g. National AI Excellence Award"
+                              value={categoryForm.name}
+                              onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Description</label>
+                            <textarea
+                              className="input-field h-32 resize-none"
+                              placeholder="Provide details about who is eligible and what this category awards."
+                              value={categoryForm.description}
+                              onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                              required
+                            />
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={categorySaving}
+                            className="btn-primary w-full text-xs !py-2.5 font-bold"
+                          >
+                            {categorySaving ? 'Creating...' : 'Create Category'}
+                          </button>
+                        </form>
+                      </div>
+
+                      {/* Right: Existing Categories List */}
+                      <div className="lg:col-span-2 p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
+                        <h4 className="font-display font-bold text-white text-base">Existing Categories ({categories.length})</h4>
+                        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                          {categories.map((c) => (
+                            <div key={c._id} className="p-4 rounded-xl bg-white/[0.02] border border-white/10 hover:bg-white/5 hover:border-white/20 transition-all">
+                              <div className="flex justify-between items-start gap-4">
+                                <div className="space-y-1">
+                                  <h5 className="font-semibold text-white text-sm tracking-wide">{c.name}</h5>
+                                  <p className="text-slate-400 text-xs leading-relaxed">{c.description}</p>
                                 </div>
-                                <div className="flex gap-2">
-                                  <button onClick={() => handleDeleteCategory(c._id)} className="text-red-400 text-xs">Delete</button>
-                                </div>
+                                <button
+                                  onClick={() => handleDeleteCategory(c._id)}
+                                  className="text-red-400 hover:text-red-300 text-xs font-bold border border-red-500/20 bg-red-500/5 px-2.5 py-1 rounded-lg transition-colors hover:bg-red-500/10"
+                                >
+                                  Delete
+                                </button>
                               </div>
                             </div>
                           ))}
+                          {categories.length === 0 && (
+                            <div className="text-center py-10 text-slate-500 text-sm">
+                              No categories configured yet. Click "Seed Default Categories" to start.
+                            </div>
+                          )}
                         </div>
                       </div>
+                    </div>
                   </div>
                 )}
 
@@ -3101,6 +3458,202 @@ const AdminDashboard = () => {
             <div className="flex justify-end pt-5 border-t border-white/10 mt-6">
               <button onClick={() => setJudgeViewModalOpen(false)} className="btn-ghost text-xs !py-2 !px-4">
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Details Modal */}
+      {paymentModalOpen && selectedPayment && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-2xl p-6">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="font-display font-bold text-white text-xl">Payment Details</h3>
+                <p className="text-slate-400 text-xs mt-1">Review payment submission and slip</p>
+              </div>
+              <button
+                onClick={() => setPaymentModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <RiCloseLine size={24} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Candidate Information */}
+              <div className="space-y-4">
+                <h4 className="font-display font-semibold text-white text-sm border-b border-white/10 pb-2">Candidate Information</h4>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Name:</span>
+                    <span className="text-white">{selectedPayment.candidate?.firstName} {selectedPayment.candidate?.lastName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Email:</span>
+                    <span className="text-white">{selectedPayment.candidate?.email}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Phone:</span>
+                    <span className="text-white">{selectedPayment.candidate?.phone}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Organization:</span>
+                    <span className="text-white">{selectedPayment.organisationName || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Category:</span>
+                    <span className="text-white">{selectedPayment.category?.name}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Information */}
+              <div className="space-y-4">
+                <h4 className="font-display font-semibold text-white text-sm border-b border-white/10 pb-2">Payment Information</h4>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Payment Method:</span>
+                    <span className="text-white capitalize">{selectedPayment.paymentMethod}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Reference Number:</span>
+                    <span className="text-white">{selectedPayment.paymentReference || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Upload Date:</span>
+                    <span className="text-white">
+                      {selectedPayment.paymentSlip?.uploadedAt 
+                        ? new Date(selectedPayment.paymentSlip.uploadedAt).toLocaleString()
+                        : '-'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Current Status:</span>
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
+                      selectedPayment.paymentStatus === 'approved' 
+                        ? 'bg-emerald-500/10 text-emerald-400' 
+                        : selectedPayment.paymentStatus === 'rejected'
+                        ? 'bg-red-500/10 text-red-400'
+                        : 'bg-yellow-500/10 text-yellow-400'
+                    }`}>
+                      {selectedPayment.paymentStatus || 'Pending'}
+                    </span>
+                  </div>
+                  {selectedPayment.verifiedBy && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Verified By:</span>
+                      <span className="text-white">{selectedPayment.verifiedBy?.firstName} {selectedPayment.verifiedBy?.lastName}</span>
+                    </div>
+                  )}
+                  {selectedPayment.rejectionReason && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Rejection Reason:</span>
+                      <span className="text-red-400">{selectedPayment.rejectionReason}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Slip Preview */}
+            <div className="mt-6">
+              <h4 className="font-display font-semibold text-white text-sm border-b border-white/10 pb-2 mb-4">Payment Slip Preview</h4>
+              <div className="bg-navy-900 rounded-lg p-4 min-h-[300px] flex items-center justify-center">
+                {selectedPayment.paymentSlip?.filePath ? (
+                  selectedPayment.paymentSlip.mimeType?.includes('image') ? (
+                    <img
+                      src={buildAssetUrl(selectedPayment.paymentSlip.filePath)}
+                      alt="Payment Slip"
+                      className="max-w-full max-h-[500px] object-contain"
+                    />
+                  ) : selectedPayment.paymentSlip.mimeType === 'application/pdf' ? (
+                    <div className="text-center">
+                      <RiFileTextLine size={48} className="text-accent-400 mx-auto mb-2" />
+                      <p className="text-slate-400 text-sm">PDF Document</p>
+                      <a
+                        href={buildAssetUrl(selectedPayment.paymentSlip.filePath)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-accent-400 text-xs hover:underline mt-2 inline-block"
+                      >
+                        Open PDF in new tab
+                      </a>
+                    </div>
+                  ) : (
+                    <p className="text-slate-400 text-sm">Unsupported file type</p>
+                  )
+                ) : (
+                  <p className="text-slate-400 text-sm">No payment slip uploaded</p>
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="mt-6 flex justify-end gap-3 border-t border-white/10 pt-4">
+              <button
+                onClick={() => setPaymentModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-white/5 text-white text-sm hover:bg-white/10 transition-colors"
+              >
+                Close
+              </button>
+              {selectedPayment.paymentStatus !== 'approved' && (
+                <button
+                  onClick={() => handleApprovePayment(selectedPayment._id)}
+                  disabled={approvingPayment === selectedPayment._id}
+                  className="px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 text-sm hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+                >
+                  {approvingPayment === selectedPayment._id ? 'Approving...' : 'Approve Payment'}
+                </button>
+              )}
+              {selectedPayment.paymentStatus !== 'rejected' && (
+                <button
+                  onClick={() => openRejectModal(selectedPayment)}
+                  className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 text-sm hover:bg-red-500/30 transition-colors"
+                >
+                  Reject Payment
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Payment Modal */}
+      {rejectModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card max-w-md w-full rounded-2xl p-6">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="font-display font-bold text-white text-lg">Reject Payment</h3>
+              <button
+                onClick={() => setRejectModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <RiCloseLine size={20} />
+              </button>
+            </div>
+            <p className="text-slate-400 text-sm mb-4">
+              Please provide a reason for rejecting this payment. This will be sent to the candidate.
+            </p>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Enter rejection reason..."
+              className="w-full bg-navy-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-accent-500 focus:outline-none resize-none min-h-[100px]"
+            />
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => setRejectModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-white/5 text-white text-sm hover:bg-white/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRejectPayment}
+                className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 text-sm hover:bg-red-500/30 transition-colors"
+              >
+                Reject Payment
               </button>
             </div>
           </div>

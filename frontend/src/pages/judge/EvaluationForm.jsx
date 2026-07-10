@@ -307,15 +307,17 @@ const EvaluationForm = () => {
                       };
 
                       return (
-                        <button
+                        <a
                           key={doc._id}
-                          onClick={handleDownload}
+                          href={buildAssetUrl(doc.filePath)}
+                          target="_blank"
+                          rel="noopener noreferrer"
                           className="flex items-center gap-3 p-3 rounded-xl bg-white/4 border border-white/5 hover:border-accent-500/30 hover:bg-white/8 transition-all text-xs text-slate-300 hover:text-white w-full text-left"
                         >
                           <RiFileTextLine className="text-accent-400 text-lg shrink-0" />
                           <span className="truncate flex-1 font-medium">{doc.originalName}</span>
-                          <RiDownload2Line className="text-slate-500 shrink-0 text-sm" />
-                        </button>
+                          <RiExternalLinkLine className="text-slate-500 shrink-0 text-sm" />
+                        </a>
                       );
                     })}
                   </div>

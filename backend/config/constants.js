@@ -15,9 +15,10 @@ const ALLOWED_TRANSITIONS = {
   ineligible:   ['under_review'],
   initial_stage: ['f2f_stage', 'eligible'],
   f2f_stage:    ['finalist', 'initial_stage'],
-  finalist:     ['winner', 'runner_up', 'f2f_stage'],
+  finalist:     ['winner', 'runner_up', 'runner_up_2nd', 'f2f_stage'],
   winner:       [],
   runner_up:    [],
+  runner_up_2nd: [],
 };
 
 const APPLICATION_STATUS = {
@@ -31,6 +32,7 @@ const APPLICATION_STATUS = {
   FINALIST:     'finalist',
   WINNER:       'winner',
   RUNNER_UP:    'runner_up',
+  RUNNER_UP_2ND: 'runner_up_2nd',
 };
 
 const PAGINATION = {
