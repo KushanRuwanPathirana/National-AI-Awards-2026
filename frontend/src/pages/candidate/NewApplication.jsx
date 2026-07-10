@@ -186,8 +186,9 @@ const NewApplication = () => {
   );
   const categoryId = watch("categoryId");
   const selectedCategoryName = watch("selectedCategoryName");
+  const organisationSize = watch("organisationSize");
 
-  const isFreeCategory = selectedCategory?.name === "University AI Innovation";
+  const isFreeCategory = selectedCategory?.name === "University AI Innovation" || organisationSize === "Univercity student";
   const activeSteps = isFreeCategory
     ? baseSteps
     : [...baseSteps, { label: "Payment" }];
@@ -221,8 +222,8 @@ const NewApplication = () => {
 
   useEffect(() => {
     if (
-      selectedCategory &&
-      selectedCategory.name === "University AI Innovation"
+      (selectedCategory && selectedCategory.name === "University AI Innovation") ||
+      organisationSize === "Univercity student"
     ) {
       setValue("paymentMethod", "");
       setValue("paymentSlip", null);
@@ -232,7 +233,7 @@ const NewApplication = () => {
         setCurrentStep(6);
       }
     }
-  }, [selectedCategory, currentStep, setValue]);
+  }, [selectedCategory, organisationSize, currentStep, setValue]);
 
   useEffect(() => {
     if (!draftQueryId) return;
@@ -302,7 +303,8 @@ const NewApplication = () => {
           draft.category?.name === "University AI Innovation" ||
           categories.find(
             (c) => c._id === (draft.category?._id || draft.category),
-          )?.name === "University AI Innovation";
+          )?.name === "University AI Innovation" ||
+          draft.organisationSize === "Univercity student";
         const draftActiveStepsLength = isDraftFree ? 7 : 8;
         setCurrentStep(
           Math.min(

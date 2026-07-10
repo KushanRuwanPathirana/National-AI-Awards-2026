@@ -1457,7 +1457,7 @@ const AdminDashboard = () => {
                                           <option value="finalist">Finalist</option>
                                           <option value="winner">Winner</option>
                                           <option value="runner_up">1st Runner-up</option>
-                                          {app.category?.name?.toLowerCase().includes('university') && (
+                                          {app.organisationSize === 'Univercity student' && (
                                             <option value="runner_up_2nd">2nd Runner-up</option>
                                           )}
                                         </>
@@ -1471,7 +1471,7 @@ const AdminDashboard = () => {
                                           <option value="finalist">Finalist</option>
                                           <option value="winner">Winner</option>
                                           <option value="runner_up">1st Runner-up</option>
-                                          {app.category?.name?.toLowerCase().includes('university') && (
+                                          {app.organisationSize === 'Univercity student' && (
                                             <option value="runner_up_2nd">2nd Runner-up</option>
                                           )}
                                         </>
