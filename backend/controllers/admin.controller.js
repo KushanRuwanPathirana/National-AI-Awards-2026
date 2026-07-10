@@ -423,6 +423,7 @@ const sendPendingJudgeReminders = async (req, res, next) => {
         recipients: audience.length,
         failedEmailCount,
         pendingEvaluations: audience.reduce((sum, entry) => sum + entry.pendingCount, 0),
+        recipientEmails: audience.map((entry) => entry.user.email).filter(Boolean),
       },
     });
   } catch (error) { next(error); }

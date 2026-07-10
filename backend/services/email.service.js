@@ -195,22 +195,26 @@ const sendApplicationStatusUpdate = async (user, application, newStatus) => {
  * Send judge assignment notification email
  */
 const sendJudgeInvitation = async (judge, application) => {
+  const dashboardUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/judge-dashboard`;
   const html = `
     <div style="font-family:'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:30px;background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:16px;color:#e2e8f0;">
       <div style="text-align:center;margin-bottom:24px;">
-        <h1 style="color:#818cf8;margin:0;">⚖️ New Assignment</h1>
+        <h1 style="color:#818cf8;margin:0;">⚖️ New Nomination Assigned</h1>
       </div>
       <p>Hi <strong>${judge.firstName}</strong>,</p>
-      <p>You have been assigned to evaluate the following application:</p>
+      <p>You have been assigned to evaluate the following nomination:</p>
       <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin:16px 0;">
-        <p style="margin:4px 0;"><strong>Project:</strong> ${application.projectTitle}</p>
+        <p style="margin:4px 0;"><strong>Nomination:</strong> ${application.projectTitle}</p>
         <p style="margin:4px 0;color:#94a3b8;font-size:13px;"><strong>Reference:</strong> ${application.referenceNumber || 'N/A'}</p>
       </div>
       <p style="color:#94a3b8;font-size:13px;">Login to your Judge Portal to begin your evaluation.</p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${dashboardUrl}" style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Open Judge Portal</a>
+      </div>
       <hr style="border:1px solid #334155;margin:24px 0;">
       <p style="color:#64748b;font-size:11px;text-align:center;">National AI Awards Sri Lanka 2026</p>
     </div>`;
-  await sendEmail({ to: judge.email, subject: '⚖️ New Evaluation Assignment — AI Awards', html });
+  await sendEmail({ to: judge.email, subject: '⚖️ New Nomination Assigned for Evaluation — AI Awards', html });
 };
 
 /**

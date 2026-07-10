@@ -8,6 +8,7 @@ const {
   sendPasswordResetOTPEmail,
   sendPasswordResetSuccessEmail,
   sendPasswordChangedEmail,
+  sendJudgeInvitation,
 } = require('../services/email.service');
 const logger = require('../utils/logger');
 
@@ -567,6 +568,11 @@ const autoAssignApplicationsToJudge = async (user) => {
           link: isF2F ? `/judge-dashboard/evaluate/${app._id}?stage=f2f` : `/judge-dashboard/evaluate/${app._id}`,
           relatedApplication: app._id,
         });
+        try {
+          await sendJudgeInvitation(user, app);
+        } catch (emailErr) {
+          logger.error(`Auto-assignment email failed for ${user.email}: ${emailErr.message}`);
+        }
         
         // Audit log
         await AuditLog.create({

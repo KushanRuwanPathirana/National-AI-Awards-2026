@@ -151,6 +151,7 @@ const AdminDashboard = () => {
   const [judgeProgress, setJudgeProgress] = useState([]);
   const [pendingJudgeAudience, setPendingJudgeAudience] = useState({ judgeCount: 0, pendingEvaluations: 0, judges: [] });
   const [sendingPendingJudgeReminders, setSendingPendingJudgeReminders] = useState(false);
+  const [sentReminderEmails, setSentReminderEmails] = useState([]);
   const [criteria, setCriteria] = useState([]);
   const [criteriaStageFilter, setCriteriaStageFilter] = useState('initial');
   const [imageUploading, setImageUploading] = useState(false);
@@ -719,6 +720,13 @@ const AdminDashboard = () => {
       fetchCriteria();
     }
   }, [criteriaStageFilter, activeTab, fetchCriteria]);
+
+  useEffect(() => {
+    if (sentReminderEmails.length === 0) return undefined;
+    const timer = setTimeout(() => setSentReminderEmails([]), 10000);
+    return () => clearTimeout(timer);
+  }, [sentReminderEmails]);
+
   const loadAll = async () => {
     setLoading(true);
     await Promise.all([
@@ -1013,12 +1021,13 @@ const AdminDashboard = () => {
       toast.error('No judges currently have pending evaluations.');
       return;
     }
-    if (!window.confirm(`Send reminder emails to ${pendingJudgeCount} judge(s) with ${pendingJudgeEvaluationCount} pending evaluation(s)?`)) return;
+    if (!window.confirm(`Send reminder notifications and emails to ${pendingJudgeCount} judge(s) with ${pendingJudgeEvaluationCount} pending evaluation(s)?`)) return;
 
     try {
       setSendingPendingJudgeReminders(true);
       const { data } = await adminService.sendPendingJudgeReminders();
       toast.success(data.message || 'Pending judge reminders sent.');
+      setSentReminderEmails(data.data?.recipientEmails || []);
       fetchPendingJudgeAudience();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to send pending judge reminders.');
@@ -2593,7 +2602,7 @@ const AdminDashboard = () => {
                             <div>
                               <h4 className="text-sm font-bold text-white">Pending Evaluation Reminders</h4>
                               <p className="mt-1 text-xs leading-5 text-slate-400">
-                                Send the standard reminder email to judges who still have scorecards to submit.
+                                Send a reminder notification and email to judges who still have assigned nominations to evaluate.
                               </p>
                             </div>
                             <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-300">
@@ -2612,6 +2621,20 @@ const AdminDashboard = () => {
                               <><RiMailSendLine /> Send Reminder Emails</>
                             )}
                           </button>
+                          {sentReminderEmails.length > 0 && (
+                            <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3">
+                              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                                Reminder sent to
+                              </div>
+                              <div className="mt-2 max-h-24 space-y-1 overflow-y-auto pr-1">
+                                {sentReminderEmails.map((email) => (
+                                  <div key={email} className="truncate rounded-lg bg-navy-950/40 px-2.5 py-1.5 font-mono text-[11px] text-emerald-100">
+                                    {email}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
