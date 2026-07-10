@@ -4,6 +4,7 @@ const Evaluation = require('../models/Evaluation.model');
 const Notification = require('../models/Notification.model');
 const AuditLog = require('../models/AuditLog.model');
 const Judge = require('../models/Judge.model');
+const User = require('../models/User.model');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
 const { APPLICATION_DEADLINE, APPLICATION_STATUS, ALLOWED_TRANSITIONS } = require('../config/constants');
 const {
@@ -12,6 +13,7 @@ const {
   sendFinalistEmail,
   sendRunnerUpEmail,
   sendRunnerUp2ndEmail,
+  sendJudgeInvitation,
 } = require('../services/email.service');
 const logger = require('../utils/logger');
 const { buildApplicationsCsv, buildSimplePdf } = require('../utils/reportExporter');
@@ -59,6 +61,19 @@ const createNotification = async ({
       link,
       relatedApplication,
     });
+    if (type === 'judge_assigned' && relatedApplication) {
+      try {
+        const [judge, application] = await Promise.all([
+          User.findById(recipient).select('firstName lastName email'),
+          Application.findById(relatedApplication).select('projectTitle referenceNumber'),
+        ]);
+        if (judge?.email && application) {
+          await sendJudgeInvitation(judge, application);
+        }
+      } catch (emailError) {
+        logger.error(`Judge assignment email failed: ${emailError.message}`);
+      }
+    }
   } catch (e) {
     logger.error(`Notification create failed: ${e.message}`);
   }

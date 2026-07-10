@@ -75,6 +75,12 @@ const sendWelcomeEmail = async (user) => {
       </div>
       <p>Hi <strong>${user.firstName}</strong>,</p>
       <p>Your email has been verified successfully. You can now access the National AI Awards Sri Lanka 2026 portal.</p>
+      ${user.registrationNumber ? `
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin:16px 0;">
+        <p style="margin:4px 0;color:#94a3b8;font-size:13px;">Your registration number</p>
+        <p style="margin:4px 0;font-size:18px;color:#f8fafc;font-weight:800;letter-spacing:1px;">${user.registrationNumber}</p>
+      </div>
+      ` : ''}
       <p style="color:#94a3b8;font-size:13px;">Login to your dashboard to start your application or manage your evaluations.</p>
       <hr style="border:1px solid #334155;margin:24px 0;">
       <p style="color:#64748b;font-size:11px;text-align:center;">National AI Awards Sri Lanka 2026</p>
@@ -195,53 +201,61 @@ const sendApplicationStatusUpdate = async (user, application, newStatus) => {
  * Send judge assignment notification email
  */
 const sendJudgeInvitation = async (judge, application) => {
+  const dashboardUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/judge-dashboard`;
   const html = `
     <div style="font-family:'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:30px;background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:16px;color:#e2e8f0;">
       <div style="text-align:center;margin-bottom:24px;">
-        <h1 style="color:#818cf8;margin:0;">⚖️ New Assignment</h1>
+        <h1 style="color:#818cf8;margin:0;">⚖️ New Nomination Assigned</h1>
       </div>
       <p>Hi <strong>${judge.firstName}</strong>,</p>
-      <p>You have been assigned to evaluate the following application:</p>
+      <p>You have been assigned to evaluate the following nomination:</p>
       <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin:16px 0;">
-        <p style="margin:4px 0;"><strong>Project:</strong> ${application.projectTitle}</p>
+        <p style="margin:4px 0;"><strong>Nomination:</strong> ${application.projectTitle}</p>
         <p style="margin:4px 0;color:#94a3b8;font-size:13px;"><strong>Reference:</strong> ${application.referenceNumber || 'N/A'}</p>
       </div>
       <p style="color:#94a3b8;font-size:13px;">Login to your Judge Portal to begin your evaluation.</p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${dashboardUrl}" style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Open Judge Portal</a>
+      </div>
       <hr style="border:1px solid #334155;margin:24px 0;">
       <p style="color:#64748b;font-size:11px;text-align:center;">National AI Awards Sri Lanka 2026</p>
     </div>`;
-  await sendEmail({ to: judge.email, subject: '⚖️ New Evaluation Assignment — AI Awards', html });
+  await sendEmail({ to: judge.email, subject: '⚖️ New Nomination Assigned for Evaluation — AI Awards', html });
 };
 
 /**
- * Send daily reminder email to judges with pending evaluations
+ * Send reminder email to judges with assigned nomination evaluations still pending
  */
 const sendJudgeReminder = async (judge, pendingCount, deadlineStr, projectTitle = null) => {
   const deadlineDate = deadlineStr ? new Date(deadlineStr) : null;
   const formattedDeadline = deadlineDate ? deadlineDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'N/A';
+  const dashboardUrl = `${process.env.CLIENT_URL || 'http://localhost:5173'}/judge-dashboard`;
   
   const html = `
     <div style="font-family:'Segoe UI',sans-serif;max-width:520px;margin:auto;padding:30px;background:linear-gradient(135deg,#0f172a,#1e293b);border-radius:16px;color:#e2e8f0;">
       <div style="text-align:center;margin-bottom:24px;">
-        <h1 style="color:#f59e0b;margin:0;">⚠️ Pending Evaluations Reminder</h1>
+        <h1 style="color:#f59e0b;margin:0;">⚠️ Pending Nomination Evaluation</h1>
       </div>
       <p>Hi <strong>${judge.firstName}</strong>,</p>
-      <p>This is a friendly reminder that you have <strong>${pendingCount}</strong> pending application evaluation(s) assigned to you.</p>
+      <p>This is a reminder that <strong>${pendingCount}</strong> nomination evaluation(s) assigned to you have not been submitted yet.</p>
       ${projectTitle ? `
       <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin:16px 0;">
-        <p style="margin:4px 0;"><strong>Closest Deadline:</strong> ${projectTitle}</p>
-        <p style="margin:4px 0;font-size:14px;color:#f59e0b;"><strong>Due:</strong> ${formattedDeadline}</p>
+        <p style="margin:4px 0;"><strong>Pending Nomination:</strong> ${projectTitle}</p>
+        <p style="margin:4px 0;font-size:14px;color:#f59e0b;"><strong>Closest Due Date:</strong> ${formattedDeadline}</p>
       </div>
       ` : `
       <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin:16px 0;text-align:center;">
-        <p style="margin:4px 0;font-size:14px;color:#f59e0b;"><strong>Deadline:</strong> ${formattedDeadline}</p>
+        <p style="margin:4px 0;font-size:14px;color:#f59e0b;"><strong>Due Date:</strong> ${formattedDeadline}</p>
       </div>
       `}
       <p style="color:#94a3b8;font-size:13px;">Please log in to the Judge Portal to review the criteria and submit your scorecards.</p>
+      <div style="text-align:center;margin:24px 0;">
+        <a href="${dashboardUrl}" style="background:#2563eb;color:#fff;padding:12px 28px;border-radius:8px;text-decoration:none;font-weight:700;display:inline-block;">Open Judge Portal</a>
+      </div>
       <hr style="border:1px solid #334155;margin:24px 0;">
       <p style="color:#64748b;font-size:11px;text-align:center;">National AI Awards Sri Lanka 2026</p>
     </div>`;
-  await sendEmail({ to: judge.email, subject: '⚠️ Action Required: Pending Evaluations Reminder — AI Awards', html });
+  await sendEmail({ to: judge.email, subject: '⚠️ Action Required: Pending Nomination Evaluation — AI Awards', html });
 };
 
 /**

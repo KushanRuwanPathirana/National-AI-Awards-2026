@@ -4,6 +4,18 @@ const { ROLES } = require('../config/constants');
 const Counter = require('./Counter.model');
 
 const buildRegistrationNumber = (sequence) => `NAIA-2026-${String(sequence).padStart(5, '0')}`;
+const buildJudgeRegistrationNumber = (sequence) => `NAIA-2026-JDG-${String(sequence).padStart(5, '0')}`;
+
+const REGISTRATION_NUMBER_CONFIG = {
+  [ROLES.CANDIDATE]: {
+    counterKey: 'user_registration_number',
+    build: buildRegistrationNumber,
+  },
+  [ROLES.JUDGE]: {
+    counterKey: 'judge_registration_number',
+    build: buildJudgeRegistrationNumber,
+  },
+};
 
 const userSchema = new mongoose.Schema(
   {
@@ -32,7 +44,9 @@ const userSchema = new mongoose.Schema(
       unique: true,
       sparse: true,
       trim: true,
-      immutable: true,
+      immutable: function () {
+        return !!this.registrationNumber;
+      },
     },
     password: {
       type: String,
@@ -109,18 +123,25 @@ userSchema.virtual('fullName').get(function () {
   return `${this.firstName} ${this.lastName}`;
 });
 
-// Pre-validate: assign a unique registration number to new users.
+userSchema.statics.generateRegistrationNumberForRole = async function (role) {
+  const config = REGISTRATION_NUMBER_CONFIG[role];
+  if (!config) return null;
+
+  const counter = await Counter.findOneAndUpdate(
+    { key: config.counterKey },
+    { $inc: { value: 1 } },
+    { new: true, upsert: true, setDefaultsOnInsert: true }
+  );
+
+  return config.build(counter.value);
+};
+
+// Pre-validate: assign a unique registration number to new candidates and judges.
 userSchema.pre('validate', async function (next) {
   try {
-    if (!this.isNew || this.registrationNumber || this.role !== ROLES.CANDIDATE) return next();
+    if (!this.isNew || this.registrationNumber) return next();
 
-    const counter = await Counter.findOneAndUpdate(
-      { key: 'user_registration_number' },
-      { $inc: { value: 1 } },
-      { new: true, upsert: true, setDefaultsOnInsert: true }
-    );
-
-    this.registrationNumber = buildRegistrationNumber(counter.value);
+    this.registrationNumber = await this.constructor.generateRegistrationNumberForRole(this.role);
     return next();
   } catch (error) {
     return next(error);

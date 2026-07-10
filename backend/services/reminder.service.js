@@ -4,6 +4,7 @@ const Evaluation = require('../models/Evaluation.model');
 const Setting = require('../models/Setting.model');
 const Notification = require('../models/Notification.model');
 const { sendJudgeReminder } = require('./email.service');
+const { sendPendingJudgeReminderBatch } = require('./pendingJudgeReminder.service');
 const logger = require('../utils/logger');
 
 /**
@@ -72,9 +73,9 @@ const sendDailyJudgeReminders = async () => {
             await Notification.create({
               recipient: judge._id,
               type: 'evaluation_reminder',
-              title: 'Action Required: Pending Evaluations Reminder',
-              message: `You have ${pendingApps.length} pending application evaluation(s). The closest deadline is ${closest.app.projectTitle} due in ${closest.daysUntil} day(s).`,
-              link: '/dashboard',
+              title: 'Action Required: Pending Nomination Evaluation',
+              message: `You have ${pendingApps.length} assigned nomination evaluation(s) still pending. The closest due nomination is ${closest.app.projectTitle} in ${closest.daysUntil} day(s).`,
+              link: '/judge-dashboard',
             });
           } catch (notifErr) {
             logger.error(`Failed to create database notification for ${judge.email}: ${notifErr.message}`);
@@ -98,11 +99,63 @@ const sendDailyJudgeReminders = async () => {
 
 let lastNotificationDate = '';
 
+const processManualPendingJudgeReminderSchedule = async () => {
+  const now = new Date();
+  const scheduled = await Setting.findOneAndUpdate(
+    {
+      key: 'pending_judge_reminder_schedule',
+      'value.status': 'scheduled',
+      'value.runAt': { $lte: now },
+    },
+    {
+      $set: {
+        'value.status': 'running',
+        'value.startedAt': now,
+      },
+    },
+    { new: true }
+  );
+
+  if (!scheduled) return;
+
+  try {
+    logger.info(`Manual pending judge reminder schedule triggered for ${new Date(scheduled.value.runAt).toISOString()}`);
+    const result = await sendPendingJudgeReminderBatch({
+      performedBy: scheduled.value.createdBy,
+      source: 'scheduled',
+    });
+
+    await Setting.findOneAndUpdate(
+      { key: 'pending_judge_reminder_schedule' },
+      {
+        $set: {
+          'value.status': 'completed',
+          'value.completedAt': new Date(),
+          'value.lastRunAt': new Date(),
+          'value.lastResult': result,
+        },
+      }
+    );
+  } catch (error) {
+    logger.error(`Manual pending judge reminder schedule failed: ${error.message}`);
+    await Setting.findOneAndUpdate(
+      { key: 'pending_judge_reminder_schedule' },
+      {
+        $set: {
+          'value.status': 'failed',
+          'value.failedAt': new Date(),
+          'value.error': error.message,
+        },
+      }
+    );
+  }
+};
+
 /**
- * Starts a background timer checking every minute to trigger the reminder at exactly 9:00 AM local time
+ * Starts a background timer checking every minute for daily and manual reminders
  */
 const startReminderScheduler = () => {
-  logger.info('Initializing Daily Judge Reminder Scheduler (9:00 AM)...');
+  logger.info('Initializing Judge Reminder Scheduler...');
 
   setInterval(async () => {
     try {
@@ -115,6 +168,8 @@ const startReminderScheduler = () => {
         logger.info('Cron Scheduler triggered: sending daily reminders...');
         await sendDailyJudgeReminders();
       }
+
+      await processManualPendingJudgeReminderSchedule();
     } catch (err) {
       logger.error(`Error in reminder scheduler tick: ${err.message}`);
     }

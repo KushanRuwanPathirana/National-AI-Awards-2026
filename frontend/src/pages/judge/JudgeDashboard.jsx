@@ -296,6 +296,9 @@ const JudgeDashboard = () => {
             </div>
             <h2 className="font-display font-bold text-white text-base leading-tight">{user?.fullName}</h2>
             <p className="text-slate-500 text-xs mt-0.5">{user?.designation || 'Evaluation Panel'}</p>
+            {user?.registrationNumber && (
+              <p className="mt-2 font-mono text-[10px] font-semibold text-accent-300">{user.registrationNumber}</p>
+            )}
             <span className="inline-flex items-center gap-1 mt-2 px-2.5 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest bg-accent-500/15 text-accent-300 border border-accent-500/20">
               <RiShieldLine className="text-[10px]" /> Judge
             </span>
@@ -916,6 +919,12 @@ const JudgeDashboard = () => {
                         <span className="block text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1.5">Email Address</span>
                         <p className="text-white text-sm font-medium bg-white/4 px-4 py-3 rounded-xl border border-white/6 truncate">
                           {user?.email}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="block text-[10px] text-slate-500 font-semibold uppercase tracking-wider mb-1.5">Registration Number</span>
+                        <p className="font-mono text-accent-300 text-sm font-medium bg-white/4 px-4 py-3 rounded-xl border border-white/6 truncate">
+                          {user?.registrationNumber || 'Pending'}
                         </p>
                       </div>
                       {[

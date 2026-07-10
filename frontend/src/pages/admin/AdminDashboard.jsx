@@ -149,6 +149,13 @@ const AdminDashboard = () => {
   const [categories, setCategories] = useState([]);
   const [monitoring, setMonitoring] = useState(null);
   const [judgeProgress, setJudgeProgress] = useState([]);
+  const [pendingJudgeAudience, setPendingJudgeAudience] = useState({ judgeCount: 0, pendingEvaluations: 0, judges: [] });
+  const [pendingJudgeAudienceLoading, setPendingJudgeAudienceLoading] = useState(false);
+  const [sendingPendingJudgeReminders, setSendingPendingJudgeReminders] = useState(false);
+  const [sentReminderEmails, setSentReminderEmails] = useState([]);
+  const [pendingReminderSchedule, setPendingReminderSchedule] = useState(null);
+  const [reminderScheduleAt, setReminderScheduleAt] = useState('');
+  const [schedulingPendingJudgeReminder, setSchedulingPendingJudgeReminder] = useState(false);
   const [criteria, setCriteria] = useState([]);
   const [criteriaStageFilter, setCriteriaStageFilter] = useState('initial');
   const [imageUploading, setImageUploading] = useState(false);
@@ -242,7 +249,13 @@ const AdminDashboard = () => {
 
   // Broadcast form
   const { register: regBroadcast, handleSubmit: handleBroadcast, reset: resetBroadcast, watch: watchBroadcast, formState: { isSubmitting: broadcastSubmitting } } = useForm({
-    defaultValues: { role: 'all', title: '', message: '' },
+    defaultValues: {
+      role: 'all',
+      title: '',
+      message: '',
+      judgeMainAwardCategory: '',
+      judgeAwardSubCategory: '',
+    },
   });
 
   // ─── Judge Management States ──────────────────────────────────────────────────
@@ -670,6 +683,27 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchPendingJudgeAudience = async () => {
+    try {
+      setPendingJudgeAudienceLoading(true);
+      const { data } = await adminService.getPendingJudgeAudience();
+      setPendingJudgeAudience(data.data || { judgeCount: 0, pendingEvaluations: 0, judges: [] });
+    } catch {
+      toast.error('Failed to load pending judge audience.');
+    } finally {
+      setPendingJudgeAudienceLoading(false);
+    }
+  };
+
+  const fetchPendingJudgeReminderSchedule = async () => {
+    try {
+      const { data } = await adminService.getPendingJudgeReminderSchedule();
+      setPendingReminderSchedule(data.data?.schedule || null);
+    } catch {
+      toast.error('Failed to load reminder schedule.');
+    }
+  };
+
   const fetchCriteria = useCallback(async () => {
     try {
       const { data } = await evaluationCriteriaService.getAllCriteria({ stage: criteriaStageFilter });
@@ -708,6 +742,13 @@ const AdminDashboard = () => {
       fetchCriteria();
     }
   }, [criteriaStageFilter, activeTab, fetchCriteria]);
+
+  useEffect(() => {
+    if (sentReminderEmails.length === 0) return undefined;
+    const timer = setTimeout(() => setSentReminderEmails([]), 10000);
+    return () => clearTimeout(timer);
+  }, [sentReminderEmails]);
+
   const loadAll = async () => {
     setLoading(true);
     await Promise.all([
@@ -716,7 +757,10 @@ const AdminDashboard = () => {
       fetchUsers(),
       fetchAdmins(),
       fetchCategories(),
+      fetchJudges(),
       fetchMonitoring(),
+      fetchPendingJudgeAudience(),
+      fetchPendingJudgeReminderSchedule(),
       fetchCriteria(),
     ]);
     setLoading(false);
@@ -736,6 +780,25 @@ const AdminDashboard = () => {
   const broadcastRole = watchBroadcast('role') || 'all';
   const broadcastTitle = watchBroadcast('title') || '';
   const broadcastMessage = watchBroadcast('message') || '';
+  const broadcastJudgeMainCategory = watchBroadcast('judgeMainAwardCategory') || '';
+  const broadcastJudgeSubCategory = watchBroadcast('judgeAwardSubCategory') || '';
+  const pendingJudgeCount = pendingJudgeAudience.judgeCount || 0;
+  const pendingJudgeEvaluationCount = pendingJudgeAudience.pendingEvaluations || 0;
+  const toDatetimeLocalValue = (date) => {
+    const localDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return localDate.toISOString().slice(0, 16);
+  };
+  const reminderScheduleMin = toDatetimeLocalValue(new Date(Date.now() + 60 * 1000));
+  const formatScheduleDate = (value) => {
+    if (!value) return 'Not scheduled';
+    return new Date(value).toLocaleString([], {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
   const getStatusAudienceCount = (status) => {
     const candidateIds = new Set(
       applications
@@ -745,13 +808,36 @@ const AdminDashboard = () => {
     );
     return candidateIds.size;
   };
+  const broadcastJudgeSubCategoryOptions = broadcastJudgeMainCategory
+    ? (JUDGE_MAIN_CATEGORIES_MAP[broadcastJudgeMainCategory] || [])
+    : Object.values(JUDGE_MAIN_CATEGORIES_MAP).flat();
+  const hasBroadcastJudgeFilters = [
+    broadcastJudgeMainCategory,
+    broadcastJudgeSubCategory,
+  ].some(Boolean);
+  const getFilteredJudgeAudienceCount = () => {
+    if (!hasBroadcastJudgeFilters) return judgesList.length;
+    const matchingEmails = new Set(
+      judges
+        .filter((judge) => {
+          if (broadcastJudgeMainCategory && judge.mainAwardCategory !== broadcastJudgeMainCategory) return false;
+          if (broadcastJudgeSubCategory && !(judge.awardSubCategories || []).includes(broadcastJudgeSubCategory)) return false;
+          return true;
+        })
+        .map((judge) => judge.email?.toLowerCase())
+        .filter(Boolean)
+    );
+    return judgesList.filter((judgeUser) => matchingEmails.has(judgeUser.email?.toLowerCase())).length;
+  };
   const broadcastStatusAudience = BROADCAST_STATUS_AUDIENCES.find((audience) => audience.value === broadcastRole);
   const broadcastAudienceLabel = broadcastStatusAudience?.label
-    || (broadcastRole === 'all' ? 'All users' : broadcastRole === 'candidate' ? 'Candidates' : 'Judges');
+    || (broadcastRole === 'pending_judges' ? 'Judges with pending evaluations' : broadcastRole === 'all' ? 'All users' : broadcastRole === 'candidate' ? 'Candidates' : hasBroadcastJudgeFilters ? 'Filtered judges' : 'Judges');
   const broadcastAudienceCount = broadcastStatusAudience
     ? getStatusAudienceCount(broadcastStatusAudience.status)
-    : broadcastRole === 'judge'
-      ? judgesList.length
+    : broadcastRole === 'pending_judges'
+      ? pendingJudgeCount
+      : broadcastRole === 'judge'
+      ? getFilteredJudgeAudienceCount()
       : broadcastRole === 'candidate'
         ? candidatesList.length
         : users.length;
@@ -980,12 +1066,70 @@ const AdminDashboard = () => {
       const statusAudience = BROADCAST_STATUS_AUDIENCES.find((audience) => audience.value === data.role);
       const payload = statusAudience
         ? { ...data, role: 'candidate', status: statusAudience.status }
+        : data.role === 'pending_judges'
+          ? { ...data, audience: 'pending_judges', role: 'judge', link: '/judge-dashboard' }
+        : data.role === 'judge'
+          ? {
+              ...data,
+              judgeFilters: {
+                mainAwardCategory: data.judgeMainAwardCategory || undefined,
+                awardSubCategory: data.judgeAwardSubCategory || undefined,
+              },
+            }
         : data;
-      await adminService.broadcastNotification(payload);
-      toast.success('Broadcast notification sent successfully.');
+      const { data: response } = await adminService.broadcastNotification(payload);
+      toast.success(response.message || 'Broadcast notification sent successfully.');
       resetBroadcast();
+      fetchPendingJudgeAudience();
     } catch {
       toast.error('Failed to send broadcast.');
+    }
+  };
+
+  const handleSendPendingJudgeReminders = async () => {
+    if (pendingJudgeCount === 0) {
+      toast.error('No judges currently have pending evaluations.');
+      return;
+    }
+    if (!window.confirm(`Send reminder notifications and emails to ${pendingJudgeCount} judge(s) with ${pendingJudgeEvaluationCount} pending evaluation(s)?`)) return;
+
+    try {
+      setSendingPendingJudgeReminders(true);
+      const { data } = await adminService.sendPendingJudgeReminders();
+      toast.success(data.message || 'Pending judge reminders sent.');
+      setSentReminderEmails(data.data?.recipientEmails || []);
+      fetchPendingJudgeAudience();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send pending judge reminders.');
+    } finally {
+      setSendingPendingJudgeReminders(false);
+    }
+  };
+
+  const handleSchedulePendingJudgeReminders = async () => {
+    if (!reminderScheduleAt) {
+      toast.error('Select a reminder date and time first.');
+      return;
+    }
+
+    const scheduledDate = new Date(reminderScheduleAt);
+    if (Number.isNaN(scheduledDate.getTime()) || scheduledDate <= new Date()) {
+      toast.error('Reminder schedule time must be in the future.');
+      return;
+    }
+
+    try {
+      setSchedulingPendingJudgeReminder(true);
+      const { data } = await adminService.schedulePendingJudgeReminders({
+        runAt: scheduledDate.toISOString(),
+      });
+      setPendingReminderSchedule(data.data?.schedule || null);
+      setReminderScheduleAt('');
+      toast.success(data.message || 'Pending judge reminders scheduled.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to schedule pending judge reminders.');
+    } finally {
+      setSchedulingPendingJudgeReminder(false);
     }
   };
 
@@ -1185,7 +1329,9 @@ const AdminDashboard = () => {
             animate={{ opacity: 1, y: 0 }}
             className={`glass-card p-8 !hover:transform-none ${
               activeTab === 'judge-management'
-                ? 'h-[calc(100vh-10rem)] min-h-[500px] min-w-0 overflow-hidden'
+                ? 'h-[calc(100vh-4rem)] min-h-[640px] min-w-0 overflow-hidden'
+                : activeTab === 'broadcast'
+                  ? 'h-[calc(100vh-4rem)] min-h-[640px] min-w-0 overflow-hidden'
                 : ['applications', 'users'].includes(activeTab) ? '' : 'min-h-[500px]'
             }`}
           >
@@ -2150,7 +2296,7 @@ const AdminDashboard = () => {
                           {users.map(u => (
                             <tr key={u._id} className="border-b border-white/5 hover:bg-white/5">
                               <td className="p-4 font-bold text-white">{u.firstName} {u.lastName}</td>
-                              <td className="p-4 font-mono text-accent-300">{u.role === 'candidate' ? (u.registrationNumber || 'Pending') : '—'}</td>
+                              <td className="p-4 font-mono text-accent-300">{u.registrationNumber || (['candidate', 'judge'].includes(u.role) ? 'Pending' : '—')}</td>
                               <td className="p-4 font-mono">{u.email}</td>
                               <td className="p-4 uppercase text-[10px] tracking-wider font-semibold font-mono text-accent-400">{u.role}</td>
                               <td className="p-4">
@@ -2418,8 +2564,8 @@ const AdminDashboard = () => {
 
                 {/* 5. BROADCAST TAB */}
                 {activeTab === 'broadcast' && (
-                  <div className="space-y-6">
-                    <div className="flex flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
+                  <div className="flex h-full min-h-0 flex-col gap-6">
+                    <div className="flex shrink-0 flex-col gap-4 border-b border-white/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
                       <div>
                         <p className="text-xs font-semibold uppercase tracking-wider text-accent-300">Communication Center</p>
                         <h3 className="mt-1 font-display text-2xl font-black text-white">Send Broadcast Alert</h3>
@@ -2431,6 +2577,7 @@ const AdminDashboard = () => {
                       </div>
                     </div>
 
+                    <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pr-2 custom-scrollbar">
                     <div className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
                       <form onSubmit={handleBroadcast(onBroadcastSubmit)} className="rounded-2xl border border-white/10 bg-white/[0.035] p-5 sm:p-6">
                         <div>
@@ -2440,6 +2587,7 @@ const AdminDashboard = () => {
                               { value: 'all', label: 'All Users', count: users.length, helper: 'Full platform notice' },
                               { value: 'candidate', label: 'Candidates', count: candidatesList.length, helper: 'Applicants only' },
                               { value: 'judge', label: 'Judges', count: judgesList.length, helper: 'Evaluation panel' },
+                              { value: 'pending_judges', label: 'Pending Judges', count: pendingJudgeCount, helper: `${pendingJudgeEvaluationCount} pending evaluation${pendingJudgeEvaluationCount === 1 ? '' : 's'}` },
                             ].map((audience) => (
                               <label
                                 key={audience.value}
@@ -2459,6 +2607,34 @@ const AdminDashboard = () => {
                             ))}
                           </div>
                         </div>
+
+                        {broadcastRole === 'judge' && (
+                          <div className="mt-5 rounded-2xl border border-white/10 bg-navy-950/30 p-4">
+                            <div className="mb-3 flex items-center justify-between gap-3">
+                              <div>
+                                <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Judge Filters</label>
+                                <p className="mt-1 text-[11px] text-slate-500">Narrow the broadcast by judge profile details.</p>
+                              </div>
+                              <span className="rounded-full bg-white/10 px-2.5 py-1 text-[10px] font-bold text-slate-300">
+                                {broadcastAudienceCount} match{broadcastAudienceCount === 1 ? '' : 'es'}
+                              </span>
+                            </div>
+                            <div className="grid gap-3 md:grid-cols-2">
+                              <select className="input-field !py-2 text-xs" {...regBroadcast('judgeMainAwardCategory')}>
+                                <option value="">All main categories</option>
+                                {Object.keys(JUDGE_MAIN_CATEGORIES_MAP).map((category) => (
+                                  <option key={category} value={category}>{category}</option>
+                                ))}
+                              </select>
+                              <select className="input-field !py-2 text-xs" {...regBroadcast('judgeAwardSubCategory')}>
+                                <option value="">All subcategories</option>
+                                {broadcastJudgeSubCategoryOptions.map((subcategory) => (
+                                  <option key={subcategory} value={subcategory}>{getSubCategoryDisplayName(subcategory)}</option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="mt-5">
                           <label className="mb-2 block text-xs font-semibold uppercase tracking-wider text-slate-400">Application Status List</label>
@@ -2501,7 +2677,7 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="text-xs text-slate-500">This sends an in-app notification immediately.</p>
+                          <p className="text-xs text-slate-500">This sends an in-app notification and email immediately.</p>
                           <button type="submit" disabled={broadcastSubmitting} className="btn-primary min-w-[180px] disabled:cursor-not-allowed disabled:opacity-60">
                             {broadcastSubmitting ? (
                               <><span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Sending...</>
@@ -2544,11 +2720,132 @@ const AdminDashboard = () => {
                             </div>
                             <div className="flex justify-between rounded-xl bg-navy-950/40 px-3 py-2">
                               <span className="text-slate-400">Channel</span>
-                              <span className="font-semibold text-white">In-app alert</span>
+                              <span className="font-semibold text-white">In-app alert + email</span>
                             </div>
                           </div>
                         </div>
+
+                        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] p-5">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h4 className="text-sm font-bold text-white">Pending Evaluation Reminders</h4>
+                              <p className="mt-1 text-xs leading-5 text-slate-400">
+                                Send a reminder notification and email to judges who still have assigned nominations to evaluate.
+                              </p>
+                            </div>
+                            <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-300">
+                              {pendingJudgeEvaluationCount}
+                            </span>
+                          </div>
+                          <div className="mt-4 rounded-xl border border-white/10 bg-navy-950/35 p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Auto-identified judges</div>
+                                <div className="mt-0.5 text-xs text-slate-500">
+                                  {pendingJudgeCount} judge{pendingJudgeCount === 1 ? '' : 's'} with {pendingJudgeEvaluationCount} pending evaluation{pendingJudgeEvaluationCount === 1 ? '' : 's'}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={fetchPendingJudgeAudience}
+                                disabled={pendingJudgeAudienceLoading}
+                                className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+                                title="Refresh pending judges"
+                              >
+                                <RiRefreshLine className={pendingJudgeAudienceLoading ? 'animate-spin' : ''} size={14} />
+                              </button>
+                            </div>
+                            <div className="mt-3 max-h-40 space-y-2 overflow-y-auto pr-1">
+                              {pendingJudgeAudienceLoading ? (
+                                <div className="rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-400">Scanning assignments...</div>
+                              ) : pendingJudgeAudience.judges?.length > 0 ? (
+                                pendingJudgeAudience.judges.map((judge) => (
+                                  <div key={judge.judgeId} className="rounded-lg bg-white/5 px-3 py-2">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <div className="truncate text-xs font-bold text-white">{judge.name}</div>
+                                        <div className="truncate font-mono text-[10px] text-amber-200">{judge.email}</div>
+                                      </div>
+                                      <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                                        {judge.pendingCount}
+                                      </span>
+                                    </div>
+                                    {judge.closestProjectTitle && (
+                                      <div className="mt-1 truncate text-[10px] text-slate-500">
+                                        Closest: {judge.closestProjectTitle}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-400">
+                                  No pending judge evaluations found.
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleSendPendingJudgeReminders}
+                            disabled={sendingPendingJudgeReminders || pendingJudgeCount === 0}
+                            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-navy-950 transition-all hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {sendingPendingJudgeReminders ? (
+                              <><span className="h-4 w-4 rounded-full border-2 border-navy-950/30 border-t-navy-950 animate-spin" /> Sending reminders...</>
+                            ) : (
+                              <><RiMailSendLine /> Send Reminder Emails</>
+                            )}
+                          </button>
+                          <div className="mt-4 rounded-xl border border-white/10 bg-navy-950/35 p-3">
+                            <label className="mb-2 block text-[10px] font-bold uppercase tracking-wider text-slate-400">
+                              Schedule Reminder
+                            </label>
+                            <div className="grid gap-2 sm:grid-cols-[minmax(0,1fr)_auto]">
+                              <input
+                                type="datetime-local"
+                                min={reminderScheduleMin}
+                                value={reminderScheduleAt}
+                                onChange={(e) => setReminderScheduleAt(e.target.value)}
+                                className="input-field !py-2 text-xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={handleSchedulePendingJudgeReminders}
+                                disabled={schedulingPendingJudgeReminder || !reminderScheduleAt || pendingJudgeCount === 0}
+                                className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold text-white transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-50"
+                              >
+                                {schedulingPendingJudgeReminder ? 'Scheduling...' : 'Schedule'}
+                              </button>
+                            </div>
+                            <div className="mt-3 rounded-lg bg-white/5 px-3 py-2 text-[11px] text-slate-400">
+                              {pendingReminderSchedule?.status === 'scheduled' ? (
+                                <>Scheduled for <span className="font-semibold text-amber-300">{formatScheduleDate(pendingReminderSchedule.runAt)}</span></>
+                              ) : pendingReminderSchedule?.status === 'completed' ? (
+                                <>Last scheduled run completed at <span className="font-semibold text-emerald-300">{formatScheduleDate(pendingReminderSchedule.completedAt || pendingReminderSchedule.lastRunAt)}</span></>
+                              ) : pendingReminderSchedule?.status === 'failed' ? (
+                                <>Last scheduled run failed. Choose a new date and time to retry.</>
+                              ) : (
+                                <>No manual reminder schedule set.</>
+                              )}
+                            </div>
+                          </div>
+                          {sentReminderEmails.length > 0 && (
+                            <div className="mt-4 rounded-xl border border-emerald-500/20 bg-emerald-500/10 p-3">
+                              <div className="text-[10px] font-bold uppercase tracking-wider text-emerald-300">
+                                Reminder sent to
+                              </div>
+                              <div className="mt-2 max-h-24 space-y-1 overflow-y-auto pr-1">
+                                {sentReminderEmails.map((email) => (
+                                  <div key={email} className="truncate rounded-lg bg-navy-950/40 px-2.5 py-1.5 font-mono text-[11px] text-emerald-100">
+                                    {email}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
+                    </div>
                     </div>
                   </div>
                 )}

@@ -4,11 +4,90 @@ const Evaluation = require('../models/Evaluation.model');
 const Category = require('../models/Category.model');
 const AuditLog = require('../models/AuditLog.model');
 const Notification = require('../models/Notification.model');
+const Setting = require('../models/Setting.model');
+const Judge = require('../models/Judge.model');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
 const { sendBroadcastEmail } = require('../services/email.service');
+const {
+  getPendingJudgeAudience: getPendingJudgeReminderAudience,
+  sendPendingJudgeReminderBatch,
+} = require('../services/pendingJudgeReminder.service');
 const logger = require('../utils/logger');
 
 const BROADCAST_APPLICATION_STATUSES = ['submitted', 'under_review', 'eligible', 'shortlisted', 'finalist', 'winner'];
+const F2F_ACTIVE_STATUSES = ['f2f_stage'];
+
+const getPendingJudgeAudience = async () => {
+  const apps = await Application.find({
+    status: { $ne: 'draft' },
+    $or: [
+      { assignedJudges: { $exists: true, $ne: [] } },
+      { assignedJudgesF2F: { $exists: true, $ne: [] } },
+    ],
+  }).select('projectTitle assignedJudges assignedJudgesF2F deadline deadlineF2F status');
+
+  const appIds = apps.map((app) => app._id);
+  const submittedEvaluations = await Evaluation.find({
+    application: { $in: appIds },
+    isSubmitted: true,
+  }).select('application judge stage');
+
+  const submittedKeys = new Set(
+    submittedEvaluations.map((evaluation) => (
+      `${evaluation.judge?.toString()}:${evaluation.application?.toString()}:${evaluation.stage || 'initial'}`
+    ))
+  );
+
+  const pendingByJudge = new Map();
+  const addPendingAssignment = (judgeId, app, stage, deadline) => {
+    if (!judgeId) return;
+    const judgeIdStr = judgeId.toString();
+    const submittedKey = `${judgeIdStr}:${app._id.toString()}:${stage}`;
+    if (submittedKeys.has(submittedKey)) return;
+
+    const existing = pendingByJudge.get(judgeIdStr) || {
+      judgeId: judgeIdStr,
+      pendingCount: 0,
+      closestDeadline: null,
+      closestProjectTitle: null,
+    };
+
+    existing.pendingCount += 1;
+    const deadlineDate = deadline ? new Date(deadline) : null;
+    if (deadlineDate && !Number.isNaN(deadlineDate.getTime())) {
+      if (!existing.closestDeadline || deadlineDate < existing.closestDeadline) {
+        existing.closestDeadline = deadlineDate;
+        existing.closestProjectTitle = app.projectTitle;
+      }
+    } else if (!existing.closestProjectTitle) {
+      existing.closestProjectTitle = app.projectTitle;
+    }
+
+    pendingByJudge.set(judgeIdStr, existing);
+  };
+
+  apps.forEach((app) => {
+    (app.assignedJudges || []).forEach((judgeId) => addPendingAssignment(judgeId, app, 'initial', app.deadline));
+    if (F2F_ACTIVE_STATUSES.includes(app.status)) {
+      (app.assignedJudgesF2F || []).forEach((judgeId) => addPendingAssignment(judgeId, app, 'f2f', app.deadlineF2F || app.deadline));
+    }
+  });
+
+  const pendingRows = Array.from(pendingByJudge.values());
+  if (pendingRows.length === 0) return [];
+
+  const users = await User.find({
+    _id: { $in: pendingRows.map((row) => row.judgeId) },
+    role: 'judge',
+    isActive: true,
+  }).select('_id firstName lastName email');
+  const usersById = new Map(users.map((user) => [user._id.toString(), user]));
+
+  return pendingRows
+    .map((row) => ({ ...row, user: usersById.get(row.judgeId) }))
+    .filter((row) => row.user)
+    .sort((a, b) => b.pendingCount - a.pendingCount);
+};
 
 // ── Dashboard Stats ─────────────────────────────────────────────────────────────
 const getDashboardStats = async (req, res, next) => {
@@ -158,8 +237,13 @@ const updateUserRole = async (req, res, next) => {
     if (!['admin', 'judge', 'candidate'].includes(role)) {
       return errorResponse(res, { statusCode: 400, message: 'Invalid role.' });
     }
-    const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true });
+    const user = await User.findById(req.params.id);
     if (!user) return errorResponse(res, { statusCode: 404, message: 'User not found.' });
+    user.role = role;
+    if (!user.registrationNumber && ['candidate', 'judge'].includes(role)) {
+      user.registrationNumber = await User.generateRegistrationNumberForRole(role);
+    }
+    await user.save({ validateBeforeSave: false });
     return successResponse(res, { message: 'Role updated.', data: { user } });
   } catch (error) { next(error); }
 };
@@ -225,12 +309,16 @@ const getAuditLogs = async (req, res, next) => {
 // ── Broadcast Notification ─────────────────────────────────────────────────────
 const broadcastNotification = async (req, res, next) => {
   try {
-    const { title, message, role, status, link } = req.body;
+    const { title, message, role, status, audience, link, judgeFilters = {} } = req.body;
     if (!title || !message) return errorResponse(res, { statusCode: 400, message: 'Title and message required.' });
 
     let users = [];
+    let pendingAudience = [];
 
-    if (status) {
+    if (audience === 'pending_judges' || role === 'pending_judges') {
+      pendingAudience = await getPendingJudgeAudience();
+      users = pendingAudience.map((entry) => entry.user);
+    } else if (status) {
       if (!BROADCAST_APPLICATION_STATUSES.includes(status)) {
         return errorResponse(res, { statusCode: 400, message: 'Invalid application status audience.' });
       }
@@ -240,6 +328,19 @@ const broadcastNotification = async (req, res, next) => {
     } else {
       const filter = {};
       if (role && role !== 'all') filter.role = role;
+      if (role === 'judge' && Object.values(judgeFilters).some(Boolean)) {
+        const judgeProfileFilter = { isDeleted: false };
+        if (judgeFilters.mainAwardCategory) judgeProfileFilter.mainAwardCategory = judgeFilters.mainAwardCategory;
+        if (judgeFilters.awardSubCategory) judgeProfileFilter.awardSubCategories = judgeFilters.awardSubCategory;
+        if (judgeFilters.country) judgeProfileFilter.country = judgeFilters.country;
+        if (judgeFilters.status) judgeProfileFilter.status = judgeFilters.status;
+        if (judgeFilters.isGrandJury !== undefined && judgeFilters.isGrandJury !== '') {
+          judgeProfileFilter.isGrandJury = judgeFilters.isGrandJury === true || judgeFilters.isGrandJury === 'true';
+        }
+
+        const judgeEmails = await Judge.distinct('email', judgeProfileFilter);
+        filter.email = { $in: judgeEmails };
+      }
       users = await User.find(filter).select('_id firstName email');
     }
 
@@ -261,7 +362,108 @@ const broadcastNotification = async (req, res, next) => {
       message: failedEmailCount > 0
         ? `Notification sent to ${users.length} user(s). Email failed for ${failedEmailCount} user(s).`
         : `Notification and email sent to ${users.length} user(s).`,
-      data: { recipients: users.length, failedEmailCount },
+      data: {
+        recipients: users.length,
+        failedEmailCount,
+        pendingEvaluations: pendingAudience.reduce((sum, entry) => sum + entry.pendingCount, 0),
+      },
+    });
+  } catch (error) { next(error); }
+};
+
+const getPendingJudgeAudienceSummary = async (req, res, next) => {
+  try {
+    const audience = await getPendingJudgeReminderAudience();
+    return successResponse(res, {
+      data: {
+        judges: audience.map((entry) => ({
+          judgeId: entry.judgeId,
+          name: `${entry.user.firstName} ${entry.user.lastName}`,
+          email: entry.user.email,
+          pendingCount: entry.pendingCount,
+          closestDeadline: entry.closestDeadline,
+          closestProjectTitle: entry.closestProjectTitle,
+        })),
+        judgeCount: audience.length,
+        pendingEvaluations: audience.reduce((sum, entry) => sum + entry.pendingCount, 0),
+      },
+    });
+  } catch (error) { next(error); }
+};
+
+const sendPendingJudgeReminders = async (req, res, next) => {
+  try {
+    const result = await sendPendingJudgeReminderBatch({
+      performedBy: req.user._id,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+      source: 'manual',
+    });
+    if (result.recipients === 0) {
+      return successResponse(res, {
+        message: 'No judges have pending evaluations.',
+        data: { recipients: 0, failedEmailCount: 0, pendingEvaluations: 0 },
+      });
+    }
+
+    return successResponse(res, {
+      message: result.failedEmailCount > 0
+        ? `Reminder sent to ${result.recipients} judge(s). Email failed for ${result.failedEmailCount} judge(s).`
+        : `Reminder email sent to ${result.recipients} judge(s).`,
+      data: result,
+    });
+  } catch (error) { next(error); }
+};
+
+const getPendingJudgeReminderSchedule = async (req, res, next) => {
+  try {
+    const setting = await Setting.findOne({ key: 'pending_judge_reminder_schedule' });
+    return successResponse(res, { data: { schedule: setting?.value || null } });
+  } catch (error) { next(error); }
+};
+
+const schedulePendingJudgeReminders = async (req, res, next) => {
+  try {
+    const { runAt } = req.body;
+    const runAtDate = runAt ? new Date(runAt) : null;
+    if (!runAtDate || Number.isNaN(runAtDate.getTime())) {
+      return errorResponse(res, { statusCode: 400, message: 'A valid reminder date and time is required.' });
+    }
+    if (runAtDate <= new Date()) {
+      return errorResponse(res, { statusCode: 400, message: 'Reminder schedule time must be in the future.' });
+    }
+
+    const value = {
+      status: 'scheduled',
+      runAt: runAtDate,
+      createdBy: req.user._id,
+      createdAt: new Date(),
+      lastRunAt: null,
+      lastResult: null,
+    };
+
+    await Setting.findOneAndUpdate(
+      { key: 'pending_judge_reminder_schedule' },
+      {
+        key: 'pending_judge_reminder_schedule',
+        value,
+        description: 'Admin scheduled pending judge reminder dispatch',
+      },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+
+    await AuditLog.create({
+      action: 'admin_action',
+      performedBy: req.user._id,
+      targetModel: 'Setting',
+      description: `Scheduled pending judge reminders for ${runAtDate.toISOString()}.`,
+      ipAddress: req.ip,
+      userAgent: req.get('user-agent'),
+    });
+
+    return successResponse(res, {
+      message: `Pending judge reminders scheduled for ${runAtDate.toLocaleString()}.`,
+      data: { schedule: value },
     });
   } catch (error) { next(error); }
 };
@@ -283,5 +485,7 @@ const createUser = async (req, res, next) => {
 
 module.exports = {
   getDashboardStats, getUsers, createUser, toggleUserStatus, deleteUser,
-  updateUserRole, getReports, getAuditLogs, broadcastNotification
+  updateUserRole, getReports, getAuditLogs, broadcastNotification,
+  getPendingJudgeAudienceSummary, sendPendingJudgeReminders,
+  getPendingJudgeReminderSchedule, schedulePendingJudgeReminders
 };
