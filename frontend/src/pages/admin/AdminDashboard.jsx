@@ -1007,9 +1007,9 @@ const AdminDashboard = () => {
                       </select>
                     </div>
 
-                    <div className="overflow-x-auto">
-                      <table className="w-full text-xs text-left text-slate-300">
-                        <thead className="bg-white/5 text-[10px] uppercase font-bold text-slate-400">
+                    <div className="max-h-[65vh] lg:max-h-[calc(100vh-22rem)] overflow-auto overscroll-contain">
+                      <table className="w-full min-w-[860px] text-xs text-left text-slate-300">
+                        <thead className="sticky top-0 z-10 bg-navy-900 text-[10px] uppercase font-bold text-slate-400 shadow-[0_1px_0_rgba(255,255,255,0.06)]">
                           <tr>
                             <th className="p-4">Name</th>
                             <th className="p-4">Registration No.</th>
