@@ -4,9 +4,11 @@ import { motion } from 'framer-motion';
 import { toast } from 'react-hot-toast';
 import {
   RiArrowLeftLine, RiFileTextLine, RiAwardLine, RiCalendarLine,
-  RiTimeLine, RiTeamLine, RiGlobalLine, RiSurveyLine,
+  RiTimeLine, RiTeamLine, RiGlobalLine, RiSurveyLine, RiStarLine,
 } from 'react-icons/ri';
+import { useAuth } from '../../context/AuthContext';
 import applicationService from '../../services/application.service';
+import evaluationService from '../../services/evaluation.service';
 import { buildAssetUrl } from '../../services/api';
 
 const statusWorkflow = [
@@ -22,22 +24,29 @@ const statusWorkflow = [
 
 const ApplicationDetail = () => {
   const { id } = useParams();
+  const { user } = useAuth();
   const [app, setApp] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [evaluations, setEvaluations] = useState([]);
 
   useEffect(() => {
-    const fetchApp = async () => {
+    const fetchAppAndEvals = async () => {
       try {
+        setLoading(true);
         const { data } = await applicationService.getApplicationById(id);
         setApp(data.data.application);
+        if (user?.role === 'admin') {
+          const { data: evalsData } = await evaluationService.getEvaluationsByApplication(id);
+          setEvaluations(evalsData.data.evaluations || []);
+        }
       } catch {
         toast.error('Failed to load application details.');
       } finally {
         setLoading(false);
       }
     };
-    fetchApp();
-  }, [id]);
+    fetchAppAndEvals();
+  }, [id, user]);
 
   if (loading) {
     return (
@@ -215,6 +224,125 @@ const ApplicationDetail = () => {
                           <span className="text-xs text-slate-300 truncate font-medium">{app.paymentSlip.originalName}</span>
                         </div>
                       </a>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Judge Evaluations (Admin only) */}
+            {user?.role === 'admin' && (
+              <div className="space-y-6">
+                {/* Round 1 (Initial Stage) */}
+                <div className="glass-card p-8 !hover:transform-none">
+                  <h3 className="font-display font-bold text-white text-lg border-b border-white/10 pb-3 mb-5 flex items-center gap-2">
+                    <RiStarLine className="text-accent-400" /> Round 1: Initial Stage Evaluations
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-xs">
+                    <div className="bg-white/5 p-4 rounded-xl">
+                      <span className="text-slate-500 block">Assigned Judges</span>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {app.assignedJudges?.map(j => (
+                          <span key={j._id} className="badge-gold text-[10px]">{j.firstName} {j.lastName}</span>
+                        )) || <span className="text-slate-400 italic">None assigned</span>}
+                      </div>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-xl">
+                      <span className="text-slate-500 block">Initial Stage Deadline</span>
+                      <span className="text-white mt-1.5 block font-semibold">
+                        {app.deadline ? new Date(app.deadline).toLocaleString() : 'No deadline set'}
+                      </span>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-xl sm:col-span-2">
+                      <span className="text-slate-500 block">Final Round 1 Score</span>
+                      <span className="text-accent-400 text-xl font-bold font-mono mt-1 block">
+                        {app.averageScore !== undefined && app.averageScore !== null ? `${app.averageScore.toFixed(1)}%` : '—'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <h4 className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-3">Individual Evaluator Scorecards</h4>
+                  {evaluations.filter(e => e.stage === 'initial').length === 0 ? (
+                    <p className="text-slate-500 text-xs italic">No initial stage evaluations submitted yet.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {evaluations.filter(e => e.stage === 'initial').map(e => (
+                        <div key={e._id} className="border border-white/5 bg-navy-950/40 p-4 rounded-xl">
+                          <div className="flex justify-between items-center mb-3">
+                            <span className="font-semibold text-white text-xs">{e.judge?.firstName} {e.judge?.lastName}</span>
+                            <span className="badge-accent font-mono text-[10px]">{e.totalScore?.toFixed(1)}%</span>
+                          </div>
+                          {e.overallComments && (
+                            <p className="text-slate-300 text-xs mt-1 leading-relaxed"><strong className="text-slate-400">Comments:</strong> {e.overallComments}</p>
+                          )}
+                          {e.strengths && (
+                            <p className="text-slate-300 text-xs mt-1 leading-relaxed"><strong className="text-slate-400">Strengths:</strong> {e.strengths}</p>
+                          )}
+                          {e.weaknesses && (
+                            <p className="text-slate-300 text-xs mt-1 leading-relaxed"><strong className="text-slate-400">Weaknesses:</strong> {e.weaknesses}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Round 2 (Face-to-Face Stage) */}
+                <div className="glass-card p-8 !hover:transform-none">
+                  <h3 className="font-display font-bold text-white text-lg border-b border-white/10 pb-3 mb-5 flex items-center gap-2">
+                    <RiStarLine className="text-accent-400" /> Round 2: Face-to-Face Stage
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6 text-xs">
+                    <div className="bg-white/5 p-4 rounded-xl">
+                      <span className="text-slate-500 block">Stage 2 Judges Panel</span>
+                      <div className="mt-1.5 flex flex-wrap gap-1.5">
+                        {app.assignedJudgesF2F?.map(j => (
+                          <span key={j._id} className="badge-gold text-[10px]">{j.firstName} {j.lastName}</span>
+                        )) || <span className="text-slate-400 italic">None assigned</span>}
+                      </div>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-xl">
+                      <span className="text-slate-500 block">Stage 2 Deadline</span>
+                      <span className="text-white mt-1.5 block font-semibold">
+                        {app.deadlineF2F ? new Date(app.deadlineF2F).toLocaleString() : 'No deadline set'}
+                      </span>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-xl">
+                      <span className="text-slate-500 block">Final Stage 2 Score</span>
+                      <span className="text-accent-400 text-xl font-bold font-mono mt-1 block">
+                        {app.averageScoreF2F !== undefined && app.averageScoreF2F !== null ? `${app.averageScoreF2F.toFixed(1)}%` : '—'}
+                      </span>
+                    </div>
+                    <div className="bg-white/5 p-4 rounded-xl">
+                      <span className="text-slate-500 block">Overall Application Status</span>
+                      <span className="badge-accent uppercase font-mono text-[10px] mt-2 inline-block">
+                        {app.statusLabel}
+                      </span>
+                    </div>
+                  </div>
+
+                  <h4 className="text-xs text-slate-400 font-bold uppercase tracking-wider mb-3">Individual Stage 2 Scorecards</h4>
+                  {evaluations.filter(e => e.stage === 'f2f').length === 0 ? (
+                    <p className="text-slate-500 text-xs italic">No stage 2 evaluations submitted yet.</p>
+                  ) : (
+                    <div className="space-y-4">
+                      {evaluations.filter(e => e.stage === 'f2f').map(e => (
+                        <div key={e._id} className="border border-white/5 bg-navy-950/40 p-4 rounded-xl">
+                          <div className="flex justify-between items-center mb-3">
+                            <span className="font-semibold text-white text-xs">{e.judge?.firstName} {e.judge?.lastName}</span>
+                            <span className="badge-accent font-mono text-[10px]">{e.totalScore?.toFixed(1)}%</span>
+                          </div>
+                          {e.overallComments && (
+                            <p className="text-slate-300 text-xs mt-1 leading-relaxed"><strong className="text-slate-400">Comments:</strong> {e.overallComments}</p>
+                          )}
+                          {e.strengths && (
+                            <p className="text-slate-300 text-xs mt-1 leading-relaxed"><strong className="text-slate-400">Strengths:</strong> {e.strengths}</p>
+                          )}
+                          {e.weaknesses && (
+                            <p className="text-slate-300 text-xs mt-1 leading-relaxed"><strong className="text-slate-400">Weaknesses:</strong> {e.weaknesses}</p>
+                          )}
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

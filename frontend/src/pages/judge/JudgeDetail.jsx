@@ -1,13 +1,44 @@
 import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { RiLinkedinBoxFill, RiArrowLeftLine } from 'react-icons/ri';
 import Button from '../../components/shared/Button';
 import JudgeAvatar from '../../components/judge/JudgeAvatar';
-import { judgesData } from '../JudgePortal';
+import judgeService from '../../services/judge.service';
 
 const JudgeDetail = () => {
   const { id } = useParams();
-  const judgeData = judgesData.find(judge => judge.id === id) || null;
+  const [judgeData, setJudgeData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchJudge = async () => {
+      try {
+        setLoading(true);
+        const response = await judgeService.getJudgeById(id);
+        setJudgeData(response.data?.data?.judge || null);
+      } catch (err) {
+        console.error('Error fetching judge detail:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchJudge();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-navy-950 text-slate-200 flex items-center justify-center relative">
+        <div className="absolute top-0 inset-x-0 h-[800px] pointer-events-none overflow-hidden z-0">
+          <div className="absolute top-[-20%] left-[-10%] w-[60%] h-[70%] rounded-full bg-gradient-to-br from-accent-500/10 to-transparent blur-[150px]" />
+        </div>
+        <div className="relative z-10 text-center px-6">
+          <div className="w-12 h-12 border-4 border-accent-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-400">Loading panelist profile...</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!judgeData) {
     return (
@@ -70,7 +101,7 @@ const JudgeDetail = () => {
 
           {/* Judge Name */}
           <h1 className="font-display font-extrabold text-4xl sm:text-5xl text-accent-400 mb-3">
-            {judgeData.name}
+            {judgeData.fullName || judgeData.name}
           </h1>
 
           {/* Designation */}

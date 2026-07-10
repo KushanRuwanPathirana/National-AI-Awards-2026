@@ -1,7 +1,9 @@
 import { useState } from 'react';
 import { judgeImages } from '../../assets/judges';
+import { buildAssetUrl } from '../../services/api';
 
 const getInitials = (name) => {
+  if (!name) return 'AI';
   const clean = name.replace(/^(Mr\.|Dr\.|Ms\.|Mrs\.|Prof\.)\s+/i, '');
   const parts = clean.split(' ');
   if (parts.length >= 2) {
@@ -12,7 +14,20 @@ const getInitials = (name) => {
 
 const JudgeAvatar = ({ judge, variant = 'card', className = '' }) => {
   const [imgError, setImgError] = useState(false);
-  const imageSrc = judge ? judgeImages[judge.id] : null;
+  
+  let imageSrc = null;
+  if (judge) {
+    if (judge.photo) {
+      if (judgeImages[judge.photo]) {
+        imageSrc = judgeImages[judge.photo];
+      } else {
+        imageSrc = buildAssetUrl(judge.photo);
+      }
+    } else if (judge.id && judgeImages[judge.id]) {
+      imageSrc = judgeImages[judge.id];
+    }
+  }
+
   const showImage = imageSrc && !imgError;
 
   const isGrandJury = judge?.isGrandJury;
