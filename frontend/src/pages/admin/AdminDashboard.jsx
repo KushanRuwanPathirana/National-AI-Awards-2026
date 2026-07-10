@@ -837,6 +837,7 @@ const AdminDashboard = () => {
                             <th className="p-4">Ref/Title</th>
                             <th className="p-4">Category</th>
                             <th className="p-4">Candidate</th>
+                            <th className="p-4">Email</th>
                             <th className="p-4">Status</th>
                             <th className="p-4">Judges Panel</th>
                             <th className="p-4 text-center">Score</th>
@@ -854,6 +855,9 @@ const AdminDashboard = () => {
                               <td className="p-4">
                                 <div>{app.candidate?.firstName} {app.candidate?.lastName}</div>
                                 <div className="text-[10px] text-slate-500">{app.candidate?.organization}</div>
+                              </td>
+                              <td className="p-4 text-[10px] text-accent-300 break-all max-w-[180px]">
+                                {app.candidate?.email || 'No email'}
                               </td>
                               <td className="p-4">
                                 <select
