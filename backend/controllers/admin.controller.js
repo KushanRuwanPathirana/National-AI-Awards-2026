@@ -15,7 +15,7 @@ const getDashboardStats = async (req, res, next) => {
   try {
     const [
       totalApplications, totalCandidates, totalJudges,
-      submittedApps, initialStageApps, f2fStageApps, finalistApps, winnerApps,
+      draftApps, submittedApps, initialStageApps, f2fStageApps, finalistApps, winnerApps,
       pendingEvaluations, completedEvaluations,
       recentApplications, categoryBreakdown, submissionTrend,
       recentActivities, notifications,
@@ -23,6 +23,7 @@ const getDashboardStats = async (req, res, next) => {
       Application.countDocuments(),
       User.countDocuments({ role: 'candidate' }),
       User.countDocuments({ role: 'judge' }),
+      Application.countDocuments({ status: 'draft' }),
       Application.countDocuments({ status: 'submitted' }),
       Application.countDocuments({ status: 'initial_stage' }),
       Application.countDocuments({ status: 'f2f_stage' }),
@@ -65,7 +66,13 @@ const getDashboardStats = async (req, res, next) => {
       data: {
         stats: {
           totalApplications, totalCandidates, totalJudges,
-          submittedApps, initialStageApps, f2fStageApps, finalistApps, winnerApps,
+          draftApps,
+          submittedApps,
+          initialStageApps,
+          f2fStageApps,
+          finalistApps,
+          selectedToNextRoundApps: initialStageApps + f2fStageApps + finalistApps,
+          winnerApps,
           pendingEvaluations, completedEvaluations,
         },
         recentApplications,

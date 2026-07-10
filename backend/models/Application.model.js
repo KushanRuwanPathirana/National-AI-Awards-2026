@@ -263,11 +263,11 @@ applicationSchema.virtual('statusLabel').get(function () {
     under_review: 'Under Review',
     eligible:     'Eligible',
     ineligible:   'Ineligible',
-    initial_stage: 'Initial Stage',
-    f2f_stage:    'Face-to-Face Stage',
+    initial_stage: 'Initial State',
+    f2f_stage:    'Selected to Face-to-Face',
     finalist:     'Finalist',
     winner:       'Winner',
-    runner_up:    'Runner-up',
+    runner_up:    '1st Runner-up',
   };
   return labels[this.status] || this.status;
 });

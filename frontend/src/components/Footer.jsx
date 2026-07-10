@@ -130,6 +130,7 @@ const Footer = () => (
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-500">
         <p>© {new Date().getFullYear()} National AI Awards Sri Lanka. All rights reserved.</p>
         <div className="flex items-center gap-6">
+          <a href="https://www.aiexpo.lk/" target="_blank" rel="noopener noreferrer" className="hover:text-slate-300 transition-colors">AI Expo</a>
           <Link to="/privacy-policy" className="hover:text-slate-300 transition-colors">Privacy Policy</Link>
           <Link to="/terms-of-use" className="hover:text-slate-300 transition-colors">Terms of Use</Link>
           <Link to="#" className="hover:text-slate-300 transition-colors">Cookie Policy</Link>

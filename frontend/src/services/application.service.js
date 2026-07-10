@@ -1,30 +1,42 @@
-import api from './api';
+import api from "./api";
 
 const applicationService = {
   // Candidate
-  createDraft: (data) => api.post('/applications', data),
+
+  createDraft: (data) => api.post("/applications", data),
   updateDraft: (id, data) => api.put(`/applications/${id}`, data),
   submitApplication: (id) => api.post(`/applications/${id}/submit`),
-  getMyApplications: (params) => api.get('/applications/my', { params }),
+  getMyApplications: (params) => api.get("/applications/my", { params }),
   getApplicationById: (id) => api.get(`/applications/${id}`),
-  uploadDocuments: (id, formData) => api.post(`/applications/${id}/documents`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
-  deleteDocument: (appId, docId) => api.delete(`/applications/${appId}/documents/${docId}`),
-  uploadPaymentSlip: (id, formData) => api.post(`/applications/${id}/payment-slip`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
+  uploadDocuments: (id, formData) =>
+    api.post(`/applications/${id}/documents`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
+  deleteDocument: (appId, docId) =>
+    api.delete(`/applications/${appId}/documents/${docId}`),
+  uploadPaymentSlip: (id, formData) =>
+    api.post(`/applications/${id}/payment-slip`, formData, {
+      headers: { "Content-Type": "multipart/form-data" },
+    }),
   deletePaymentSlip: (id) => api.delete(`/applications/${id}/payment-slip`),
   deleteApplication: (id) => api.delete(`/applications/${id}`),
+  getPayHereParams: (applicationId) =>
+    api.post("/payment/checkout-params", { applicationId }),
 
   // Admin
-  getAllApplications: (params) => api.get('/applications', { params }),
-  getMonitoringOverview: () => api.get('/applications/monitoring'),
-  getJudgeProgress: () => api.get('/applications/judge-progress'),
-  exportApplications: (format = 'csv') => api.get('/applications/export', { params: { format }, responseType: 'blob' }),
-  publishFinalists: (ids) => api.post('/applications/publish-finalists', { ids }),
-  publishWinners: (ids) => api.post('/applications/publish-winners', { ids }),
-  generateCertificates: (ids) => api.post('/applications/generate-certificates', { ids }),
+  getAllApplications: (params) => api.get("/applications", { params }),
+  getMonitoringOverview: () => api.get("/applications/monitoring"),
+  getJudgeProgress: () => api.get("/applications/judge-progress"),
+  exportApplications: (format = "csv") =>
+    api.get("/applications/export", {
+      params: { format },
+      responseType: "blob",
+    }),
+  publishFinalists: (ids) =>
+    api.post("/applications/publish-finalists", { ids }),
+  publishWinners: (ids) => api.post("/applications/publish-winners", { ids }),
+  generateCertificates: (ids) =>
+    api.post("/applications/generate-certificates", { ids }),
   changeStatus: (id, data) => api.patch(`/applications/${id}/status`, data),
   assignJudges: (id, judgeIds) => api.patch(`/applications/${id}/assign-judges`, { judgeIds }),
   assignJudgesF2F: (id, judgeIds) => api.patch(`/applications/${id}/assign-judges-f2f`, { judgeIds }),

@@ -1,4 +1,4 @@
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 
 const authRoutes         = require('./auth.routes');
@@ -23,12 +23,12 @@ router.use('/content',       contentRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/admin',         adminRoutes);
 router.use('/judges',        judgeRoutes);
-
+router.use('/payment',       require('./payment.routes'));
 // Health check
-router.get('/health', (req, res) => {
+router.get("/health", (req, res) => {
   res.status(200).json({
     success: true,
-    message: 'AI Awards Sri Lanka API is running ✅',
+    message: "AI Awards Sri Lanka API is running ✅",
     timestamp: new Date().toISOString(),
     environment: process.env.NODE_ENV,
   });
