@@ -149,6 +149,8 @@ const AdminDashboard = () => {
   const [categories, setCategories] = useState([]);
   const [monitoring, setMonitoring] = useState(null);
   const [judgeProgress, setJudgeProgress] = useState([]);
+  const [pendingJudgeAudience, setPendingJudgeAudience] = useState({ judgeCount: 0, pendingEvaluations: 0, judges: [] });
+  const [sendingPendingJudgeReminders, setSendingPendingJudgeReminders] = useState(false);
   const [criteria, setCriteria] = useState([]);
   const [criteriaStageFilter, setCriteriaStageFilter] = useState('initial');
   const [imageUploading, setImageUploading] = useState(false);
@@ -670,6 +672,15 @@ const AdminDashboard = () => {
     }
   };
 
+  const fetchPendingJudgeAudience = async () => {
+    try {
+      const { data } = await adminService.getPendingJudgeAudience();
+      setPendingJudgeAudience(data.data || { judgeCount: 0, pendingEvaluations: 0, judges: [] });
+    } catch {
+      toast.error('Failed to load pending judge audience.');
+    }
+  };
+
   const fetchCriteria = useCallback(async () => {
     try {
       const { data } = await evaluationCriteriaService.getAllCriteria({ stage: criteriaStageFilter });
@@ -717,6 +728,7 @@ const AdminDashboard = () => {
       fetchAdmins(),
       fetchCategories(),
       fetchMonitoring(),
+      fetchPendingJudgeAudience(),
       fetchCriteria(),
     ]);
     setLoading(false);
@@ -736,6 +748,8 @@ const AdminDashboard = () => {
   const broadcastRole = watchBroadcast('role') || 'all';
   const broadcastTitle = watchBroadcast('title') || '';
   const broadcastMessage = watchBroadcast('message') || '';
+  const pendingJudgeCount = pendingJudgeAudience.judgeCount || 0;
+  const pendingJudgeEvaluationCount = pendingJudgeAudience.pendingEvaluations || 0;
   const getStatusAudienceCount = (status) => {
     const candidateIds = new Set(
       applications
@@ -747,10 +761,12 @@ const AdminDashboard = () => {
   };
   const broadcastStatusAudience = BROADCAST_STATUS_AUDIENCES.find((audience) => audience.value === broadcastRole);
   const broadcastAudienceLabel = broadcastStatusAudience?.label
-    || (broadcastRole === 'all' ? 'All users' : broadcastRole === 'candidate' ? 'Candidates' : 'Judges');
+    || (broadcastRole === 'pending_judges' ? 'Judges with pending evaluations' : broadcastRole === 'all' ? 'All users' : broadcastRole === 'candidate' ? 'Candidates' : 'Judges');
   const broadcastAudienceCount = broadcastStatusAudience
     ? getStatusAudienceCount(broadcastStatusAudience.status)
-    : broadcastRole === 'judge'
+    : broadcastRole === 'pending_judges'
+      ? pendingJudgeCount
+      : broadcastRole === 'judge'
       ? judgesList.length
       : broadcastRole === 'candidate'
         ? candidatesList.length
@@ -980,12 +996,34 @@ const AdminDashboard = () => {
       const statusAudience = BROADCAST_STATUS_AUDIENCES.find((audience) => audience.value === data.role);
       const payload = statusAudience
         ? { ...data, role: 'candidate', status: statusAudience.status }
+        : data.role === 'pending_judges'
+          ? { ...data, audience: 'pending_judges', role: 'judge', link: '/judge-dashboard' }
         : data;
-      await adminService.broadcastNotification(payload);
-      toast.success('Broadcast notification sent successfully.');
+      const { data: response } = await adminService.broadcastNotification(payload);
+      toast.success(response.message || 'Broadcast notification sent successfully.');
       resetBroadcast();
+      fetchPendingJudgeAudience();
     } catch {
       toast.error('Failed to send broadcast.');
+    }
+  };
+
+  const handleSendPendingJudgeReminders = async () => {
+    if (pendingJudgeCount === 0) {
+      toast.error('No judges currently have pending evaluations.');
+      return;
+    }
+    if (!window.confirm(`Send reminder emails to ${pendingJudgeCount} judge(s) with ${pendingJudgeEvaluationCount} pending evaluation(s)?`)) return;
+
+    try {
+      setSendingPendingJudgeReminders(true);
+      const { data } = await adminService.sendPendingJudgeReminders();
+      toast.success(data.message || 'Pending judge reminders sent.');
+      fetchPendingJudgeAudience();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send pending judge reminders.');
+    } finally {
+      setSendingPendingJudgeReminders(false);
     }
   };
 
@@ -2440,6 +2478,7 @@ const AdminDashboard = () => {
                               { value: 'all', label: 'All Users', count: users.length, helper: 'Full platform notice' },
                               { value: 'candidate', label: 'Candidates', count: candidatesList.length, helper: 'Applicants only' },
                               { value: 'judge', label: 'Judges', count: judgesList.length, helper: 'Evaluation panel' },
+                              { value: 'pending_judges', label: 'Pending Judges', count: pendingJudgeCount, helper: `${pendingJudgeEvaluationCount} pending evaluation${pendingJudgeEvaluationCount === 1 ? '' : 's'}` },
                             ].map((audience) => (
                               <label
                                 key={audience.value}
@@ -2501,7 +2540,7 @@ const AdminDashboard = () => {
                         </div>
 
                         <div className="mt-6 flex flex-col gap-3 border-t border-white/10 pt-5 sm:flex-row sm:items-center sm:justify-between">
-                          <p className="text-xs text-slate-500">This sends an in-app notification immediately.</p>
+                          <p className="text-xs text-slate-500">This sends an in-app notification and email immediately.</p>
                           <button type="submit" disabled={broadcastSubmitting} className="btn-primary min-w-[180px] disabled:cursor-not-allowed disabled:opacity-60">
                             {broadcastSubmitting ? (
                               <><span className="h-4 w-4 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Sending...</>
@@ -2544,9 +2583,35 @@ const AdminDashboard = () => {
                             </div>
                             <div className="flex justify-between rounded-xl bg-navy-950/40 px-3 py-2">
                               <span className="text-slate-400">Channel</span>
-                              <span className="font-semibold text-white">In-app alert</span>
+                              <span className="font-semibold text-white">In-app alert + email</span>
                             </div>
                           </div>
+                        </div>
+
+                        <div className="rounded-2xl border border-amber-500/20 bg-amber-500/[0.06] p-5">
+                          <div className="flex items-start justify-between gap-4">
+                            <div>
+                              <h4 className="text-sm font-bold text-white">Pending Evaluation Reminders</h4>
+                              <p className="mt-1 text-xs leading-5 text-slate-400">
+                                Send the standard reminder email to judges who still have scorecards to submit.
+                              </p>
+                            </div>
+                            <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-300">
+                              {pendingJudgeEvaluationCount}
+                            </span>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={handleSendPendingJudgeReminders}
+                            disabled={sendingPendingJudgeReminders || pendingJudgeCount === 0}
+                            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-xs font-bold text-navy-950 transition-all hover:bg-amber-400 disabled:cursor-not-allowed disabled:opacity-50"
+                          >
+                            {sendingPendingJudgeReminders ? (
+                              <><span className="h-4 w-4 rounded-full border-2 border-navy-950/30 border-t-navy-950 animate-spin" /> Sending reminders...</>
+                            ) : (
+                              <><RiMailSendLine /> Send Reminder Emails</>
+                            )}
+                          </button>
                         </div>
                       </div>
                     </div>

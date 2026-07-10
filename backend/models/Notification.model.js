@@ -14,6 +14,7 @@ const notificationSchema = new mongoose.Schema(
         'application_submitted',
         'application_status_changed',
         'judge_assigned',
+        'evaluation_reminder',
         'evaluation_submitted',
         'system',
         'message',

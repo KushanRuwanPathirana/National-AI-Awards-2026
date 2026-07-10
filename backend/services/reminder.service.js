@@ -72,9 +72,9 @@ const sendDailyJudgeReminders = async () => {
             await Notification.create({
               recipient: judge._id,
               type: 'evaluation_reminder',
-              title: 'Action Required: Pending Evaluations Reminder',
-              message: `You have ${pendingApps.length} pending application evaluation(s). The closest deadline is ${closest.app.projectTitle} due in ${closest.daysUntil} day(s).`,
-              link: '/dashboard',
+              title: 'Action Required: Pending Nomination Evaluation',
+              message: `You have ${pendingApps.length} assigned nomination evaluation(s) still pending. The closest due nomination is ${closest.app.projectTitle} in ${closest.daysUntil} day(s).`,
+              link: '/judge-dashboard',
             });
           } catch (notifErr) {
             logger.error(`Failed to create database notification for ${judge.email}: ${notifErr.message}`);
