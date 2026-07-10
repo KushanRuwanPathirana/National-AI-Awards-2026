@@ -863,13 +863,14 @@ const AdminDashboard = () => {
                     </div>
 
                     <div className="max-h-[65vh] lg:max-h-[calc(100vh-22rem)] overflow-auto overscroll-contain">
-                      <table className="w-full min-w-[980px] text-xs text-left text-slate-300">
+                      <table className="w-full min-w-[1080px] text-xs text-left text-slate-300">
                         <thead className="sticky top-0 z-10 bg-navy-900 text-[10px] uppercase font-bold text-slate-400 shadow-[0_1px_0_rgba(255,255,255,0.06)]">
                           <tr>
                             <th className="p-4">Ref/Title</th>
                             <th className="p-4">Category</th>
                             <th className="p-4">Candidate</th>
                             <th className="p-4">Email</th>
+                            <th className="p-4">Phone</th>
                             <th className="p-4">Status</th>
                             <th className="p-4">Judges Panel</th>
                             <th className="p-4 text-center">Score</th>
@@ -890,6 +891,9 @@ const AdminDashboard = () => {
                               </td>
                               <td className="p-4 text-[10px] text-accent-300 break-all max-w-[180px]">
                                 {app.candidate?.email || 'No email'}
+                              </td>
+                              <td className="p-4 font-mono text-[10px] text-slate-300 whitespace-nowrap">
+                                {app.primaryContactPhone || app.candidate?.phone || 'Not provided'}
                               </td>
                               <td className="p-4">
                                 <select
