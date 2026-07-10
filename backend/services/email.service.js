@@ -75,6 +75,12 @@ const sendWelcomeEmail = async (user) => {
       </div>
       <p>Hi <strong>${user.firstName}</strong>,</p>
       <p>Your email has been verified successfully. You can now access the National AI Awards Sri Lanka 2026 portal.</p>
+      ${user.registrationNumber ? `
+      <div style="background:#1e293b;border:1px solid #334155;border-radius:12px;padding:16px;margin:16px 0;">
+        <p style="margin:4px 0;color:#94a3b8;font-size:13px;">Your registration number</p>
+        <p style="margin:4px 0;font-size:18px;color:#f8fafc;font-weight:800;letter-spacing:1px;">${user.registrationNumber}</p>
+      </div>
+      ` : ''}
       <p style="color:#94a3b8;font-size:13px;">Login to your dashboard to start your application or manage your evaluations.</p>
       <hr style="border:1px solid #334155;margin:24px 0;">
       <p style="color:#64748b;font-size:11px;text-align:center;">National AI Awards Sri Lanka 2026</p>

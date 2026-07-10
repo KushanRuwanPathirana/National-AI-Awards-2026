@@ -2252,7 +2252,7 @@ const AdminDashboard = () => {
                           {users.map(u => (
                             <tr key={u._id} className="border-b border-white/5 hover:bg-white/5">
                               <td className="p-4 font-bold text-white">{u.firstName} {u.lastName}</td>
-                              <td className="p-4 font-mono text-accent-300">{u.role === 'candidate' ? (u.registrationNumber || 'Pending') : '—'}</td>
+                              <td className="p-4 font-mono text-accent-300">{u.registrationNumber || (['candidate', 'judge'].includes(u.role) ? 'Pending' : '—')}</td>
                               <td className="p-4 font-mono">{u.email}</td>
                               <td className="p-4 uppercase text-[10px] tracking-wider font-semibold font-mono text-accent-400">{u.role}</td>
                               <td className="p-4">

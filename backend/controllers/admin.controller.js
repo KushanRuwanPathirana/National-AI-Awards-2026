@@ -236,8 +236,13 @@ const updateUserRole = async (req, res, next) => {
     if (!['admin', 'judge', 'candidate'].includes(role)) {
       return errorResponse(res, { statusCode: 400, message: 'Invalid role.' });
     }
-    const user = await User.findByIdAndUpdate(req.params.id, { role }, { new: true });
+    const user = await User.findById(req.params.id);
     if (!user) return errorResponse(res, { statusCode: 404, message: 'User not found.' });
+    user.role = role;
+    if (!user.registrationNumber && ['candidate', 'judge'].includes(role)) {
+      user.registrationNumber = await User.generateRegistrationNumberForRole(role);
+    }
+    await user.save({ validateBeforeSave: false });
     return successResponse(res, { message: 'Role updated.', data: { user } });
   } catch (error) { next(error); }
 };
