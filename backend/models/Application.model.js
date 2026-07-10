@@ -43,6 +43,10 @@ const applicationSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: 'User',
     }],
+    assignedJudgesF2F: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    }],
 
     // Status & Workflow
     status: {
@@ -206,6 +210,55 @@ const applicationSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    // Payment verification fields
+    paymentStatus: {
+      type: String,
+      enum: ['pending', 'approved', 'rejected'],
+      default: 'pending',
+    },
+    verificationStatus: {
+      type: String,
+      enum: ['pending', 'verified', 'rejected'],
+      default: 'pending',
+    },
+    verifiedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    verifiedAt: {
+      type: Date,
+    },
+    rejectedBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+    },
+    rejectedAt: {
+      type: Date,
+    },
+    rejectionReason: {
+      type: String,
+      maxlength: [1000],
+    },
+    adminRemarks: {
+      type: String,
+      maxlength: [1000],
+    },
+    paymentReference: {
+      type: String,
+      trim: true,
+      maxlength: [100],
+    },
+    paymentAmount: {
+      type: Number,
+      default: 0,
+    },
+    paymentVerificationHistory: [{
+      action: { type: String, enum: ['approved', 'rejected', 'resubmitted'] },
+      performedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' },
+      performedAt: { type: Date, default: Date.now },
+      reason: { type: String },
+      remarks: { type: String },
+    }],
 
     // Step tracking for wizard
     completedStep: {
@@ -224,10 +277,13 @@ const applicationSchema = new mongoose.Schema(
 
     // Per-application deadline
     deadline: { type: Date },
+    deadlineF2F: { type: Date },
 
     // Scores (aggregated from evaluations)
     averageScore: { type: Number, default: 0 },
     evaluationCount: { type: Number, default: 0 },
+    averageScoreF2F: { type: Number, default: 0 },
+    evaluationCountF2F: { type: Number, default: 0 },
 
     // Awards & publishing
     publishedAsFinalist: { type: Boolean, default: false },
@@ -307,6 +363,9 @@ applicationSchema.pre('save', async function (next) {
   try {
     if (!this.referenceNumber && this.status !== APPLICATION_STATUS.DRAFT) {
       this.referenceNumber = await generateReferenceNumber();
+    }
+    if (this.referenceNumber && !this.paymentReference) {
+      this.paymentReference = `PAY-${this.referenceNumber}`;
     }
     return next();
   } catch (error) {

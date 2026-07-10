@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { motion } from 'framer-motion';
@@ -12,18 +12,96 @@ import {
   RiCheckDoubleLine, RiFileList3Line, RiTeamLine,
   RiDashboardLine, RiFileChartLine, RiMailSendLine,
   RiArrowRightLine, RiFolderShield2Line, RiRefreshLine, RiPulseLine, RiStarLine,
-  RiDeleteBinLine,
+  RiUserLine, RiShieldUserLine, RiPencilLine, RiDeleteBin6Line, RiUploadCloud2Line,
+  RiEyeLine, RiSearchLine, RiDeleteBinLine, RiBankCardLine,
+  RiCloseLine, RiFileTextLine,
 } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
-import api from '../../services/api';
+import api, { buildAssetUrl } from '../../services/api';
 import adminService from '../../services/admin.service';
 import applicationService from '../../services/application.service';
 import categoryService from '../../services/category.service';
 import evaluationCriteriaService from '../../services/evaluationCriteria.service';
+import judgeService from '../../services/judge.service';
+import { judgeImages } from '../../assets/judges';
+import JudgeAvatar from '../../components/judge/JudgeAvatar';
 import evaluationService from '../../services/evaluation.service';
 
 const COLORS = ['#0072ff', '#00ff87', '#ffc658', '#ff7300', '#d0ed57', '#a4de6c'];
 
+const JUDGE_MAIN_CATEGORIES_MAP = {
+  'National AI Trailblazer Awards': [
+    'National AI Excellence Award',
+    'National AI Leadership Excellence Award',
+    'National AI Impact Excellence Award',
+    'National AI Export Excellence Award'
+  ],
+  'Industry & Sector Excellence Awards': [
+    'Best AI Solution in Agriculture',
+    'Best AI Solution in Banking, Finance & Insurance',
+    'Best AI Solution in Healthcare & Life Sciences',
+    'Best AI Solution in Manufacturing & Industry 5.0',
+    'Best AI Solution in Education',
+    'Best AI Solution in Media'
+  ],
+  'Innovation & Future-Focused Awards': [
+    'Best AI Startup / MSME Innovation',
+    'Best Agentic AI Solution',
+    'Best Sinhala/Tamil AI & Localisation Innovation',
+    'University AI Innovation',
+    'Women in AI Leadership'
+  ]
+};
+
+const DB_TO_UI_SUBCATEGORY = {
+  'Best AI Solution in Agriculture': 'AI in Agriculture',
+  'Best AI Solution in Banking, Finance & Insurance': 'AI in Banking, Finance & Insurance',
+  'Best AI Solution in Healthcare & Life Sciences': 'AI in Healthcare & Life Sciences',
+  'Best AI Solution in Manufacturing & Industry 5.0': 'AI in Manufacturing & Industry 5.0',
+  'Best AI Solution in Education': 'AI in Education',
+  'Best AI Solution in Media': 'AI in Media'
+};
+
+const UI_TO_DB_SUBCATEGORY = {
+  'AI in Agriculture': 'Best AI Solution in Agriculture',
+  'AI in Banking, Finance & Insurance': 'Best AI Solution in Banking, Finance & Insurance',
+  'AI in Healthcare & Life Sciences': 'Best AI Solution in Healthcare & Life Sciences',
+  'AI in Manufacturing & Industry 5.0': 'Best AI Solution in Manufacturing & Industry 5.0',
+  'AI in Education': 'Best AI Solution in Education',
+  'AI in Media': 'Best AI Solution in Media'
+};
+
+const getSubCategoryDisplayName = (sub) => {
+  return DB_TO_UI_SUBCATEGORY[sub] || sub;
+};
+
+const getSubCategoryDbValue = (sub) => {
+  return UI_TO_DB_SUBCATEGORY[sub] || sub;
+};
+
+const MAIN_CATEGORIES_MAP = {
+  'National AI Trailblazer Awards': [
+    'National AI Excellence Award',
+    'National AI Leadership Excellence Award',
+    'National AI Impact Excellence Award',
+    'National AI Export Excellence Award',
+    'Women in AI Leadership',
+  ],
+  'Industry & Sector Excellence Awards': [
+    'Best AI Solution in Agriculture',
+    'Best AI Solution in Banking, Finance & Insurance',
+    'Best AI Solution in Healthcare & Life Sciences',
+    'Best AI Solution in Export Development',
+    'Best AI Solution in Education',
+    'Best AI Solution in Manufacturing & Industry 5.0',
+  ],
+  'Innovation & Future-Focused Awards': [
+    'Best AI Startup / MSME Innovation',
+    'Best Agentic AI Solution',
+    'Best Sinhala/Tamil AI & Localisation Innovation',
+    'University AI Innovation',
+  ],
+};
 const BROADCAST_STATUS_AUDIENCES = [
   { value: 'status:submitted', status: 'submitted', label: 'Submitted' },
   { value: 'status:under_review', status: 'under_review', label: 'Under Review' },
@@ -39,21 +117,23 @@ const STATUS_LABELS = {
   under_review: 'Under Review',
   eligible: 'Eligible',
   ineligible: 'Ineligible',
-  initial_stage: 'Initial State',
+  initial_stage: 'Selected to Initial Stage',
   f2f_stage: 'Selected to Face-to-Face',
   finalist: 'Finalist',
   winner: 'Winner',
   runner_up: '1st Runner-up',
+  runner_up_2nd: '2nd Runner-up',
 };
 
 const ADMIN_STATUS_OPTIONS = [
   { value: 'eligible', label: 'Eligible' },
   { value: 'ineligible', label: 'Ineligible' },
-  { value: 'initial_stage', label: 'Initial State' },
+  { value: 'initial_stage', label: 'Selected to Initial Stage' },
   { value: 'f2f_stage', label: 'Selected to Face-to-Face' },
   { value: 'finalist', label: 'Finalist' },
   { value: 'winner', label: 'Winner' },
   { value: 'runner_up', label: '1st Runner-up' },
+  { value: 'runner_up_2nd', label: '2nd Runner-up' },
 ];
 
 const AdminDashboard = () => {
@@ -70,6 +150,16 @@ const AdminDashboard = () => {
   const [monitoring, setMonitoring] = useState(null);
   const [judgeProgress, setJudgeProgress] = useState([]);
   const [criteria, setCriteria] = useState([]);
+  const [criteriaStageFilter, setCriteriaStageFilter] = useState('initial');
+  const [imageUploading, setImageUploading] = useState(false);
+  const [profileForm, setProfileForm] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    organization: '',
+    designation: '',
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
   const [editingCriteriaId, setEditingCriteriaId] = useState(null);
   const [criteriaForm, setCriteriaForm] = useState({
     name: '',
@@ -80,12 +170,45 @@ const AdminDashboard = () => {
     order: 0,
     isActive: true,
   });
+  const [categoryForm, setCategoryForm] = useState({
+    name: '',
+    description: '',
+  });
+  const [categorySaving, setCategorySaving] = useState(false);
   const [loading, setLoading] = useState(true);
+
+  // Payment Verification state
+  const [paymentSubmissions, setPaymentSubmissions] = useState([]);
+  const [paymentStats, setPaymentStats] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [paymentFilter, setPaymentFilter] = useState('all');
+  const [paymentSearch, setPaymentSearch] = useState('');
+  const [paymentPage, setPaymentPage] = useState(1);
+  const [selectedPayment, setSelectedPayment] = useState(null);
+  const [paymentModalOpen, setPaymentModalOpen] = useState(false);
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectReason, setRejectReason] = useState('');
+  const [rejectingPayment, setRejectingPayment] = useState(null);
+  const [approvingPayment, setApprovingPayment] = useState(null);
 
   // Search & Filters
   const [appSearch, setAppSearch] = useState('');
   const [appStatusFilter, setAppStatusFilter] = useState('');
   const [userRoleFilter, setUserRoleFilter] = useState('');
+
+  // Evaluation Tracker state
+  const [trackerStage, setTrackerStage] = useState('initial');
+  const [trackerMainCategory, setTrackerMainCategory] = useState('all');
+  const [trackerSubCategory, setTrackerSubCategory] = useState('all');
+  const [trackerSearch, setTrackerSearch] = useState('');
+  const [trackerApps, setTrackerApps] = useState([]);
+  const [trackerStats, setTrackerStats] = useState(null);
+  const [trackerLoading, setTrackerLoading] = useState(false);
+  const [selectedJudgeEval, setSelectedJudgeEval] = useState(null);
+  const [evaluationsModalOpen, setEvaluationsModalOpen] = useState(false);
+  const [evaluationsList, setEvaluationsList] = useState([]);
+  const [evaluationsApp, setEvaluationsApp] = useState(null);
+  const [evalsLoading, setEvalsLoading] = useState(false);
 
   // Assign Judge Modal
   const [selectedApp, setSelectedApp] = useState(null);
@@ -94,6 +217,15 @@ const AdminDashboard = () => {
   const [selectedReportIds, setSelectedReportIds] = useState([]);
   const [reportActionBusy, setReportActionBusy] = useState(false);
 
+  // Deadline editing
+  const [editingDeadlineAppId, setEditingDeadlineAppId] = useState(null);
+  const [deadlineValue, setDeadlineValue] = useState('');
+  const [savingDeadline, setSavingDeadline] = useState(false);
+
+  // Multi-stage nominations management state
+  const [nominationsStageTab, setNominationsStageTab] = useState('initial');
+  const [editingDeadlineIsF2F, setEditingDeadlineIsF2F] = useState(false);
+  const [assignModalStage, setAssignModalStage] = useState('initial');
   // Change Password form
   const [changeSuccess, setChangeSuccess] = useState('');
   const [changeError,   setChangeError]   = useState('');
@@ -112,6 +244,377 @@ const AdminDashboard = () => {
   const { register: regBroadcast, handleSubmit: handleBroadcast, reset: resetBroadcast, watch: watchBroadcast, formState: { isSubmitting: broadcastSubmitting } } = useForm({
     defaultValues: { role: 'all', title: '', message: '' },
   });
+
+  // ─── Judge Management States ──────────────────────────────────────────────────
+  const [judges, setJudges] = useState([]);
+  const [judgesLoading, setJudgesLoading] = useState(false);
+  const [judgeSearch, setJudgeSearch] = useState('');
+  const [judgeMainCategoryFilter, setJudgeMainCategoryFilter] = useState('');
+  const [judgeSubCategoryFilter, setJudgeSubCategoryFilter] = useState('');
+  const [judgeCountryFilter, setJudgeCountryFilter] = useState('');
+  const [judgeStatusFilter, setJudgeStatusFilter] = useState('');
+  const [judgeSortBy, setJudgeSortBy] = useState('Alphabetical');
+  const [judgePage, setJudgePage] = useState(1);
+  const [judgeTotalPages, setJudgeTotalPages] = useState(1);
+  const [judgeTotal, setJudgeTotal] = useState(0);
+
+  // Modals & Forms
+  const [judgeModalOpen, setJudgeModalOpen] = useState(false);
+  const [editingJudge, setEditingJudge] = useState(null); // null if adding
+  const [judgeForm, setJudgeForm] = useState({
+    fullName: '',
+    designation: '',
+    organization: '',
+    country: '',
+    email: '',
+    linkedin: '',
+    mainCategory: '',
+    subCategories: [],
+    status: 'Active',
+    isGrandJury: false,
+  });
+  const [judgeFormErrors, setJudgeFormErrors] = useState({});
+  const [judgeSaving, setJudgeSaving] = useState(false);
+
+  // Photo uploads
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [photoModalJudge, setPhotoModalJudge] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState('');
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+
+  // Detail View
+  const [judgeViewModalOpen, setJudgeViewModalOpen] = useState(false);
+  const [viewingJudge, setViewingJudge] = useState(null);
+
+  // Image compressor helper
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            },
+            'image/jpeg',
+            0.85
+          );
+        };
+      };
+    });
+  };
+
+  const fetchJudges = async () => {
+    try {
+      setJudgesLoading(true);
+      const { data } = await judgeService.getJudges({ all: 'true' });
+      setJudges(data.data.judges || []);
+      setJudgeTotal(data.data.total || 0);
+    } catch (err) {
+      toast.error('Failed to load judges list.');
+    } finally {
+      setJudgesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'judge-management') {
+      fetchJudges();
+    }
+  }, [activeTab]);
+
+  // Payment Verification functions
+  const fetchPaymentSubmissions = async () => {
+    try {
+      setPaymentLoading(true);
+      const params = {
+        page: paymentPage,
+        limit: 20,
+      };
+      if (paymentFilter !== 'all') params.status = paymentFilter;
+      if (paymentSearch) params.search = paymentSearch;
+
+      const { data } = await api.get('/payment/submissions', { params });
+      setPaymentSubmissions(data.data.applications);
+    } catch (error) {
+      toast.error('Failed to load payment submissions.');
+    } finally {
+      setPaymentLoading(false);
+    }
+  };
+
+  const fetchPaymentStats = async () => {
+    try {
+      const { data } = await api.get('/payment/stats');
+      setPaymentStats(data.data.stats);
+    } catch (error) {
+      console.error('Failed to load payment stats:', error);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'payment-verification') {
+      fetchPaymentSubmissions();
+      fetchPaymentStats();
+    }
+  }, [activeTab, paymentFilter, paymentSearch, paymentPage]);
+
+  const handleViewPayment = async (application) => {
+    try {
+      const { data } = await api.get(`/payment/submissions/${application._id}`);
+      setSelectedPayment(data.data.application);
+      setPaymentModalOpen(true);
+    } catch (error) {
+      toast.error('Failed to load payment details.');
+    }
+  };
+
+  const handleApprovePayment = async (applicationId) => {
+    if (!window.confirm('Are you sure you want to approve this payment? This will move the application to the Initial Stage.')) return;
+
+    try {
+      setApprovingPayment(applicationId);
+      const { data } = await api.post(`/payment/submissions/${applicationId}/approve`, {
+        adminRemarks: '',
+      });
+      toast.success('Payment approved successfully.');
+      fetchPaymentSubmissions();
+      fetchPaymentStats();
+      setPaymentModalOpen(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to approve payment.');
+    } finally {
+      setApprovingPayment(null);
+    }
+  };
+
+  const handleRejectPayment = async () => {
+    if (!rejectReason.trim()) {
+      toast.error('Please provide a rejection reason.');
+      return;
+    }
+
+    try {
+      const { data } = await api.post(`/payment/submissions/${rejectingPayment._id}/reject`, {
+        rejectionReason: rejectReason,
+      });
+      toast.success('Payment rejected successfully.');
+      fetchPaymentSubmissions();
+      fetchPaymentStats();
+      setRejectModalOpen(false);
+      setRejectReason('');
+      setRejectingPayment(null);
+      setPaymentModalOpen(false);
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Failed to reject payment.');
+    }
+  };
+
+  const openRejectModal = (application) => {
+    setRejectingPayment(application);
+    setRejectReason('');
+    setRejectModalOpen(true);
+  };
+
+  const [sendingWelcomes, setSendingWelcomes] = useState(false);
+
+  const handleSendWelcomeEmails = async () => {
+    if (!window.confirm('Are you sure you want to send a welcome email and account setup link to all registered judges?')) return;
+    try {
+      setSendingWelcomes(true);
+      const { data } = await judgeService.sendWelcomeEmails();
+      toast.success(data.message || 'Welcome emails dispatched successfully.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send welcome emails.');
+    } finally {
+      setSendingWelcomes(false);
+    }
+  };
+
+  const handleOpenAddJudge = () => {
+    setEditingJudge(null);
+    setJudgeForm({
+      fullName: '',
+      designation: '',
+      organization: '',
+      country: 'Sri Lanka',
+      email: '',
+      linkedin: '',
+      mainAwardCategory: '',
+      awardSubCategories: [],
+      status: 'Active',
+      isGrandJury: false,
+    });
+    setPhotoFile(null);
+    setPhotoPreview('');
+    setJudgeFormErrors({});
+    setJudgeModalOpen(true);
+  };
+
+  const handleOpenEditJudge = (judgeItem) => {
+    setEditingJudge(judgeItem);
+    setJudgeForm({
+      fullName: judgeItem.fullName || '',
+      designation: judgeItem.designation || '',
+      organization: judgeItem.organization || '',
+      country: judgeItem.country || 'Sri Lanka',
+      email: judgeItem.email || '',
+      linkedin: judgeItem.linkedin || '',
+      mainAwardCategory: judgeItem.mainAwardCategory || judgeItem.mainCategory || '',
+      awardSubCategories: judgeItem.awardSubCategories || judgeItem.subCategories || [],
+      status: judgeItem.status || 'Active',
+      isGrandJury: !!judgeItem.isGrandJury,
+    });
+    setPhotoFile(null);
+    setPhotoPreview(judgeItem.photo ? (judgeImages[judgeItem.photo] ? judgeImages[judgeItem.photo] : buildAssetUrl(judgeItem.photo)) : '');
+    setJudgeFormErrors({});
+    setJudgeModalOpen(true);
+  };
+
+  const handleOpenPhotoModal = (judgeItem) => {
+    setPhotoModalJudge(judgeItem);
+    setPhotoFile(null);
+    setPhotoPreview(judgeItem.photo ? (judgeImages[judgeItem.photo] ? judgeImages[judgeItem.photo] : buildAssetUrl(judgeItem.photo)) : '');
+    setPhotoModalOpen(true);
+  };
+
+  const handleOpenViewModal = (judgeItem) => {
+    setViewingJudge(judgeItem);
+    setJudgeViewModalOpen(true);
+  };
+
+  const validateJudgeForm = () => {
+    const errors = {};
+    if (!judgeForm.fullName.trim()) errors.fullName = 'Full name is required';
+    if (!judgeForm.designation.trim()) errors.designation = 'Designation is required';
+    if (!judgeForm.organization.trim()) errors.organization = 'Organization is required';
+    if (!judgeForm.country.trim()) errors.country = 'Country is required';
+    
+    if (!judgeForm.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(judgeForm.email)) {
+      errors.email = 'Please provide a valid email address';
+    }
+
+    if (!judgeForm.mainAwardCategory) {
+      errors.mainAwardCategory = 'Main Award Category is required';
+    }
+
+    if (!judgeForm.awardSubCategories || judgeForm.awardSubCategories.length === 0) {
+      errors.awardSubCategories = 'At least one subcategory must be assigned';
+    }
+
+    setJudgeFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSaveJudge = async (e) => {
+    e.preventDefault();
+    if (!validateJudgeForm()) return;
+
+    try {
+      setJudgeSaving(true);
+      let savedJudge;
+      
+      if (editingJudge) {
+        // Edit mode
+        const { data } = await judgeService.updateJudge(editingJudge._id, judgeForm);
+        savedJudge = data.data.judge;
+        
+        // Upload photo if photo file selected
+        if (photoFile) {
+          const formData = new FormData();
+          const optimizedFile = await compressImage(photoFile);
+          formData.append('photo', optimizedFile);
+          await judgeService.uploadJudgePhoto(editingJudge._id, formData);
+        }
+        
+        toast.success('Judge profile updated successfully.');
+      } else {
+        // Add mode
+        const { data } = await judgeService.createJudge(judgeForm);
+        savedJudge = data.data.judge;
+        
+        // Upload photo if photo file selected
+        if (photoFile) {
+          const formData = new FormData();
+          const optimizedFile = await compressImage(photoFile);
+          formData.append('photo', optimizedFile);
+          await judgeService.uploadJudgePhoto(savedJudge._id, formData);
+        }
+        
+        toast.success('Judge profile added successfully.');
+      }
+
+      setJudgeModalOpen(false);
+      fetchJudges();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save judge profile.');
+    } finally {
+      setJudgeSaving(false);
+    }
+  };
+
+  const handleUploadPhotoOnly = async (e) => {
+    e.preventDefault();
+    if (!photoFile || !photoModalJudge) return;
+
+    try {
+      setPhotoUploading(true);
+      const formData = new FormData();
+      const optimizedFile = await compressImage(photoFile);
+      formData.append('photo', optimizedFile);
+      await judgeService.uploadJudgePhoto(photoModalJudge._id, formData);
+      toast.success('Profile photo updated successfully.');
+      setPhotoModalOpen(false);
+      fetchJudges();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to upload photo.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const handleDeleteJudge = async (judgeId) => {
+    if (!window.confirm('Are you sure you want to delete this judge profile? (Soft delete will hide them from the registry)')) return;
+    try {
+      await judgeService.deleteJudge(judgeId);
+      toast.success('Judge profile deleted successfully.');
+      fetchJudges();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete judge.');
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -167,13 +670,44 @@ const AdminDashboard = () => {
     }
   };
 
-  const fetchCriteria = async () => {
+  const fetchCriteria = useCallback(async () => {
     try {
-      const { data } = await evaluationCriteriaService.getAllCriteria();
+      const { data } = await evaluationCriteriaService.getAllCriteria({ stage: criteriaStageFilter });
       setCriteria(data.data.criteria);
     } catch { toast.error('Failed to load evaluation criteria.'); }
+  }, [criteriaStageFilter]);
+
+  const fetchTracker = async () => {
+    try {
+      setTrackerLoading(true);
+      const params = {
+        stage: trackerStage,
+        mainCategory: trackerMainCategory !== 'all' ? trackerMainCategory : undefined,
+        subCategory: trackerSubCategory !== 'all' ? trackerSubCategory : undefined,
+        search: trackerSearch || undefined,
+      };
+      const { data } = await evaluationService.getEvaluationTracker(params);
+      setTrackerApps(data.data.applications || []);
+      setTrackerStats(data.data.stats || null);
+    } catch {
+      toast.error('Failed to load evaluation tracker details.');
+    } finally {
+      setTrackerLoading(false);
+    }
   };
 
+
+  useEffect(() => {
+    if (activeTab === 'monitoring') {
+      fetchTracker();
+    }
+  }, [trackerStage, trackerMainCategory, trackerSubCategory, trackerSearch, activeTab]);
+
+  useEffect(() => {
+    if (activeTab === 'criteria') {
+      fetchCriteria();
+    }
+  }, [criteriaStageFilter, activeTab, fetchCriteria]);
   const loadAll = async () => {
     setLoading(true);
     await Promise.all([
@@ -260,6 +794,45 @@ const AdminDashboard = () => {
     }
   };
 
+  // Deadline editing
+  const handleEditDeadline = (app, isF2F = false) => {
+    setEditingDeadlineAppId(app._id);
+    setEditingDeadlineIsF2F(isF2F);
+    const targetDeadline = isF2F ? app.deadlineF2F : app.deadline;
+    if (targetDeadline) {
+      const date = new Date(targetDeadline);
+      const tzOffset = date.getTimezoneOffset() * 60000;
+      const localISOTime = (new Date(date - tzOffset)).toISOString().slice(0, 16);
+      setDeadlineValue(localISOTime);
+    } else {
+      setDeadlineValue('');
+    }
+  };
+
+  // Deadline saving
+  const handleSaveDeadline = async () => {
+    try {
+      setSavingDeadline(true);
+      const isoString = new Date(deadlineValue).toISOString();
+      if (editingDeadlineIsF2F) {
+        await applicationService.updateApplicationDeadlineF2F(editingDeadlineAppId, isoString);
+        toast.success('Stage 2 evaluation deadline updated successfully.');
+      } else {
+        await applicationService.updateApplicationDeadline(editingDeadlineAppId, isoString);
+        toast.success('Application deadline updated successfully.');
+      }
+      setEditingDeadlineAppId(null);
+      setDeadlineValue('');
+      fetchApps();
+      fetchStats();
+      fetchMonitoring();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to update deadline.');
+    } finally {
+      setSavingDeadline(false);
+    }
+  };
+
   const handleDeleteApplication = async (app) => {
     const title = app.projectTitle || app.referenceNumber || 'this application';
     if (!window.confirm(`Delete "${title}"? This action cannot be undone.`)) return;
@@ -322,6 +895,25 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleCreateCategory = async (e) => {
+    e.preventDefault();
+    if (!categoryForm.name.trim() || !categoryForm.description.trim()) {
+      toast.error('Name and description are required.');
+      return;
+    }
+    try {
+      setCategorySaving(true);
+      await categoryService.createCategory(categoryForm);
+      toast.success('Category created successfully.');
+      setCategoryForm({ name: '', description: '' });
+      fetchCategories();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to create category.');
+    } finally {
+      setCategorySaving(false);
+    }
+  };
+
   // ── Criteria Management Handlers ──
   const handleSubmitCriteria = async (e) => {
     e.preventDefault();
@@ -339,7 +931,7 @@ const AdminDashboard = () => {
         await evaluationCriteriaService.createCriteria(payload);
         toast.success('Evaluation criteria created.');
       }
-      setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, criteriaType: 'organizational', order: 0, isActive: true });
+      setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, criteriaType: 'organizational', stage: criteriaStageFilter, order: 0, isActive: true });
       setEditingCriteriaId(null);
       fetchCriteria();
     } catch (err) {
@@ -355,6 +947,7 @@ const AdminDashboard = () => {
       weight: c.weight || 10,
       maxScore: c.maxScore || 10,
       criteriaType: c.criteriaType || 'organizational',
+      stage: c.stage || criteriaStageFilter,
       order: c.order || 0,
       isActive: c.isActive !== false,
     });
@@ -397,21 +990,55 @@ const AdminDashboard = () => {
   };
 
   // Open Judge Assignment
-  const openAssignModal = (app) => {
+  const openAssignModal = (app, stage = 'initial') => {
     setSelectedApp(app);
-    setSelectedJudges(app.assignedJudges?.map(j => j._id || j) || []);
+    setAssignModalStage(stage);
+    const targetJudges = stage === 'f2f' ? app.assignedJudgesF2F : app.assignedJudges;
+    setSelectedJudges(targetJudges?.map(j => j._id || j) || []);
     setAssignModalOpen(true);
   };
 
   const handleAssignSubmit = async () => {
     try {
-      await applicationService.assignJudges(selectedApp._id, selectedJudges);
-      toast.success('Judges assigned successfully.');
+      if (assignModalStage === 'f2f') {
+        await applicationService.assignJudgesF2F(selectedApp._id, selectedJudges);
+        toast.success('Stage 2 judges assigned successfully.');
+      } else {
+        await applicationService.assignJudges(selectedApp._id, selectedJudges);
+        toast.success('Judges assigned successfully.');
+      }
       setAssignModalOpen(false);
       fetchApps();
       fetchMonitoring();
     } catch {
       toast.error('Failed to assign judges.');
+    }
+  };
+
+  const handleAutoAssign = async (app) => {
+    if (!window.confirm(`Are you sure you want to auto-assign judges matching the category for "${app.projectTitle}"?`)) return;
+    try {
+      const { data } = await applicationService.autoAssignJudges(app._id);
+      toast.success(data.message || 'Judges auto-assigned successfully.');
+      fetchApps();
+      fetchMonitoring();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to auto-assign judges.');
+    }
+  };
+
+  const openEvaluationsModal = async (app) => {
+    setEvaluationsApp(app);
+    setEvaluationsList([]);
+    setEvaluationsModalOpen(true);
+    setEvalsLoading(true);
+    try {
+      const { data } = await evaluationService.getEvaluationsByApplication(app._id);
+      setEvaluationsList(data.data.evaluations || []);
+    } catch {
+      toast.error('Failed to load judge evaluations.');
+    } finally {
+      setEvalsLoading(false);
     }
   };
 
@@ -517,7 +1144,9 @@ const AdminDashboard = () => {
             {[
               { id: 'overview', label: 'Dashboard Overview', icon: RiDashboardLine },
               { id: 'applications', label: 'Manage Nominations', icon: RiFileList3Line },
+              { id: 'payment-verification', label: 'Payment Verification', icon: RiBankCardLine },
               { id: 'monitoring', label: 'Application Monitoring', icon: RiFileChartLine },
+              { id: 'judge-management', label: 'Judge Management', icon: RiShieldUserLine },
               { id: 'users', label: 'User Directory', icon: RiTeamLine },
               { id: 'categories', label: 'Categories', icon: RiFolderShield2Line },
               { id: 'criteria', label: 'Evaluation Criteria', icon: RiStarLine },
@@ -830,120 +1459,457 @@ const AdminDashboard = () => {
                 )}
 
                 {/* 3. APPLICATIONS TAB */}
-                {activeTab === 'applications' && (
-                  <div>
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
-                      <div>
-                        <h3 className="font-display font-bold text-white text-xl">Manage Nominations</h3>
-                        <p className="text-slate-400 text-xs mt-1">Audit statuses and assign judges panels.</p>
+                {activeTab === 'applications' && (() => {
+                  const filteredApps = applications.filter(app => {
+                    if (nominationsStageTab === 'f2f') {
+                      return app.status === 'f2f_stage';
+                    } else if (nominationsStageTab === 'payment-verified') {
+                      // Payment verified: Show apps with approved payment
+                      return app.paymentStatus === 'approved';
+                    } else {
+                      // Initial stage: Show apps that are NOT f2f_stage, NOT draft, AND
+                      // either have approved payment OR are legacy apps (no paymentStatus field)
+                      const isPaymentApproved = app.paymentStatus === 'approved';
+                      const isLegacyApp = !app.paymentStatus || app.paymentStatus === undefined;
+                      return app.status !== 'f2f_stage' &&
+                             app.status !== 'draft' &&
+                             (isPaymentApproved || isLegacyApp);
+                    }
+                  });
+                  return (
+                    <div>
+                      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+                        <div>
+                          <h3 className="font-display font-bold text-white text-xl">Manage Nominations</h3>
+                          <p className="text-slate-400 text-xs mt-1">Audit statuses and assign judges panels.</p>
+                        </div>
+
+                        <div className="flex gap-3 w-full sm:w-auto">
+                          <input
+                            className="input-field max-w-[200px]"
+                            placeholder="Search title/ref..."
+                            value={appSearch}
+                            onChange={(e) => setAppSearch(e.target.value)}
+                          />
+                          <select
+                            className="input-field max-w-[150px]"
+                            value={appStatusFilter}
+                            onChange={(e) => setAppStatusFilter(e.target.value)}
+                          >
+                            <option value="">All Statuses</option>
+                            <option value="draft">Draft</option>
+                            <option value="eligible">Eligible</option>
+                            <option value="ineligible">Ineligible</option>
+                            <option value="initial_stage">Selected to Initial Stage</option>
+                            <option value="f2f_stage">Selected to Face-to-Face</option>
+                            <option value="finalist">Finalist</option>
+                            <option value="winner">Winner</option>
+                            <option value="runner_up">1st Runner-up</option>
+                            <option value="runner_up_2nd">2nd Runner-up</option>
+                          </select>
+                        </div>
                       </div>
 
-                      <div className="flex gap-3 w-full sm:w-auto">
-                        <input
-                          className="input-field max-w-[200px]"
-                          placeholder="Search title/ref..."
-                          value={appSearch}
-                          onChange={(e) => setAppSearch(e.target.value)}
-                        />
-                        <select
-                          className="input-field max-w-[150px]"
-                          value={appStatusFilter}
-                          onChange={(e) => setAppStatusFilter(e.target.value)}
+                      {/* Stage Tabs */}
+                      <div className="flex border-b border-white/10 mb-6 gap-6">
+                        <button
+                          onClick={() => setNominationsStageTab('payment-verified')}
+                          className={`pb-3 text-sm font-semibold transition-all relative ${
+                            nominationsStageTab === 'payment-verified'
+                              ? 'text-accent-400 border-b-2 border-accent-400'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
                         >
-                          <option value="">All Statuses</option>
-                          <option value="submitted">Submitted</option>
-                          <option value="under_review">Under Review</option>
-                          {ADMIN_STATUS_OPTIONS.map((statusOption) => (
-                            <option key={statusOption.value} value={statusOption.value}>
-                              {statusOption.label}
-                            </option>
-                          ))}
-                        </select>
+                           Payment Verified
+                        </button>
+                        <button
+                          onClick={() => setNominationsStageTab('initial')}
+                          className={`pb-3 text-sm font-semibold transition-all relative ${
+                            nominationsStageTab === 'initial'
+                              ? 'text-accent-400 border-b-2 border-accent-400'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                           Initial Stage
+                        </button>
+                        <button
+                          onClick={() => setNominationsStageTab('f2f')}
+                          className={`pb-3 text-sm font-semibold transition-all relative ${
+                            nominationsStageTab === 'f2f'
+                              ? 'text-accent-400 border-b-2 border-accent-400'
+                              : 'text-slate-400 hover:text-white'
+                          }`}
+                        >
+                          Face-to-Face Stage
+                        </button>
+                      </div>
+
+                      <div className="overflow-x-auto max-h-[65vh] lg:max-h-[calc(100vh-22rem)] overflow-auto overscroll-contain">
+                        <table className="w-full min-w-[860px] text-xs text-left text-slate-300">
+                          <thead className="bg-blue-500/20 text-[10px] uppercase font-bold text-white">
+                            {nominationsStageTab === 'f2f' ? (
+                              <tr>
+                                <th className="p-4 text-left">Ref/Title</th>
+                                <th className="p-4 text-left">Category</th>
+                                <th className="p-4 text-left">Candidate</th>
+                                <th className="p-4 text-left">Email</th>
+                                <th className="p-4 text-left">Phone</th>
+                                <th className="p-4 text-left">Status</th>
+                                <th className="p-4 text-left">Stage 2 Deadline</th>
+                                <th className="p-4 text-left">Stage 2 Judges Panel</th>
+                                <th className="p-4 text-center">Round 1 Score</th>
+                                <th className="p-4 text-center">Stage 2 Score</th>
+                                <th className="p-4 text-left">Actions</th>
+                              </tr>
+                            ) : (
+                              <tr>
+                                <th className="p-4 text-left">Ref/Title</th>
+                                <th className="p-4 text-left">Category</th>
+                                <th className="p-4 text-left">Candidate</th>
+                                <th className="p-4 text-left">Email</th>
+                                <th className="p-4 text-left">Phone</th>
+                                <th className="p-4 text-left">Status</th>
+                                <th className="p-4 text-left">Deadline</th>
+                                <th className="p-4 text-left">Judges Panel</th>
+                                <th className="p-4 text-center">Score</th>
+                                <th className="p-4 text-left">Actions</th>
+                              </tr>
+                            )}
+                          </thead>
+                          <tbody>
+                            {filteredApps.map(app => {
+                              const isF2F = nominationsStageTab === 'f2f';
+                              return (
+                                <tr key={app._id} className="border-b border-white/5 hover:bg-white/5">
+                                  <td className="p-4">
+                                    <div className="font-bold text-white truncate max-w-[150px]">{app.projectTitle}</div>
+                                    <div className="text-[10px] font-mono text-slate-500">{app.referenceNumber || 'Draft'}</div>
+                                    {app.documents && app.documents.length > 0 && (
+                                      <div className="flex flex-wrap gap-1.5 mt-2 max-w-[200px]">
+                                        {app.documents.map((doc, idx) => (
+                                          <a
+                                            key={doc._id || idx}
+                                            href={buildAssetUrl(doc.filePath)}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 hover:border-accent-500/30 hover:bg-white/10 text-[9px] text-slate-300 hover:text-white transition-all whitespace-nowrap"
+                                            title={doc.originalName}
+                                          >
+                                            <RiFileTextLine size={10} className="text-accent-400" />
+                                            Doc {idx + 1}
+                                          </a>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="p-4 truncate max-w-[120px]">{app.category?.name}</td>
+                                  <td className="p-4">
+                                    <div>{app.candidate?.firstName} {app.candidate?.lastName}</div>
+                                    <div className="text-[10px] text-slate-500">{app.candidate?.organization}</div>
+                                  </td>
+                                  <td className="p-4 text-[11px] text-blue-400">
+                                    {app.candidate?.email || 'Not provided'}
+                                  </td>
+                                  <td className="p-4 font-mono text-[11px] text-slate-300">
+                                    {app.primaryContactPhone || app.candidate?.phone || 'Not provided'}
+                                  </td>
+                                  <td className="p-4">
+                                    <select
+                                      className="bg-navy-900 border border-white/10 rounded px-2 py-1 text-[10px]"
+                                      value={app.status}
+                                      onChange={(e) => handleStatusChange(app._id, e.target.value)}
+                                    >
+                                      <option value={app.status}>{app.statusLabel || STATUS_LABELS[app.status] || app.status}</option>
+                                      {nominationsStageTab === 'payment-verified' ? (
+                                        <>
+                                          <option value="draft">Draft</option>
+                                          <option value="eligible">Eligible</option>
+                                          <option value="ineligible">Ineligible</option>
+                                          <option value="initial_stage">Selected to Initial Stage</option>
+                                        </>
+                                      ) : nominationsStageTab === 'initial' ? (
+                                        <>
+                                          <option value="initial_stage">Selected to Initial Stage</option>
+                                          <option value="f2f_stage">Selected to Face-to-Face</option>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <option value="f2f_stage">Selected to Face-to-Face</option>
+                                          <option value="winner">Winner</option>
+                                          <option value="runner_up">1st Runner-up</option>
+                                          {(app.category?.name?.toLowerCase().includes('university') || app.category?.name?.toLowerCase().includes('univercity') || app.organisationSize === 'Univercity student') && (
+                                            <option value="runner_up_2nd">2nd Runner-up</option>
+                                          )}
+                                        </>
+                                      )}
+                                    </select>
+                                  </td>
+                                  <td className="p-4">
+                                    {editingDeadlineAppId === app._id && editingDeadlineIsF2F === isF2F ? (
+                                      <div className="flex items-center gap-2">
+                                        <input
+                                          type="datetime-local"
+                                          className="bg-navy-900 border border-white/10 rounded-lg px-3 py-2 text-[11px] text-white outline-none focus:border-accent-500 focus:ring-1 focus:ring-accent-500"
+                                          value={deadlineValue}
+                                          onChange={(e) => setDeadlineValue(e.target.value)}
+                                        />
+                                        <button
+                                          onClick={handleSaveDeadline}
+                                          disabled={savingDeadline}
+                                          className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-2 rounded-lg text-[11px] font-bold transition-colors disabled:opacity-50"
+                                        >
+                                          {savingDeadline ? '...' : '✓'}
+                                        </button>
+                                        <button
+                                          onClick={handleCancelDeadlineEdit}
+                                          className="bg-red-500 hover:bg-red-600 text-white px-3 py-2 rounded-lg text-[11px] font-bold transition-colors"
+                                        >
+                                          ✗
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div className="flex items-center gap-3">
+                                        {(isF2F ? app.deadlineF2F : app.deadline) ? (
+                                          <div className="flex flex-col">
+                                            <span className="text-[11px] font-mono text-white">
+                                              {new Date(isF2F ? app.deadlineF2F : app.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                                            </span>
+                                            <span className="text-[10px] font-mono text-slate-400">
+                                              {new Date(isF2F ? app.deadlineF2F : app.deadline).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                                            </span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-[11px] text-slate-500 italic">No deadline set</span>
+                                        )}
+                                        <button
+                                          onClick={() => handleEditDeadline(app, isF2F)}
+                                          className="bg-accent-500 hover:bg-accent-600 text-white px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors"
+                                        >
+                                          {(isF2F ? app.deadlineF2F : app.deadline) ? 'Edit' : 'Set'}
+                                        </button>
+                                      </div>
+                                    )}
+                                  </td>
+                                  <td className="p-4">
+                                    <div className="space-y-1.5">
+                                      {(isF2F ? app.assignedJudgesF2F : app.assignedJudges)?.map(j => (
+                                        <div key={j._id} className="text-[10px] bg-white/5 px-1.5 py-0.5 rounded w-fit">{j.firstName}</div>
+                                      ))}
+                                      <div className="flex flex-col gap-1 pt-1">
+                                        <button
+                                          onClick={() => openAssignModal(app, isF2F ? 'f2f' : 'initial')}
+                                          className="text-accent-400 hover:text-accent-300 text-left text-[11px] font-bold block"
+                                        >
+                                          + Manual Assign
+                                        </button>
+                                        <button
+                                          onClick={() => handleAutoAssign(app)}
+                                          className="text-emerald-400 hover:text-emerald-300 text-left text-[11px] font-bold block"
+                                        >
+                                          ⚡ Auto Assign
+                                        </button>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  {isF2F ? (
+                                    <>
+                                      <td className="p-4 text-center font-mono font-bold text-white">
+                                        {app.averageScore !== undefined && app.averageScore !== null ? app.averageScore.toFixed(1) : '0'}
+                                      </td>
+                                      <td className="p-4 text-center">
+                                        {app.averageScoreF2F !== undefined && app.averageScoreF2F !== null && app.evaluationCountF2F > 0 ? (
+                                          <button
+                                            onClick={() => openEvaluationsModal(app)}
+                                            className="font-bold text-accent-400 hover:text-accent-300 hover:underline bg-accent-500/10 px-2.5 py-1 rounded border border-accent-500/20 font-mono transition-all"
+                                            title="Click to view detailed evaluations"
+                                          >
+                                            {app.averageScoreF2F?.toFixed(1)}
+                                          </button>
+                                        ) : (
+                                          <span className="text-white">0</span>
+                                        )}
+                                      </td>
+                                    </>
+                                  ) : (
+                                    <td className="p-4 text-center">
+                                      {app.averageScore !== undefined && app.averageScore !== null && app.evaluationCount > 0 ? (
+                                        <button
+                                          onClick={() => openEvaluationsModal(app)}
+                                          className="font-bold text-accent-400 hover:text-accent-300 hover:underline bg-accent-500/10 px-2.5 py-1 rounded border border-accent-500/20 font-mono transition-all"
+                                          title="Click to view detailed evaluations"
+                                        >
+                                          {app.averageScore?.toFixed(1)}
+                                        </button>
+                                      ) : (
+                                        <span className="text-white">0</span>
+                                      )}
+                                    </td>
+                                  )}
+                                  <td className="p-4">
+                                    <div className="flex items-center gap-3">
+                                      <Link to={`/dashboard/applications/${app._id}`} className="text-accent-400 hover:underline">View</Link>
+                                      <button
+                                        type="button"
+                                        onClick={() => handleDeleteApplication(app)}
+                                        className="inline-flex items-center gap-1 text-red-400 hover:text-red-300"
+                                      >
+                                        <RiDeleteBinLine size={14} /> Delete
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* PAYMENT VERIFICATION TAB */}
+                {activeTab === 'payment-verification' && (
+                  <div className="space-y-6">
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div>
+                        <h3 className="font-display font-bold text-white text-xl">Payment Verification</h3>
+                        <p className="text-slate-400 text-xs mt-1">Review and verify payment submissions from candidates.</p>
                       </div>
                     </div>
 
-                    <div className="max-h-[65vh] lg:max-h-[calc(100vh-22rem)] overflow-auto overscroll-contain">
-                      <table className="w-full min-w-[1080px] text-xs text-left text-slate-300">
-                        <thead className="sticky top-0 z-10 bg-navy-900 text-[10px] uppercase font-bold text-slate-400 shadow-[0_1px_0_rgba(255,255,255,0.06)]">
-                          <tr>
-                            <th className="p-4">Ref/Title</th>
-                            <th className="p-4">Category</th>
-                            <th className="p-4">Candidate</th>
-                            <th className="p-4">Email</th>
-                            <th className="p-4">Phone</th>
-                            <th className="p-4">Status</th>
-                            <th className="p-4">Judges Panel</th>
-                            <th className="p-4 text-center">Score</th>
-                            <th className="p-4">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {applications.map(app => (
-                            <tr key={app._id} className="border-b border-white/5 hover:bg-white/5">
-                              <td className="p-4">
-                                <div className="font-bold text-white truncate max-w-[150px]">{app.projectTitle}</div>
-                                <div className="text-[10px] font-mono text-slate-500">{app.referenceNumber || 'Draft'}</div>
-                              </td>
-                              <td className="p-4 truncate max-w-[120px]">{app.category?.name}</td>
-                              <td className="p-4">
-                                <div>{app.candidate?.firstName} {app.candidate?.lastName}</div>
-                                <div className="text-[10px] text-slate-500">{app.candidate?.organization}</div>
-                              </td>
-                              <td className="p-4 text-[10px] text-accent-300 break-all max-w-[180px]">
-                                {app.candidate?.email || 'No email'}
-                              </td>
-                              <td className="p-4 font-mono text-[10px] text-slate-300 whitespace-nowrap">
-                                {app.primaryContactPhone || app.candidate?.phone || 'Not provided'}
-                              </td>
-                              <td className="p-4">
-                                <select
-                                  className="bg-navy-900 border border-white/10 rounded px-2 py-1 text-[10px]"
-                                  value={app.status}
-                                  onChange={(e) => handleStatusChange(app._id, e.target.value)}
-                                >
-                                  {!ADMIN_STATUS_OPTIONS.some((statusOption) => statusOption.value === app.status) && (
-                                    <option value={app.status}>
-                                      {app.statusLabel || STATUS_LABELS[app.status] || app.status}
-                                    </option>
-                                  )}
-                                  {ADMIN_STATUS_OPTIONS.map((statusOption) => (
-                                    <option key={statusOption.value} value={statusOption.value}>
-                                      {statusOption.label}
-                                    </option>
-                                  ))}
-                                </select>
-                              </td>
-                              <td className="p-4">
-                                <div className="space-y-1">
-                                  {app.assignedJudges?.map(j => (
-                                    <div key={j._id} className="text-[10px] bg-white/5 px-1.5 py-0.5 rounded w-fit">{j.firstName}</div>
-                                  ))}
-                                  <button
-                                    onClick={() => openAssignModal(app)}
-                                    className="text-accent-400 hover:text-accent-300 font-bold block"
-                                  >
-                                    + Assign Panel
-                                  </button>
-                                </div>
-                              </td>
-                              <td className="p-4 text-center font-bold text-white">{app.averageScore?.toFixed(1) || '-'}</td>
-                              <td className="p-4">
-                                <div className="flex items-center gap-3">
-                                  <Link to={`/dashboard/applications/${app._id}`} className="text-accent-400 hover:underline">View</Link>
-                                  <button
-                                    type="button"
-                                    onClick={() => handleDeleteApplication(app)}
-                                    className="inline-flex items-center gap-1 text-red-400 hover:text-red-300"
-                                  >
-                                    <RiDeleteBinLine size={14} /> Delete
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                    {/* Stats Cards */}
+                    {paymentStats && (
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                          <span className="text-slate-400 text-[10px] font-bold uppercase tracking-wider">Total</span>
+                          <p className="text-white text-xl font-black mt-1 font-display">{paymentStats.total}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                          <span className="text-yellow-400 text-[10px] font-bold uppercase tracking-wider">Pending</span>
+                          <p className="text-white text-xl font-black mt-1 font-display text-amber-400">{paymentStats.pending}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                          <span className="text-emerald-400 text-[10px] font-bold uppercase tracking-wider">Approved</span>
+                          <p className="text-white text-xl font-black mt-1 font-display text-emerald-400">{paymentStats.approved}</p>
+                        </div>
+                        <div className="p-3 rounded-lg bg-white/5 border border-white/5 text-center">
+                          <span className="text-red-400 text-[10px] font-bold uppercase tracking-wider">Rejected</span>
+                          <p className="text-white text-xl font-black mt-1 font-display text-red-400">{paymentStats.rejected}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Filters */}
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <select
+                        value={paymentFilter}
+                        onChange={(e) => setPaymentFilter(e.target.value)}
+                        className="bg-navy-900 border border-white/10 rounded-lg px-4 py-2 text-sm text-white focus:border-accent-500 focus:outline-none"
+                      >
+                        <option value="all">All Statuses</option>
+                        <option value="pending">Pending</option>
+                        <option value="approved">Approved</option>
+                        <option value="rejected">Rejected</option>
+                      </select>
+                      <input
+                        type="text"
+                        placeholder="Search by name, email, organization..."
+                        value={paymentSearch}
+                        onChange={(e) => setPaymentSearch(e.target.value)}
+                        className="flex-1 bg-navy-900 border border-white/10 rounded-lg px-4 py-2 text-sm text-white placeholder-slate-500 focus:border-accent-500 focus:outline-none"
+                      />
                     </div>
+
+                    {/* Payment Table */}
+                    {paymentLoading ? (
+                      <div className="flex justify-center py-10">
+                        <div className="w-8 h-8 border-2 border-accent-500 border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    ) : paymentSubmissions.length === 0 ? (
+                      <div className="text-center py-10">
+                        <div className="text-slate-400 text-sm">No payment submissions found.</div>
+                      </div>
+                    ) : (
+                      <div className="overflow-auto max-h-[60vh] lg:max-h-[calc(100vh-22rem)] custom-scrollbar">
+                        <table className="w-full min-w-[1000px] text-xs text-left text-slate-300">
+                          <thead className="bg-blue-500/20 text-[10px] uppercase font-bold text-white">
+                            <tr>
+                              <th className="p-4">Candidate</th>
+                              <th className="p-4">Organization</th>
+                              <th className="p-4">Category</th>
+                              <th className="p-4">Email</th>
+                              <th className="p-4">Payment Ref</th>
+                              <th className="p-4">Upload Date</th>
+                              <th className="p-4">Status</th>
+                              <th className="p-4">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {paymentSubmissions.map((app) => (
+                              <tr key={app._id} className="border-b border-white/5 hover:bg-white/5">
+                                <td className="p-4">
+                                  <div className="font-semibold text-white">
+                                    {app.candidate?.firstName} {app.candidate?.lastName}
+                                  </div>
+                                  <div className="text-[10px] text-slate-500">{app.candidate?.phone}</div>
+                                </td>
+                                <td className="p-4">{app.organisationName || '-'}</td>
+                                <td className="p-4">
+                                  <span className="px-2 py-1 rounded bg-accent-500/10 border border-accent-500/20 text-accent-400 text-[10px] whitespace-nowrap">
+                                    {app.category?.name}
+                                  </span>
+                                </td>
+                                <td className="p-4 text-blue-400">{app.candidate?.email}</td>
+                                <td className="p-4">{app.paymentReference || '-'}</td>
+                                <td className="p-4">
+                                  {app.paymentSlip?.uploadedAt 
+                                    ? new Date(app.paymentSlip.uploadedAt).toLocaleDateString()
+                                    : '-'}
+                                </td>
+                                <td className="p-4">
+                                  <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
+                                    app.paymentStatus === 'approved' 
+                                      ? 'bg-emerald-500/10 text-emerald-400' 
+                                      : app.paymentStatus === 'rejected'
+                                      ? 'bg-red-500/10 text-red-400'
+                                      : 'bg-yellow-500/10 text-yellow-400'
+                                  }`}>
+                                    {app.paymentStatus || 'Pending'}
+                                  </span>
+                                </td>
+                                <td className="p-4">
+                                  <div className="flex gap-2">
+                                    <button
+                                      onClick={() => handleViewPayment(app)}
+                                      className="text-accent-400 hover:text-accent-300 text-[10px] flex items-center gap-1"
+                                    >
+                                      <RiEyeLine size={14} /> View
+                                    </button>
+                                    {app.paymentStatus !== 'approved' && (
+                                      <button
+                                        onClick={() => handleApprovePayment(app._id)}
+                                        disabled={approvingPayment === app._id}
+                                        className="text-emerald-400 hover:text-emerald-300 text-[10px] flex items-center gap-1 disabled:opacity-50"
+                                      >
+                                        {approvingPayment === app._id ? '...' : 'Approve'}
+                                      </button>
+                                    )}
+                                    {app.paymentStatus !== 'rejected' && (
+                                      <button
+                                        onClick={() => openRejectModal(app)}
+                                        className="text-red-400 hover:text-red-300 text-[10px] flex items-center gap-1"
+                                      >
+                                        Reject
+                                      </button>
+                                    )}
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1023,6 +1989,128 @@ const AdminDashboard = () => {
                   </div>
                 )}
 
+                {/* 3.5 JUDGE MANAGEMENT TAB */}
+                {activeTab === 'judge-management' && (
+                  <div className="space-y-6">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div>
+                        <h3 className="font-display font-bold text-white text-xl">Judge Management</h3>
+                        <p className="text-slate-400 text-xs mt-1">
+                          {judges.length} judges registered. Edit details, change award categories, or manage photos below.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={handleSendWelcomeEmails}
+                          disabled={sendingWelcomes || judgesLoading || judges.length === 0}
+                          className="bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
+                        >
+                          <RiMailSendLine size={16} />
+                          {sendingWelcomes ? 'Sending...' : 'Send Welcome Emails'}
+                        </button>
+                        <button
+                          onClick={handleOpenAddJudge}
+                          className="bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-glow transition-all"
+                        >
+                          <RiUserLine size={16} />
+                          Add Judge
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Judges List */}
+                    {judgesLoading ? (
+                      <div className="space-y-3">
+                        {Array.from({ length: 6 }).map((_, idx) => (
+                          <div key={idx} className="h-20 bg-white/5 rounded-2xl animate-pulse" />
+                        ))}
+                      </div>
+                    ) : judges.length > 0 ? (
+                      <div className="space-y-3">
+                        {judges.map((judgeItem) => (
+                          <div
+                            key={judgeItem._id}
+                            className="rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.06] transition-all p-5"
+                          >
+                            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                              {/* Left: Avatar + Name + Role */}
+                              <div className="flex items-center gap-4 min-w-0 lg:w-[280px] shrink-0">
+                                <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-slate-800 border border-white/10">
+                                  <JudgeAvatar judge={judgeItem} variant="card" className="w-full h-full text-xs border-0 shadow-none hover:scale-100" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-bold text-white text-sm truncate">{judgeItem.fullName}</div>
+                                  <div className="text-[11px] text-accent-400 font-semibold truncate">{judgeItem.designation}</div>
+                                  <div className="text-[10px] text-slate-500 truncate">{judgeItem.organization} · {judgeItem.country}</div>
+                                </div>
+                              </div>
+
+                              {/* Middle: Category & Status */}
+                              <div className="flex-1 min-w-0 space-y-1.5">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Category:</span>
+                                  <span className="text-xs text-white font-semibold">{judgeItem.mainAwardCategory || judgeItem.mainCategory || '—'}</span>
+                                  {judgeItem.isGrandJury && (
+                                    <span className="bg-gold-500/10 text-gold-400 border border-gold-500/20 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">
+                                      Grand Jury
+                                    </span>
+                                  )}
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${judgeItem.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                                    {judgeItem.status}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {(judgeItem.awardSubCategories || judgeItem.subCategories)?.map((sub, i) => (
+                                    <span key={i} className="bg-white/5 border border-white/10 text-[9px] px-1.5 py-0.5 rounded text-slate-400" title={sub}>
+                                      {getSubCategoryDisplayName(sub)}
+                                    </span>
+                                  ))}
+                                </div>
+                                <div className="text-[10px] text-slate-500 font-mono">{judgeItem.email}</div>
+                              </div>
+
+                              {/* Right: Action buttons */}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  onClick={() => handleOpenEditJudge(judgeItem)}
+                                  className="px-3 py-1.5 bg-white/5 hover:bg-accent-500/15 text-slate-300 hover:text-accent-400 rounded-lg text-[11px] font-bold border border-white/10 transition-all flex items-center gap-1.5"
+                                  title="Edit Details & Category"
+                                >
+                                  <RiPencilLine size={14} />
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleOpenPhotoModal(judgeItem)}
+                                  className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all"
+                                  title="Change Photo"
+                                >
+                                  <RiUploadCloud2Line size={16} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteJudge(judgeItem._id)}
+                                  className="p-1.5 bg-white/5 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-lg border border-white/10 transition-all"
+                                  title="Delete"
+                                >
+                                  <RiDeleteBin6Line size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-white/10 px-4 py-12 text-center text-slate-400 space-y-3">
+                        <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-slate-500">
+                          <RiShieldUserLine size={24} />
+                        </div>
+                        <h4 className="font-bold text-white">No Judges Found</h4>
+                        <p className="text-xs text-slate-500 max-w-sm mx-auto">No judge profiles have been registered yet.</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 {/* 4. USER DIRECTORY TAB */}
                 {activeTab === 'users' && (
                   <div className="space-y-8">
@@ -1091,43 +2179,98 @@ const AdminDashboard = () => {
                         <h3 className="font-display font-bold text-white text-xl">Award Categories</h3>
                         <p className="text-slate-400 text-xs mt-1">Manage award categories available for nominations.</p>
                       </div>
-                      <button onClick={handleSeedCategories} className="btn-primary text-xs">
+                      <button onClick={handleSeedCategories} className="btn-primary text-xs !py-2 !px-4">
                         Seed Default Categories
                       </button>
                     </div>
 
-                    <div className="p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
-                        <h4 className="font-display font-bold text-white text-base">Existing Categories</h4>
-                        <div className="space-y-3 max-h-[420px] overflow-y-auto">
-                          {categories.map(c => (
-                            <div key={c._id} className="p-3 rounded-xl bg-white/5 border border-white/10">
-                              <div className="flex justify-between items-start gap-3">
-                                <div>
-                                  <h5 className="font-semibold text-white text-sm">{c.name}</h5>
-                                  <p className="text-slate-400 text-[11px] mt-1">{c.description}</p>
+                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                      {/* Left: Create Category Form */}
+                      <div className="lg:col-span-1 p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4 h-fit">
+                        <h4 className="font-display font-bold text-white text-base">Create Category</h4>
+                        <form onSubmit={handleCreateCategory} className="space-y-4">
+                          <div>
+                            <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Category Name</label>
+                            <input
+                              className="input-field"
+                              placeholder="e.g. National AI Excellence Award"
+                              value={categoryForm.name}
+                              onChange={(e) => setCategoryForm({ ...categoryForm, name: e.target.value })}
+                              required
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[10px] text-slate-400 uppercase tracking-wider font-semibold mb-1">Description</label>
+                            <textarea
+                              className="input-field h-32 resize-none"
+                              placeholder="Provide details about who is eligible and what this category awards."
+                              value={categoryForm.description}
+                              onChange={(e) => setCategoryForm({ ...categoryForm, description: e.target.value })}
+                              required
+                            />
+                          </div>
+                          <button
+                            type="submit"
+                            disabled={categorySaving}
+                            className="btn-primary w-full text-xs !py-2.5 font-bold"
+                          >
+                            {categorySaving ? 'Creating...' : 'Create Category'}
+                          </button>
+                        </form>
+                      </div>
+
+                      {/* Right: Existing Categories List */}
+                      <div className="lg:col-span-2 p-5 rounded-2xl bg-white/5 border border-white/5 space-y-4">
+                        <h4 className="font-display font-bold text-white text-base">Existing Categories ({categories.length})</h4>
+                        <div className="space-y-3 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
+                          {categories.map((c) => (
+                            <div key={c._id} className="p-4 rounded-xl bg-white/[0.02] border border-white/10 hover:bg-white/5 hover:border-white/20 transition-all">
+                              <div className="flex justify-between items-start gap-4">
+                                <div className="space-y-1">
+                                  <h5 className="font-semibold text-white text-sm tracking-wide">{c.name}</h5>
+                                  <p className="text-slate-400 text-xs leading-relaxed">{c.description}</p>
                                 </div>
-                                <div className="flex gap-2">
-                                  <button onClick={() => handleDeleteCategory(c._id)} className="text-red-400 text-xs">Delete</button>
-                                </div>
+                                <button
+                                  onClick={() => handleDeleteCategory(c._id)}
+                                  className="text-red-400 hover:text-red-300 text-xs font-bold border border-red-500/20 bg-red-500/5 px-2.5 py-1 rounded-lg transition-colors hover:bg-red-500/10"
+                                >
+                                  Delete
+                                </button>
                               </div>
                             </div>
                           ))}
+                          {categories.length === 0 && (
+                            <div className="text-center py-10 text-slate-500 text-sm">
+                              No categories configured yet. Click "Seed Default Categories" to start.
+                            </div>
+                          )}
                         </div>
                       </div>
+                    </div>
                   </div>
                 )}
 
                 {/* EVALUATION CRITERIA TAB */}
                 {activeTab === 'criteria' && (
                   <div className="space-y-8">
-                    <div className="flex justify-between items-center">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
                         <h3 className="font-display font-bold text-white text-xl">Evaluation Criteria</h3>
                         <p className="text-slate-400 text-xs mt-1">Manage criteria sets and weight distributions for evaluation scorecards.</p>
                       </div>
-                      <button onClick={handleSeedCriteria} className="btn-primary text-xs">
-                        Seed Default Criteria
-                      </button>
+                      <div className="flex items-center gap-3">
+                        <select
+                          className="bg-navy-900 border border-white/10 rounded-xl px-3 py-2.5 text-xs text-white"
+                          value={criteriaStageFilter}
+                          onChange={(e) => setCriteriaStageFilter(e.target.value)}
+                        >
+                          <option value="initial">Screening Stage (Initial)</option>
+                          <option value="f2f">Face-to-Face Stage (Viva)</option>
+                        </select>
+                        <button onClick={handleSeedCriteria} className="btn-primary text-xs">
+                          Seed Default Criteria
+                        </button>
+                      </div>
                     </div>
 
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -1219,7 +2362,7 @@ const AdminDashboard = () => {
                                 type="button"
                                 onClick={() => {
                                   setEditingCriteriaId(null);
-                                  setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, criteriaType: 'organizational', order: 0, isActive: true });
+                                  setCriteriaForm({ name: '', description: '', weight: 10, maxScore: 10, criteriaType: 'organizational', stage: criteriaStageFilter, order: 0, isActive: true });
                                 }}
                                 className="btn-ghost text-xs"
                               >
@@ -1651,6 +2794,867 @@ const AdminDashboard = () => {
             <div className="flex justify-end gap-3">
               <button onClick={() => setAssignModalOpen(false)} className="btn-ghost text-xs !py-2 !px-4">Cancel</button>
               <button onClick={handleAssignSubmit} className="btn-primary text-xs !py-2 !px-4">Save Panel</button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* DETAILED JUDGE EVALUATIONS MODAL */}
+      {evaluationsModalOpen && evaluationsApp && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/80 backdrop-blur-md">
+          <div className="relative max-w-4xl w-full p-8 bg-surface-200 rounded-[32px] shadow-2xl border border-white/10 max-h-[85vh] overflow-y-auto z-10">
+            <button
+              onClick={() => {
+                setEvaluationsModalOpen(false);
+                setSelectedJudgeEval(null);
+              }}
+              className="absolute right-6 top-6 w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+
+            {selectedJudgeEval ? (
+              // Sub-view: Individual Judge Scorecard
+              <div className="space-y-6 animate-fadeIn">
+                <button
+                  type="button"
+                  onClick={() => setSelectedJudgeEval(null)}
+                  className="flex items-center gap-2 text-xs font-bold text-accent-400 hover:text-accent-300 hover:underline mb-2"
+                >
+                  ← Back to Evaluation Summary
+                </button>
+
+                <div className="border-b border-white/10 pb-4">
+                  <span className="text-[10px] font-mono uppercase tracking-wider text-accent-400">Individual Evaluator Sheet</span>
+                  <h3 className="font-display font-extrabold text-white text-xl mt-1">{selectedJudgeEval.judge?.firstName} {selectedJudgeEval.judge?.lastName}</h3>
+                  <p className="text-slate-400 text-xs mt-0.5">{selectedJudgeEval.judge?.email} | {selectedJudgeEval.judge?.organization || 'Independent Evaluator'}</p>
+                </div>
+
+                <div className="p-6 rounded-2xl border border-white/10 bg-white/[0.02] space-y-6">
+                  {/* Score & Status */}
+                  <div className="flex justify-between items-center border-b border-white/5 pb-4">
+                    <div>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Submitted At</span>
+                      <strong className="text-white text-xs font-mono">{selectedJudgeEval.submittedAt ? new Date(selectedJudgeEval.submittedAt).toLocaleString() : 'Draft Mode'}</strong>
+                    </div>
+                    <div className="text-right">
+                      <span className="inline-block px-3.5 py-1.5 rounded-xl bg-accent-500/10 border border-accent-500/25 font-mono text-lg font-black text-accent-400">
+                        Score: {selectedJudgeEval.totalScore || 0}/100
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Strengths & Weaknesses */}
+                  <div className="grid md:grid-cols-2 gap-4 text-xs">
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Strengths Identified</span>
+                      <p className="text-slate-300 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5 whitespace-pre-line">
+                        {selectedJudgeEval.strengths || 'None specified'}
+                      </p>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Weaknesses / Areas of Improvement</span>
+                      <p className="text-slate-300 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5 whitespace-pre-line">
+                        {selectedJudgeEval.weaknesses || 'None specified'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Overall Comments */}
+                  <div className="text-xs space-y-1">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">Overall Comments</span>
+                    <p className="text-slate-300 leading-relaxed bg-white/5 p-3 rounded-lg border border-white/5 whitespace-pre-line">
+                      {selectedJudgeEval.overallComments || 'No overall comments provided.'}
+                    </p>
+                  </div>
+
+                  {/* Criteria Scores breakdown */}
+                  <div className="space-y-2.5 pt-3">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 block">Criteria Breakdown</span>
+                    <div className="grid sm:grid-cols-2 gap-3">
+                      {selectedJudgeEval.scores?.map((s) => {
+                        const crit = s.criteria;
+                        return (
+                          <div key={s._id || (crit && crit._id)} className="p-3 rounded-xl bg-white/5 border border-white/5 flex justify-between items-center text-xs">
+                            <div className="min-w-0 pr-2">
+                              <p className="text-white font-semibold truncate">{crit?.name || 'Criterion score'}</p>
+                              {s.comment && <p className="text-[10px] text-slate-400 mt-1 italic leading-relaxed truncate" title={s.comment}>"{s.comment}"</p>}
+                            </div>
+                            <span className="font-mono font-bold text-accent-300 shrink-0 bg-white/5 px-2 py-0.5 rounded border border-white/5">
+                              {s.score} / {crit?.weight || 10}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : (() => {
+              const completedReviewsCount = evaluationsList.filter(e => e.isSubmitted && (e.stage || 'initial') === trackerStage).length;
+              const totalAssignedJudges = evaluationsApp.assignedJudges?.length || 0;
+              const activeEvals = evaluationsList.filter(e => e.isSubmitted && (e.stage || 'initial') === trackerStage);
+              const calculatedAverage = activeEvals.length > 0 
+                ? activeEvals.reduce((s, e) => s + (e.totalScore || 0), 0) / activeEvals.length 
+                : null;
+
+              return (
+                // Sub-view: Evaluation Summary & Judge List
+                <div className="space-y-6 animate-fadeIn">
+                  <div className="border-b border-white/10 pb-4">
+                    <span className="text-[10px] font-mono uppercase tracking-wider text-accent-400">Scorecard Tracker & Summary</span>
+                    <h3 className="font-display font-extrabold text-white text-2xl mt-1">{evaluationsApp.projectTitle}</h3>
+                    <p className="text-slate-400 text-xs mt-1">Submitted by: <strong className="text-white">{evaluationsApp.candidate?.firstName} {evaluationsApp.candidate?.lastName}</strong> ({evaluationsApp.candidate?.organization || 'Individual'})</p>
+                  </div>
+
+                  {evalsLoading ? (
+                    <div className="flex flex-col items-center justify-center py-16 gap-3">
+                      <div className="w-10 h-10 border-3 border-accent-500 border-t-transparent rounded-full animate-spin" />
+                      <span className="text-xs text-slate-400">Loading scorecard summary...</span>
+                    </div>
+                  ) : (
+                    <div className="space-y-6">
+                      {/* Evaluation Summary Card */}
+                      <div className="p-5 rounded-2xl bg-white/5 border border-white/10 grid grid-cols-1 sm:grid-cols-4 gap-4 text-center">
+                        <div className="p-3 rounded-xl bg-white/[0.02]">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Evaluation Stage</span>
+                          <strong className="block text-white text-sm mt-1 capitalize">{trackerStage === 'f2f' ? 'Face-to-Face' : 'Initial'}</strong>
+                        </div>
+                        <div className="p-3 rounded-xl bg-white/[0.02]">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Average Score</span>
+                          <strong className="block text-accent-400 text-sm font-mono mt-1">
+                            {calculatedAverage !== null ? calculatedAverage.toFixed(2) : 'Pending'}
+                          </strong>
+                        </div>
+                        <div className="p-3 rounded-xl bg-white/[0.02]">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Completed Reviews</span>
+                          <strong className="block text-emerald-400 text-sm font-mono mt-1">
+                            {completedReviewsCount} / {totalAssignedJudges}
+                          </strong>
+                        </div>
+                        <div className="p-3 rounded-xl bg-white/[0.02]">
+                          <span className="text-[9px] font-bold text-slate-400 uppercase tracking-wider">Assigned Judges</span>
+                          <strong className="block text-white text-sm font-mono mt-1">
+                            {totalAssignedJudges}
+                          </strong>
+                        </div>
+                      </div>
+
+                      {/* Assigned Judges List */}
+                      <div className="space-y-3">
+                        <h4 className="text-white font-bold text-sm tracking-wide">Evaluator Status & Scorecards</h4>
+                        <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                          {evaluationsApp.assignedJudges?.map((judge, idx) => {
+                            // Find corresponding submitted evaluation in evaluationsList matching the current stage
+                            const judgeEval = evaluationsList.find(e => 
+                              e.judge?._id?.toString() === judge._id.toString() &&
+                              (e.stage || 'initial') === trackerStage
+                            );
+                            const isSubmitted = judgeEval ? judgeEval.isSubmitted : false;
+
+                            return (
+                              <div
+                                key={judge._id}
+                                className="p-4 rounded-xl border border-white/5 bg-white/[0.02] flex justify-between items-center gap-4 flex-wrap"
+                              >
+                                <div>
+                                  <h5 className="text-white text-xs font-bold">Judge {idx + 1}: {judge.firstName} {judge.lastName}</h5>
+                                  <p className="text-[10px] text-slate-400 mt-0.5">{judge.organization || 'Independent'} — {judge.designation || 'Specialist'}</p>
+                                </div>
+
+                                <div className="flex items-center gap-5">
+                                  <div className="text-right">
+                                    <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Evaluation State</div>
+                                    <span className={`text-[10px] font-bold ${
+                                      isSubmitted ? 'text-emerald-400' : judgeEval ? 'text-amber-400' : 'text-slate-500'
+                                    }`}>
+                                      {isSubmitted ? 'Completed' : judgeEval ? 'Draft Mode' : 'Not Started'}
+                                    </span>
+                                  </div>
+
+                                  <div className="text-right font-mono min-w-[70px]">
+                                    <div className="text-[9px] font-bold uppercase tracking-wider text-slate-500">Total Score</div>
+                                    <span className="text-xs text-white font-bold">
+                                      {isSubmitted && judgeEval ? `${judgeEval.totalScore}/100` : '—'}
+                                    </span>
+                                  </div>
+
+                                  <div>
+                                    {isSubmitted && judgeEval ? (
+                                      <button
+                                        type="button"
+                                        onClick={() => setSelectedJudgeEval(judgeEval)}
+                                        className="btn-primary text-[10px] !py-1 !px-3 font-semibold"
+                                      >
+                                        View Individual Scorecard
+                                      </button>
+                                    ) : (
+                                      <span className="text-[10px] text-slate-500 italic bg-white/5 px-2 py-1 rounded">
+                                        Not Available
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        {(!evaluationsApp.assignedJudges || evaluationsApp.assignedJudges.length === 0) && (
+                          <div className="p-8 text-center bg-white/5 border border-dashed border-white/10 rounded-xl">
+                            <p className="text-xs text-slate-500">No judges assigned to this application panel yet.</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  )}
+                </div>
+              );
+            })()}
+          </div>
+        </div>
+      )/* end of evaluations modal */}
+      {/* ─── ADD / EDIT JUDGE MODAL ─── */}
+      {judgeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/80 backdrop-blur-md">
+          <div className="relative max-w-2xl w-full p-8 bg-surface-200 rounded-[32px] shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto z-10 text-slate-200">
+            <button
+              onClick={() => setJudgeModalOpen(false)}
+              className="absolute right-6 top-6 w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+
+            <div className="border-b border-white/10 pb-4 mb-6">
+              <h3 className="font-display font-extrabold text-white text-2xl">
+                {editingJudge ? 'Edit Judge Profile' : 'Add New Judge'}
+              </h3>
+              <p className="text-slate-400 text-xs mt-1">
+                {editingJudge ? 'Modify the selected judge details.' : 'Register a new expert panelist for the awards registry.'}
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveJudge} className="space-y-6">
+              {/* Photo Preview & Selection */}
+              <div className="flex flex-col sm:flex-row items-center gap-6 p-4 rounded-2xl bg-white/5 border border-white/5">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-800 border-2 border-white/15 flex items-center justify-center shrink-0">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-slate-500 font-bold text-2xl">
+                      {judgeForm.fullName ? judgeForm.fullName.charAt(0).toUpperCase() : 'AI'}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2 text-center sm:text-left w-full">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Profile Image</label>
+                  <input
+                    type="file"
+                    accept="image/png, image/jpeg, image/webp"
+                    className="text-xs text-slate-400 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 file:cursor-pointer"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error('Image file size must be less than 5MB.');
+                          return;
+                        }
+                        setPhotoFile(file);
+                        setPhotoPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                  />
+                  <p className="text-[10px] text-slate-500">Supports JPG, PNG, WEBP. Max 5MB. Auto-optimized on save.</p>
+                </div>
+              </div>
+
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-accent-400 uppercase tracking-wider">Basic Information</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Name */}
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-400">Full Name</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="e.g. Mr. Indika De Zoysa"
+                      value={judgeForm.fullName}
+                      onChange={(e) => setJudgeForm({ ...judgeForm, fullName: e.target.value })}
+                    />
+                    {judgeFormErrors.fullName && <p className="text-red-400 text-xs mt-1">{judgeFormErrors.fullName}</p>}
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-400">Email Address</label>
+                    <input
+                      type="email"
+                      className="input-field font-mono"
+                      placeholder="e.g. indika.dezoysa@huawei.com"
+                      value={judgeForm.email}
+                      onChange={(e) => setJudgeForm({ ...judgeForm, email: e.target.value })}
+                    />
+                    {judgeFormErrors.email && <p className="text-red-400 text-xs mt-1">{judgeFormErrors.email}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Designation */}
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-400">Designation</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="e.g. VP – Public & Government Affairs"
+                      value={judgeForm.designation}
+                      onChange={(e) => setJudgeForm({ ...judgeForm, designation: e.target.value })}
+                    />
+                    {judgeFormErrors.designation && <p className="text-red-400 text-xs mt-1">{judgeFormErrors.designation}</p>}
+                  </div>
+
+                  {/* Organization */}
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-400">Organization</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="e.g. Huawei Technologies"
+                      value={judgeForm.organization}
+                      onChange={(e) => setJudgeForm({ ...judgeForm, organization: e.target.value })}
+                    />
+                    {judgeFormErrors.organization && <p className="text-red-400 text-xs mt-1">{judgeFormErrors.organization}</p>}
+                  </div>
+
+                  {/* Country */}
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-400">Country</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="e.g. Sri Lanka"
+                      value={judgeForm.country}
+                      onChange={(e) => setJudgeForm({ ...judgeForm, country: e.target.value })}
+                    />
+                    {judgeFormErrors.country && <p className="text-red-400 text-xs mt-1">{judgeFormErrors.country}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* LinkedIn */}
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-xs font-semibold text-slate-400">LinkedIn Profile URL</label>
+                    <input
+                      type="url"
+                      className="input-field font-mono"
+                      placeholder="e.g. https://www.linkedin.com/in/..."
+                      value={judgeForm.linkedin}
+                      onChange={(e) => setJudgeForm({ ...judgeForm, linkedin: e.target.value })}
+                    />
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-400">Active Registry Status</label>
+                    <select
+                      className="input-field bg-navy-950 text-slate-300"
+                      value={judgeForm.status}
+                      onChange={(e) => setJudgeForm({ ...judgeForm, status: e.target.value })}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 bg-white/5 p-3.5 rounded-xl border border-white/5">
+                  <input
+                    type="checkbox"
+                    id="judge-grandjury-check"
+                    className="rounded border-white/10 bg-white/5 text-accent-500 focus:ring-accent-500 w-4 h-4 cursor-pointer"
+                    checked={judgeForm.isGrandJury}
+                    onChange={(e) => setJudgeForm({ ...judgeForm, isGrandJury: e.target.checked })}
+                  />
+                  <label htmlFor="judge-grandjury-check" className="text-xs text-slate-300 hover:text-white cursor-pointer select-none font-semibold">
+                    Mark as member of the Grand Jury Panel
+                  </label>
+                </div>
+              </div>
+
+              {/* Award Categories Selection */}
+              <div className="space-y-4 pt-2 border-t border-white/5">
+                <h4 className="text-xs font-bold text-accent-400 uppercase tracking-wider">Award Categories Alignment</h4>
+                
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-slate-400">Main Award Category</label>
+                  <select
+                    className="input-field bg-navy-950 text-slate-300"
+                    value={judgeForm.mainAwardCategory}
+                    onChange={(e) => setJudgeForm({ ...judgeForm, mainAwardCategory: e.target.value, awardSubCategories: [] })}
+                  >
+                    <option value="">Select Main Category</option>
+                    {Object.keys(JUDGE_MAIN_CATEGORIES_MAP).map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                  {judgeFormErrors.mainAwardCategory && <p className="text-red-400 text-xs mt-1">{judgeFormErrors.mainAwardCategory}</p>}
+                </div>
+
+                {judgeForm.mainAwardCategory && (
+                  <div className="space-y-2 animate-fadeIn">
+                    <label className="block text-xs font-semibold text-slate-400">Award Subcategories (Primary Category)</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 bg-white/5 p-4 rounded-xl border border-white/5 max-h-[180px] overflow-y-auto">
+                      {JUDGE_MAIN_CATEGORIES_MAP[judgeForm.mainAwardCategory]?.map((sub) => {
+                        const checked = judgeForm.awardSubCategories.includes(sub);
+                        return (
+                          <label key={sub} className="flex items-start gap-2.5 text-xs text-slate-300 hover:text-white cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              className="mt-0.5 rounded border-white/10 bg-white/5 text-accent-500 focus:ring-accent-500 w-3.5 h-3.5"
+                              checked={checked}
+                              onChange={() => {
+                                if (checked) {
+                                  setJudgeForm(prev => ({
+                                    ...prev,
+                                    awardSubCategories: prev.awardSubCategories.filter(s => s !== sub)
+                                  }));
+                                } else {
+                                  setJudgeForm(prev => ({
+                                    ...prev,
+                                    awardSubCategories: [...prev.awardSubCategories, sub]
+                                  }));
+                                }
+                              }}
+                            />
+                            <span>{getSubCategoryDisplayName(sub)}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {judgeForm.mainAwardCategory && (
+                  <div className="space-y-2 animate-fadeIn pt-2 border-t border-white/5">
+                    <label className="block text-xs font-semibold text-slate-400">Additional Award Subcategories (Optional)</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 bg-white/5 p-4 rounded-xl border border-white/5 max-h-[220px] overflow-y-auto">
+                      {Object.entries(JUDGE_MAIN_CATEGORIES_MAP)
+                        .filter(([mainCat]) => mainCat !== judgeForm.mainAwardCategory)
+                        .map(([mainCat, subs]) => (
+                          <div key={mainCat} className="col-span-1 md:col-span-2 space-y-1.5 mb-2">
+                            <div className="text-[10px] uppercase tracking-wider font-bold text-slate-500">{mainCat}</div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {subs.map((sub) => {
+                                const checked = judgeForm.awardSubCategories.includes(sub);
+                                return (
+                                  <label key={sub} className="flex items-start gap-2.5 text-xs text-slate-300 hover:text-white cursor-pointer select-none">
+                                    <input
+                                      type="checkbox"
+                                      className="mt-0.5 rounded border-white/10 bg-white/5 text-accent-500 focus:ring-accent-500 w-3.5 h-3.5"
+                                      checked={checked}
+                                      onChange={() => {
+                                        if (checked) {
+                                          setJudgeForm(prev => ({
+                                            ...prev,
+                                            awardSubCategories: prev.awardSubCategories.filter(s => s !== sub)
+                                          }));
+                                        } else {
+                                          setJudgeForm(prev => ({
+                                            ...prev,
+                                            awardSubCategories: [...prev.awardSubCategories, sub]
+                                          }));
+                                        }
+                                      }}
+                                    />
+                                    <span>{getSubCategoryDisplayName(sub)}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                    {judgeFormErrors.awardSubCategories && <p className="text-red-400 text-xs mt-1">{judgeFormErrors.awardSubCategories}</p>}
+                  </div>
+                )}
+              </div>
+
+              {/* Actions Footer */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setJudgeModalOpen(false)}
+                  className="btn-ghost text-xs !py-2 !px-4"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={judgeSaving}
+                  className="btn-primary text-xs !py-2 !px-5 flex items-center gap-2"
+                >
+                  {judgeSaving ? 'Saving...' : (editingJudge ? 'Update Profile' : 'Add Panelist')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── DEDICATED CHANGE PHOTO MODAL ─── */}
+      {photoModalOpen && photoModalJudge && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/80 backdrop-blur-md">
+          <div className="relative max-w-md w-full p-8 bg-surface-200 rounded-[32px] shadow-2xl border border-white/10 z-10 text-slate-200">
+            <button
+              onClick={() => setPhotoModalOpen(false)}
+              className="absolute right-6 top-6 w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+
+            <div className="border-b border-white/10 pb-4 mb-6">
+              <h3 className="font-display font-extrabold text-white text-xl">Change Profile Photo</h3>
+              <p className="text-slate-400 text-xs mt-1">Upload a new profile photo for {photoModalJudge.fullName}.</p>
+            </div>
+
+            <form onSubmit={handleUploadPhotoOnly} className="space-y-6">
+              <div className="flex flex-col items-center gap-4 text-center">
+                <div className="w-32 h-32 rounded-full overflow-hidden bg-slate-800 border-2 border-white/15 shadow-glow">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold text-3xl">
+                      {photoModalJudge.fullName.charAt(0)}
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-full space-y-2">
+                  <input
+                    type="file"
+                    accept="image/png, image/jpeg, image/webp"
+                    className="text-xs text-slate-400 file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 file:cursor-pointer mx-auto block"
+                    required
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error('Image file size must be less than 5MB.');
+                          return;
+                        }
+                        setPhotoFile(file);
+                        setPhotoPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                  />
+                  <p className="text-[10px] text-slate-500">Supports JPG, PNG, WEBP. Max 5MB. Compress on upload.</p>
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setPhotoModalOpen(false)}
+                  className="btn-ghost text-xs !py-2 !px-4"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={photoUploading || !photoFile}
+                  className="btn-primary text-xs !py-2 !px-5"
+                >
+                  {photoUploading ? 'Uploading...' : 'Save New Photo'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── VIEW JUDGE DETAILS MODAL ─── */}
+      {judgeViewModalOpen && viewingJudge && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/80 backdrop-blur-md">
+          <div className="relative max-w-xl w-full p-8 bg-surface-200 rounded-[32px] shadow-2xl border border-white/10 z-10 text-slate-200 max-h-[85vh] overflow-y-auto">
+            <button
+              onClick={() => setJudgeViewModalOpen(false)}
+              className="absolute right-6 top-6 w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+
+            <div className="flex flex-col items-center text-center space-y-4 pb-6 border-b border-white/10 mb-6">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-800 border-2 border-white/15 shadow-glow">
+                <JudgeAvatar judge={viewingJudge} variant="card" className="w-full h-full hover:scale-100 border-0 shadow-none text-2xl" />
+              </div>
+              <div>
+                <h3 className="font-display font-extrabold text-white text-xl flex items-center justify-center gap-2">
+                  {viewingJudge.fullName}
+                </h3>
+                <p className="text-accent-400 text-xs font-semibold mt-1">{viewingJudge.designation}</p>
+                <p className="text-slate-400 text-xs mt-0.5">{viewingJudge.organization} — {viewingJudge.country}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email Address</span>
+                  <div className="text-white font-mono mt-0.5 select-all">{viewingJudge.email}</div>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">LinkedIn Profile</span>
+                  <div className="mt-0.5 truncate">
+                    {viewingJudge.linkedin ? (
+                      <a href={viewingJudge.linkedin} target="_blank" rel="noreferrer" className="text-accent-400 hover:underline">
+                        {viewingJudge.linkedin}
+                      </a>
+                    ) : (
+                      <span className="text-slate-500">Not provided</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1 p-4 rounded-2xl bg-white/5 border border-white/5">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Award Alignment</span>
+                <div className="text-white font-bold text-sm mt-1">{viewingJudge.mainAwardCategory || viewingJudge.mainCategory}</div>
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {(viewingJudge.awardSubCategories || viewingJudge.subCategories)?.map((sub, idx) => (
+                    <span key={idx} className="bg-white/5 border border-white/10 text-[9px] px-2 py-0.5 rounded-full text-slate-400">
+                      {getSubCategoryDisplayName(sub)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-center">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Experience</span>
+                  <strong className="text-white font-mono mt-0.5 block">{viewingJudge.experience || 0} Yrs</strong>
+                </div>
+                <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-center">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Jury Type</span>
+                  <strong className="text-gold-400 font-mono mt-0.5 block">{viewingJudge.isGrandJury ? 'Grand Jury' : 'Panelist'}</strong>
+                </div>
+                <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-center">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Status</span>
+                  <strong className={`mt-0.5 block font-mono ${viewingJudge.status === 'Active' ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {viewingJudge.status}
+                  </strong>
+                </div>
+              </div>
+
+              {viewingJudge.description && (
+                <div className="space-y-1.5 pt-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Biography / Description</span>
+                  <p className="text-slate-300 leading-relaxed text-justify max-h-[150px] overflow-y-auto pr-1 bg-white/5 p-3 rounded-lg border border-white/5">
+                    {viewingJudge.description}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-5 border-t border-white/10 mt-6">
+              <button onClick={() => setJudgeViewModalOpen(false)} className="btn-ghost text-xs !py-2 !px-4">
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Details Modal */}
+      {paymentModalOpen && selectedPayment && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card max-w-4xl w-full max-h-[90vh] overflow-y-auto rounded-2xl p-6">
+            <div className="flex justify-between items-start mb-6">
+              <div>
+                <h3 className="font-display font-bold text-white text-xl">Payment Details</h3>
+                <p className="text-slate-400 text-xs mt-1">Review payment submission and slip</p>
+              </div>
+              <button
+                onClick={() => setPaymentModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <RiCloseLine size={24} />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Candidate Information */}
+              <div className="space-y-4">
+                <h4 className="font-display font-semibold text-white text-sm border-b border-white/10 pb-2">Candidate Information</h4>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Name:</span>
+                    <span className="text-white">{selectedPayment.candidate?.firstName} {selectedPayment.candidate?.lastName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Email:</span>
+                    <span className="text-white">{selectedPayment.candidate?.email}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Phone:</span>
+                    <span className="text-white">{selectedPayment.candidate?.phone}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Organization:</span>
+                    <span className="text-white">{selectedPayment.organisationName || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Category:</span>
+                    <span className="text-white">{selectedPayment.category?.name}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Payment Information */}
+              <div className="space-y-4">
+                <h4 className="font-display font-semibold text-white text-sm border-b border-white/10 pb-2">Payment Information</h4>
+                <div className="space-y-2 text-xs">
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Payment Method:</span>
+                    <span className="text-white capitalize">{selectedPayment.paymentMethod}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Reference Number:</span>
+                    <span className="text-white">{selectedPayment.paymentReference || '-'}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Upload Date:</span>
+                    <span className="text-white">
+                      {selectedPayment.paymentSlip?.uploadedAt 
+                        ? new Date(selectedPayment.paymentSlip.uploadedAt).toLocaleString()
+                        : '-'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-400">Current Status:</span>
+                    <span className={`px-2 py-1 rounded-full text-[10px] font-semibold ${
+                      selectedPayment.paymentStatus === 'approved' 
+                        ? 'bg-emerald-500/10 text-emerald-400' 
+                        : selectedPayment.paymentStatus === 'rejected'
+                        ? 'bg-red-500/10 text-red-400'
+                        : 'bg-yellow-500/10 text-yellow-400'
+                    }`}>
+                      {selectedPayment.paymentStatus || 'Pending'}
+                    </span>
+                  </div>
+                  {selectedPayment.verifiedBy && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Verified By:</span>
+                      <span className="text-white">{selectedPayment.verifiedBy?.firstName} {selectedPayment.verifiedBy?.lastName}</span>
+                    </div>
+                  )}
+                  {selectedPayment.rejectionReason && (
+                    <div className="flex justify-between">
+                      <span className="text-slate-400">Rejection Reason:</span>
+                      <span className="text-red-400">{selectedPayment.rejectionReason}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Payment Slip Preview */}
+            <div className="mt-6">
+              <h4 className="font-display font-semibold text-white text-sm border-b border-white/10 pb-2 mb-4">Payment Slip Preview</h4>
+              <div className="bg-navy-900 rounded-lg p-4 min-h-[300px] flex items-center justify-center">
+                {selectedPayment.paymentSlip?.filePath ? (
+                  selectedPayment.paymentSlip.mimeType?.includes('image') ? (
+                    <img
+                      src={buildAssetUrl(selectedPayment.paymentSlip.filePath)}
+                      alt="Payment Slip"
+                      className="max-w-full max-h-[500px] object-contain"
+                    />
+                  ) : selectedPayment.paymentSlip.mimeType === 'application/pdf' ? (
+                    <div className="text-center">
+                      <RiFileTextLine size={48} className="text-accent-400 mx-auto mb-2" />
+                      <p className="text-slate-400 text-sm">PDF Document</p>
+                      <a
+                        href={buildAssetUrl(selectedPayment.paymentSlip.filePath)}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-accent-400 text-xs hover:underline mt-2 inline-block"
+                      >
+                        Open PDF in new tab
+                      </a>
+                    </div>
+                  ) : (
+                    <p className="text-slate-400 text-sm">Unsupported file type</p>
+                  )
+                ) : (
+                  <p className="text-slate-400 text-sm">No payment slip uploaded</p>
+                )}
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="mt-6 flex justify-end gap-3 border-t border-white/10 pt-4">
+              <button
+                onClick={() => setPaymentModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-white/5 text-white text-sm hover:bg-white/10 transition-colors"
+              >
+                Close
+              </button>
+              {selectedPayment.paymentStatus !== 'approved' && (
+                <button
+                  onClick={() => handleApprovePayment(selectedPayment._id)}
+                  disabled={approvingPayment === selectedPayment._id}
+                  className="px-4 py-2 rounded-lg bg-emerald-500/20 text-emerald-400 text-sm hover:bg-emerald-500/30 transition-colors disabled:opacity-50"
+                >
+                  {approvingPayment === selectedPayment._id ? 'Approving...' : 'Approve Payment'}
+                </button>
+              )}
+              {selectedPayment.paymentStatus !== 'rejected' && (
+                <button
+                  onClick={() => openRejectModal(selectedPayment)}
+                  className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 text-sm hover:bg-red-500/30 transition-colors"
+                >
+                  Reject Payment
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject Payment Modal */}
+      {rejectModalOpen && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-card max-w-md w-full rounded-2xl p-6">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="font-display font-bold text-white text-lg">Reject Payment</h3>
+              <button
+                onClick={() => setRejectModalOpen(false)}
+                className="text-slate-400 hover:text-white"
+              >
+                <RiCloseLine size={20} />
+              </button>
+            </div>
+            <p className="text-slate-400 text-sm mb-4">
+              Please provide a reason for rejecting this payment. This will be sent to the candidate.
+            </p>
+            <textarea
+              value={rejectReason}
+              onChange={(e) => setRejectReason(e.target.value)}
+              placeholder="Enter rejection reason..."
+              className="w-full bg-navy-900 border border-white/10 rounded-lg px-4 py-3 text-sm text-white placeholder-slate-500 focus:border-accent-500 focus:outline-none resize-none min-h-[100px]"
+            />
+            <div className="flex justify-end gap-3 mt-4">
+              <button
+                onClick={() => setRejectModalOpen(false)}
+                className="px-4 py-2 rounded-lg bg-white/5 text-white text-sm hover:bg-white/10 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleRejectPayment}
+                className="px-4 py-2 rounded-lg bg-red-500/20 text-red-400 text-sm hover:bg-red-500/30 transition-colors"
+              >
+                Reject Payment
+              </button>
             </div>
           </div>
         </div>
@@ -3008,7 +5012,7 @@ export default AdminDashboard;
 //                       ) : (
 //                         <div className="overflow-x-auto">
 //                           <table className="w-full text-xs text-left text-slate-300">
-//                             <thead className="bg-white/5 text-[10px] uppercase font-bold text-slate-400">
+//                             <thead className="bg-blue-500/20 text-[10px] uppercase font-bold text-white">
 //                               <tr>
 //                                 <th className="p-3">Title/Nominee</th>
 //                                 <th className="p-3">Award Category</th>

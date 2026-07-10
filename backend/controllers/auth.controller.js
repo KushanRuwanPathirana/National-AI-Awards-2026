@@ -60,6 +60,9 @@ const register = async (req, res, next) => {
 
     await user.save();
 
+    // Automatically assign matching applications to the registered judge
+    await autoAssignApplicationsToJudge(user);
+
     // Send verification email
     try {
       await sendOTPEmail(user, otp);
@@ -132,6 +135,9 @@ const verifyOTP = async (req, res, next) => {
     user.otp = undefined;
     user.otpExpires = undefined;
     await user.save();
+
+    // Automatically assign matching applications to the registered judge
+    await autoAssignApplicationsToJudge(user);
 
     // Send welcome email
     try {
@@ -481,6 +487,101 @@ const updateProfileImage = async (req, res, next) => {
     });
   } catch (error) {
     next(error);
+  }
+};
+
+const autoAssignApplicationsToJudge = async (user) => {
+  if (user.role !== 'judge') return;
+  
+  try {
+    const Judge = require('../models/Judge.model');
+    const Application = require('../models/Application.model');
+    const Notification = require('../models/Notification.model');
+    const AuditLog = require('../models/AuditLog.model');
+    const Category = require('../models/Category.model');
+    
+    // Find the corresponding Judge profile by email
+    const judgeProfile = await Judge.findOne({
+      email: user.email.toLowerCase(),
+      status: 'Active',
+      isDeleted: false
+    });
+    
+    if (!judgeProfile || !judgeProfile.awardSubCategories || judgeProfile.awardSubCategories.length === 0) {
+      logger.info(`Auto-assign skipped for judge ${user.email}: no active Judge profile or category configurations found.`);
+      return;
+    }
+    
+    // Find Category documents corresponding to the judge's awardSubCategories
+    const categories = await Category.find({
+      name: { $in: judgeProfile.awardSubCategories }
+    });
+    
+    if (categories.length === 0) {
+      logger.info(`Auto-assign skipped for judge ${user.email}: Category documents not found.`);
+      return;
+    }
+    
+    const categoryIds = categories.map(c => c._id);
+    
+    // Find all active applications belonging to these categories
+    const applications = await Application.find({
+      category: { $in: categoryIds },
+      isEligible: true,
+      status: { $in: ['submitted', 'initial_screening', 'f2f_stage'] }
+    });
+    
+    if (applications.length === 0) {
+      logger.info(`Auto-assign: No matching active applications found for judge ${user.email}.`);
+      return;
+    }
+    
+    let assignedCount = 0;
+    
+    for (const app of applications) {
+      const isF2F = app.status === 'f2f_stage';
+      let changed = false;
+      
+      if (isF2F) {
+        if (!app.assignedJudgesF2F.includes(user._id)) {
+          app.assignedJudgesF2F.push(user._id);
+          changed = true;
+        }
+      } else {
+        if (!app.assignedJudges.includes(user._id)) {
+          app.assignedJudges.push(user._id);
+          changed = true;
+        }
+      }
+      
+      if (changed) {
+        await app.save();
+        assignedCount++;
+        
+        // Notify the judge
+        await Notification.create({
+          recipient: user._id,
+          type: 'judge_assigned',
+          title: isF2F ? 'New F2F Application Assigned (Auto-Assign)' : 'New Application Assigned (Auto-Assign)',
+          message: `You have been automatically assigned to evaluate "${app.projectTitle}".`,
+          link: isF2F ? `/judge-dashboard/evaluate/${app._id}?stage=f2f` : `/judge-dashboard/evaluate/${app._id}`,
+          relatedApplication: app._id,
+        });
+        
+        // Audit log
+        await AuditLog.create({
+          action: isF2F ? 'judge_assigned_f2f' : 'judge_assigned',
+          performedBy: user._id,
+          targetModel: 'Application',
+          targetId: app._id,
+          description: `Automatically assigned judge ${user.firstName} ${user.lastName} on registration matching subcategory.`,
+        });
+      }
+    }
+    
+    logger.info(`Auto-assigned judge ${user.email} to ${assignedCount} application(s).`);
+  } catch (err) {
+    logger.error(`Error auto-assigning applications to judge ${user.email}: ${err.message}`);
   }
 };
 

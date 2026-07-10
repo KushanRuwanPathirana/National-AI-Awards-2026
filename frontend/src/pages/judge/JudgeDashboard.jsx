@@ -11,7 +11,7 @@ import {
   RiCheckLine, RiEditLine, RiEyeLine,
   RiTrophyLine, RiBarChartBoxLine, RiCalendarLine,
   RiFilterLine, RiSortAsc, RiArrowUpLine, RiShieldLine,
-  RiLightbulbLine, RiFlashlightLine,
+  RiLightbulbLine, RiFlashlightLine, RiFileTextLine,
 } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
 import api, { buildAssetUrl } from '../../services/api';
@@ -145,16 +145,49 @@ const JudgeDashboard = () => {
   const completed = useMemo(() => applications.filter(a => a.myEvaluation?.isSubmitted), [applications]);
 
   const displayStats = useMemo(() => {
-    if (stats) return stats.stats;
-    return {
-      total:     applications.length,
-      completed: completed.length,
-      pending:   pending.length,
-      avgScore:  completed.reduce((s, a) => s + (a.myEvaluation?.weightedScore || 0), 0) / (completed.length || 1),
-    };
-  }, [stats, applications, pending, completed]);
+    if (stats?.stats?.initial && stats?.stats?.f2f) return stats.stats;
 
-  const progress = displayStats.total > 0 ? Math.round((displayStats.completed / displayStats.total) * 100) : 0;
+    // Fallback if the legacy stats object structure is returned
+    if (stats?.stats && typeof stats.stats.total === 'number') {
+      const isF2F = selectedStage === 'f2f';
+      return {
+        initial: {
+          total: !isF2F ? stats.stats.total : 0,
+          completed: !isF2F ? stats.stats.completed : 0,
+          pending: !isF2F ? stats.stats.pending : 0,
+          avgScore: !isF2F ? stats.stats.avgScore : 0,
+          deadline: null
+        },
+        f2f: {
+          total: isF2F ? stats.stats.total : 0,
+          completed: isF2F ? stats.stats.completed : 0,
+          pending: isF2F ? stats.stats.pending : 0,
+          avgScore: isF2F ? stats.stats.avgScore : 0,
+          deadline: null
+        }
+      };
+    }
+
+    return {
+      initial: {
+        total: selectedStage === 'initial' ? applications.length : 0,
+        completed: selectedStage === 'initial' ? completed.length : 0,
+        pending: selectedStage === 'initial' ? pending.length : 0,
+        avgScore: selectedStage === 'initial' ? (completed.reduce((s, a) => s + (a.myEvaluation?.weightedScore || 0), 0) / (completed.length || 1)) : 0,
+        deadline: null
+      },
+      f2f: {
+        total: selectedStage === 'f2f' ? applications.length : 0,
+        completed: selectedStage === 'f2f' ? completed.length : 0,
+        pending: selectedStage === 'f2f' ? pending.length : 0,
+        avgScore: selectedStage === 'f2f' ? (completed.reduce((s, a) => s + (a.myEvaluation?.weightedScore || 0), 0) / (completed.length || 1)) : 0,
+        deadline: null
+      }
+    };
+  }, [stats, selectedStage, applications, pending, completed]);
+
+  const activeStats = selectedStage === 'f2f' ? displayStats.f2f : displayStats.initial;
+  const progress = activeStats.total > 0 ? Math.round((activeStats.completed / activeStats.total) * 100) : 0;
 
   const filteredApps = useMemo(() => {
     let base = filter === 'pending' ? pending : filter === 'completed' ? completed : applications;
@@ -377,25 +410,74 @@ const JudgeDashboard = () => {
                   </div>
 
                   {/* Stats cards */}
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    {statsLoading ? (
-                      Array.from({ length: 4 }).map((_, i) => (
-                        <div key={i} className="rounded-2xl border border-white/8 p-5 animate-pulse bg-white/2 h-28" />
-                      ))
-                    ) : (
-                      <>
-                        <StatCard icon={RiFileList3Line} label="Total Assigned" value={displayStats.total} color="accent" delay={0} />
-                        <StatCard icon={RiTimeLine}      label="Pending"         value={displayStats.pending} color="amber" delay={0.05} />
-                        <StatCard icon={RiCheckDoubleLine} label="Completed"     value={displayStats.completed} color="emerald" delay={0.1} />
-                        <StatCard
-                          icon={RiBarChartBoxLine}
-                          label="Avg Score"
-                          value={displayStats.avgScore ? `${displayStats.avgScore.toFixed(1)}%` : '—'}
-                          color="violet"
-                          delay={0.15}
-                        />
-                      </>
-                    )}
+                  <div className="space-y-6">
+                    {/* Initial Stage stats */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-accent-500 shadow-glow" /> Initial Stage Evaluations
+                        </h3>
+                        {displayStats.initial?.deadline && (
+                          <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-md font-mono">
+                            Deadline: {new Date(displayStats.initial.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {statsLoading ? (
+                          Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="rounded-2xl border border-white/8 p-5 animate-pulse bg-white/2 h-28" />
+                          ))
+                        ) : (
+                          <>
+                            <StatCard icon={RiFileList3Line} label="Total Assigned" value={displayStats.initial?.total || 0} color="accent" delay={0} />
+                            <StatCard icon={RiTimeLine}      label="Pending"         value={displayStats.initial?.pending || 0} color="amber" delay={0.05} />
+                            <StatCard icon={RiCheckDoubleLine} label="Completed"     value={displayStats.initial?.completed || 0} color="emerald" delay={0.1} />
+                            <StatCard
+                              icon={RiBarChartBoxLine}
+                              label="Avg Score"
+                              value={displayStats.initial?.avgScore ? `${displayStats.initial.avgScore.toFixed(1)}%` : '—'}
+                              color="violet"
+                              delay={0.15}
+                            />
+                          </>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Face-to-Face Stage stats */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="text-white text-xs font-bold uppercase tracking-wider flex items-center gap-2">
+                          <span className="w-2 h-2 rounded-full bg-emerald-500 shadow-glow" /> Face-to-Face Stage Evaluations
+                        </h3>
+                        {displayStats.f2f?.deadline && (
+                          <span className="text-[10px] bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-md font-mono">
+                            Deadline: {new Date(displayStats.f2f.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                        {statsLoading ? (
+                          Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="rounded-2xl border border-white/8 p-5 animate-pulse bg-white/2 h-28" />
+                          ))
+                        ) : (
+                          <>
+                            <StatCard icon={RiFileList3Line} label="Total Assigned" value={displayStats.f2f?.total || 0} color="accent" delay={0} />
+                            <StatCard icon={RiTimeLine}      label="Pending"         value={displayStats.f2f?.pending || 0} color="amber" delay={0.05} />
+                            <StatCard icon={RiCheckDoubleLine} label="Completed"     value={displayStats.f2f?.completed || 0} color="emerald" delay={0.1} />
+                            <StatCard
+                              icon={RiBarChartBoxLine}
+                              label="Avg Score"
+                              value={displayStats.f2f?.avgScore ? `${displayStats.f2f.avgScore.toFixed(1)}%` : '—'}
+                              color="emerald"
+                              delay={0.15}
+                            />
+                          </>
+                        )}
+                      </div>
+                    </div>
                   </div>
 
                   {/* Two-column: activity + quick actions */}
@@ -667,6 +749,7 @@ const JudgeDashboard = () => {
                         {filteredApps.map((app, i) => {
                           const status = getEvalStatus(app);
                           const isSubmitted = app.myEvaluation?.isSubmitted;
+                          const activeDeadline = selectedStage === 'f2f' ? app.deadlineF2F : app.deadline;
                           return (
                             <motion.div
                               key={app._id}
@@ -688,6 +771,23 @@ const JudgeDashboard = () => {
                                     Score: <span className="text-accent-300 font-mono">{app.myEvaluation.weightedScore?.toFixed(1)}/100</span>
                                   </p>
                                 )}
+                                {app.documents && app.documents.length > 0 && (
+                                  <div className="flex flex-wrap gap-1.5 mt-2">
+                                    {app.documents.map((doc, idx) => (
+                                      <a
+                                        key={doc._id || idx}
+                                        href={buildAssetUrl(doc.filePath)}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-white/5 border border-white/10 hover:border-accent-500/30 hover:bg-white/10 text-[9px] text-slate-300 hover:text-white transition-all whitespace-nowrap"
+                                        title={doc.originalName}
+                                      >
+                                        <RiFileTextLine size={10} className="text-accent-400" />
+                                        Doc {idx + 1}
+                                      </a>
+                                    ))}
+                                  </div>
+                                )}
                               </div>
 
                               {/* Category */}
@@ -699,7 +799,7 @@ const JudgeDashboard = () => {
 
                               {/* Deadline */}
                               <div className="hidden sm:block">
-                                {app.deadline && new Date(app.deadline) < new Date() ? (
+                                {activeDeadline && new Date(activeDeadline) < new Date() ? (
                                   <div className="flex items-center gap-1.5">
                                     <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
                                     <span className="text-[10px] font-mono text-red-400 font-semibold">
@@ -707,8 +807,8 @@ const JudgeDashboard = () => {
                                     </span>
                                   </div>
                                 ) : (
-                                  <span className={`text-[10px] font-mono ${app.deadline ? 'text-slate-400' : 'text-slate-500'}`}>
-                                    {app.deadline ? new Date(app.deadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Not set'}
+                                  <span className={`text-[10px] font-mono ${activeDeadline ? 'text-slate-400' : 'text-slate-500'}`}>
+                                    {activeDeadline ? new Date(activeDeadline).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : 'Not set'}
                                   </span>
                                 )}
                               </div>
@@ -720,7 +820,7 @@ const JudgeDashboard = () => {
 
                               {/* Actions */}
                               <div className="flex items-center gap-2">
-                                {app.deadline && new Date(app.deadline) < new Date() && !isSubmitted ? (
+                                {activeDeadline && new Date(activeDeadline) < new Date() && !isSubmitted ? (
                                   <button
                                     disabled
                                     className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-slate-700/50 border border-slate-600/50 text-slate-400 cursor-not-allowed"

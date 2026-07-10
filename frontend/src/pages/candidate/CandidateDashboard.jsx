@@ -62,6 +62,20 @@ const colorMap = {
 };
 const statusLabel = { completed: 'Completed', active: 'In Progress', upcoming: 'Upcoming' };
 
+const STATUS_LABELS = {
+  draft: 'Draft',
+  submitted: 'Submitted',
+  under_review: 'Under Review',
+  eligible: 'Eligible',
+  ineligible: 'Ineligible',
+  initial_stage: 'Initial State',
+  f2f_stage: 'Selected to Face-to-Face',
+  finalist: 'Finalist',
+  winner: 'Winner',
+  runner_up: '1st Runner-up',
+  runner_up_2nd: '2nd Runner-up',
+};
+
 /* ─── FAQ data (mirrors public FAQs page) ───────────────────────────────── */
 const faqData = [
   {
@@ -336,9 +350,13 @@ const CandidateDashboard = () => {
   /* ── Status badge helper ─────────────────────────────────────────────── */
   const StatusBadge = ({ status, label }) => {
     const cls =
-      status === 'winner'     ? 'bg-emerald-500/10 text-emerald-400' :
-      status === 'ineligible' ? 'bg-red-500/10 text-red-400' :
-      status === 'draft'      ? 'bg-slate-500/10 text-slate-400' :
+      status === 'winner'        ? 'bg-emerald-500/10 text-emerald-400' :
+      status === 'runner_up'     ? 'bg-gold-500/10 text-gold-400' :
+      status === 'runner_up_2nd' ? 'bg-purple-500/10 text-purple-400' :
+      status === 'finalist'     ? 'bg-blue-500/10 text-blue-400' :
+      status === 'ineligible'    ? 'bg-red-500/10 text-red-400' :
+      status === 'draft'         ? 'bg-slate-500/10 text-slate-400' :
+      status === 'f2f_stage'     ? 'bg-accent-500/10 text-accent-400' :
       'bg-accent-500/10 text-accent-400';
     return <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${cls}`}>{label}</span>;
   };
@@ -356,9 +374,28 @@ const CandidateDashboard = () => {
             Can only edit until {APPLICATION_EDIT_TIME_LABEL}
           </p>
         )}
+        {/* Payment Status */}
+        {app.paymentMethod && app.paymentMethod !== 'none' && (
+          <div className="mt-2 flex items-center gap-2">
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+              app.paymentStatus === 'approved' 
+                ? 'bg-emerald-500/10 text-emerald-400' 
+                : app.paymentStatus === 'rejected'
+                ? 'bg-red-500/10 text-red-400'
+                : 'bg-yellow-500/10 text-yellow-400'
+            }`}>
+              Payment: {app.paymentStatus || 'Pending'}
+            </span>
+            {app.paymentStatus === 'rejected' && app.rejectionReason && (
+              <span className="text-[10px] text-red-300 truncate max-w-[200px]" title={app.rejectionReason}>
+                {app.rejectionReason}
+              </span>
+            )}
+          </div>
+        )}
       </div>
       <div className="flex items-center gap-3 shrink-0">
-        <StatusBadge status={app.status} label={app.statusLabel || app.status} />
+        <StatusBadge status={app.status} label={app.statusLabel || STATUS_LABELS[app.status] || app.status} />
         {app.status === 'draft' ? (
           <>
             {applicationDeadlinePassed ? (

@@ -55,4 +55,22 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-module.exports = { authenticate };
+const requireRole = (...roles) => {
+  return (req, res, next) => {
+    if (!req.user) {
+      return errorResponse(res, {
+        statusCode: 401,
+        message: 'Authentication required.',
+      });
+    }
+    if (!roles.includes(req.user.role)) {
+      return errorResponse(res, {
+        statusCode: 403,
+        message: 'Insufficient permissions. Required role: ' + roles.join(' or '),
+      });
+    }
+    next();
+  };
+};
+
+module.exports = { authenticate, requireRole };
