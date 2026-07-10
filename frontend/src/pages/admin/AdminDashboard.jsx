@@ -223,8 +223,13 @@ const AdminDashboard = () => {
     if (!app || app.status === newStatus) return;
 
     try {
-      await applicationService.changeStatus(appId, { status: newStatus });
-      toast.success('Application status updated.');
+      const { data } = await applicationService.changeStatus(appId, { status: newStatus });
+      if (data.data?.statusEmail?.sent) {
+        toast.success('Application status updated and email sent to the owner.');
+      } else {
+        toast.success('Application status updated.');
+        toast.error('Owner email could not be sent.');
+      }
       fetchApps();
       fetchStats();
     } catch (err) {

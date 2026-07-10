@@ -649,15 +649,28 @@ const changeApplicationStatus = async (req, res, next) => {
       req,
     });
 
+    let statusEmailSent = false;
+    let statusEmailError = null;
     try {
       await sendStatusEmailForApplication(application, status);
+      statusEmailSent = true;
     } catch (e) {
+      statusEmailError = e.message;
       logger.error(`Status email error: ${e.message}`);
     }
 
     return successResponse(res, {
-      message: `Status updated to "${status}".`,
-      data: { application },
+      message: statusEmailSent
+        ? `Status updated to "${status}" and email sent to application owner.`
+        : `Status updated to "${status}", but the owner email could not be sent.`,
+      data: {
+        application,
+        statusEmail: {
+          sent: statusEmailSent,
+          recipient: application.candidate.email,
+          error: statusEmailError,
+        },
+      },
     });
   } catch (error) {
     next(error);
