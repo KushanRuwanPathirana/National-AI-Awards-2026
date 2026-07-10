@@ -3,6 +3,7 @@ const Category = require('../models/Category.model');
 const Evaluation = require('../models/Evaluation.model');
 const Notification = require('../models/Notification.model');
 const AuditLog = require('../models/AuditLog.model');
+const Judge = require('../models/Judge.model');
 const { successResponse, errorResponse } = require('../utils/apiResponse');
 const { APPLICATION_DEADLINE, APPLICATION_STATUS, ALLOWED_TRANSITIONS } = require('../config/constants');
 const { sendApplicationStatusUpdate } = require('../services/email.service');
@@ -808,10 +809,101 @@ const downloadDocument = async (req, res, next) => {
   } catch (error) { next(error); }
 };
 
+// ── Admin: Auto-Assign Judges ──────────────────────────────────────────────────
+const autoAssignJudges = async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    
+    // Find the application and populate the category
+    const application = await Application.findById(id).populate('category');
+    if (!application) {
+      return errorResponse(res, { statusCode: 404, message: 'Application not found.' });
+    }
+    
+    if (!application.category) {
+      return errorResponse(res, { statusCode: 400, message: 'Application must have an assigned category to auto-assign judges.' });
+    }
+    
+    const categoryName = application.category.name; // e.g. "Best AI Solution in Agriculture"
+    
+    // Find all active judges that have this subcategory in their awardSubCategories
+    const matchingJudges = await Judge.find({
+      status: 'Active',
+      isDeleted: false,
+      awardSubCategories: categoryName
+    });
+    
+    if (matchingJudges.length === 0) {
+      return errorResponse(res, { 
+        statusCode: 400, 
+        message: `No active judges found matching the category "${categoryName}". Please update judge categories first.` 
+      });
+    }
+    
+    const User = require('../models/User.model');
+    const emails = matchingJudges.map(j => j.email.toLowerCase());
+    
+    // Find User accounts matching those emails
+    const matchingUsers = await User.find({
+      role: 'judge',
+      email: { $in: emails }
+    });
+    
+    if (matchingUsers.length === 0) {
+      return errorResponse(res, { 
+        statusCode: 400, 
+        message: `No registered judge accounts found for the category "${categoryName}". Judges must create their accounts first.` 
+      });
+    }
+    
+    const judgeIds = matchingUsers.map(u => u._id);
+    const isF2F = application.status === 'f2f_stage';
+    
+    if (isF2F) {
+      application.assignedJudgesF2F = judgeIds;
+    } else {
+      application.assignedJudges = judgeIds;
+    }
+    
+    await application.save();
+    
+    // Create notifications for the assigned judges
+    for (const judgeId of judgeIds) {
+      await createNotification({
+        recipient: judgeId,
+        type: 'judge_assigned',
+        title: isF2F ? 'New F2F Application Assigned (Auto-Assign)' : 'New Application Assigned (Auto-Assign)',
+        message: `You have been automatically assigned to evaluate "${application.projectTitle}".`,
+        link: isF2F ? `/judge-dashboard/evaluate/${application._id}?stage=f2f` : `/judge-dashboard/evaluate/${application._id}`,
+        relatedApplication: application._id,
+      });
+    }
+    
+    await createAuditLog({ 
+      action: isF2F ? 'judge_assigned_f2f' : 'judge_assigned', 
+      performedBy: req.user._id, 
+      targetId: application._id, 
+      description: `Automatically assigned ${judgeIds.length} judge(s) matching "${categoryName}"`, 
+      req 
+    });
+    
+    const updated = await Application.findById(id)
+      .populate('assignedJudges', 'firstName lastName email')
+      .populate('assignedJudgesF2F', 'firstName lastName email');
+      
+    return successResponse(res, { 
+      message: `Successfully auto-assigned ${judgeIds.length} judge(s) matching "${categoryName}".`, 
+      data: { application: updated } 
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
 module.exports = {
   createApplication, updateApplication, submitApplication,
   getMyApplications, getApplicationById, getAllApplications,
-  changeApplicationStatus, assignJudges, assignJudgesF2F, reviewEligibility,
+  changeApplicationStatus, assignJudges, assignJudgesF2F, autoAssignJudges, reviewEligibility,
   getMonitoringOverview, getJudgeProgress, exportApplications,
   publishFinalists, publishWinners, generateCertificates,
   uploadDocuments, deleteDocument, deleteApplication, deleteApplicationByAdmin,

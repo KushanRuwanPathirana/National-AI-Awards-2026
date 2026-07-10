@@ -1617,7 +1617,8 @@ import {
   RiCheckDoubleLine, RiFileList3Line, RiTeamLine,
   RiDashboardLine, RiFileChartLine, RiMailSendLine,
   RiArrowRightLine, RiFolderShield2Line, RiRefreshLine, RiPulseLine, RiStarLine,
-  RiUserLine,
+  RiUserLine, RiShieldUserLine, RiPencilLine, RiDeleteBin6Line, RiUploadCloud2Line,
+  RiEyeLine, RiSearchLine,
 } from 'react-icons/ri';
 import { useAuth } from '../../context/AuthContext';
 import api, { buildAssetUrl } from '../../services/api';
@@ -1625,8 +1626,61 @@ import adminService from '../../services/admin.service';
 import applicationService from '../../services/application.service';
 import categoryService from '../../services/category.service';
 import evaluationCriteriaService from '../../services/evaluationCriteria.service';
+import judgeService from '../../services/judge.service';
+import { judgeImages } from '../../assets/judges';
+import JudgeAvatar from '../../components/judge/JudgeAvatar';
 
 const COLORS = ['#0072ff', '#00ff87', '#ffc658', '#ff7300', '#d0ed57', '#a4de6c'];
+
+const JUDGE_MAIN_CATEGORIES_MAP = {
+  'National AI Trailblazer Awards': [
+    'National AI Excellence Award',
+    'National AI Leadership Excellence Award',
+    'National AI Impact Excellence Award',
+    'National AI Export Excellence Award'
+  ],
+  'Industry & Sector Excellence Awards': [
+    'Best AI Solution in Agriculture',
+    'Best AI Solution in Banking, Finance & Insurance',
+    'Best AI Solution in Healthcare & Life Sciences',
+    'Best AI Solution in Manufacturing & Industry 5.0',
+    'Best AI Solution in Education',
+    'Best AI Solution in Media'
+  ],
+  'Innovation & Future-Focused Awards': [
+    'Best AI Startup / MSME Innovation',
+    'Best Agentic AI Solution',
+    'Best Sinhala/Tamil AI & Localisation Innovation',
+    'University AI Innovation',
+    'Women in AI Leadership'
+  ]
+};
+
+const DB_TO_UI_SUBCATEGORY = {
+  'Best AI Solution in Agriculture': 'AI in Agriculture',
+  'Best AI Solution in Banking, Finance & Insurance': 'AI in Banking, Finance & Insurance',
+  'Best AI Solution in Healthcare & Life Sciences': 'AI in Healthcare & Life Sciences',
+  'Best AI Solution in Manufacturing & Industry 5.0': 'AI in Manufacturing & Industry 5.0',
+  'Best AI Solution in Education': 'AI in Education',
+  'Best AI Solution in Media': 'AI in Media'
+};
+
+const UI_TO_DB_SUBCATEGORY = {
+  'AI in Agriculture': 'Best AI Solution in Agriculture',
+  'AI in Banking, Finance & Insurance': 'Best AI Solution in Banking, Finance & Insurance',
+  'AI in Healthcare & Life Sciences': 'Best AI Solution in Healthcare & Life Sciences',
+  'AI in Manufacturing & Industry 5.0': 'Best AI Solution in Manufacturing & Industry 5.0',
+  'AI in Education': 'Best AI Solution in Education',
+  'AI in Media': 'Best AI Solution in Media'
+};
+
+const getSubCategoryDisplayName = (sub) => {
+  return DB_TO_UI_SUBCATEGORY[sub] || sub;
+};
+
+const getSubCategoryDbValue = (sub) => {
+  return UI_TO_DB_SUBCATEGORY[sub] || sub;
+};
 
 const MAIN_CATEGORIES_MAP = {
   'National AI Trailblazer Awards': [
@@ -1761,6 +1815,284 @@ const AdminDashboard = () => {
   const { register: regBroadcast, handleSubmit: handleBroadcast, reset: resetBroadcast, watch: watchBroadcast, setValue: setBroadcastValue, formState: { isSubmitting: broadcastSubmitting } } = useForm({
     defaultValues: { role: 'all', title: '', message: '' },
   });
+
+  // ─── Judge Management States ──────────────────────────────────────────────────
+  const [judges, setJudges] = useState([]);
+  const [judgesLoading, setJudgesLoading] = useState(false);
+  const [judgeSearch, setJudgeSearch] = useState('');
+  const [judgeMainCategoryFilter, setJudgeMainCategoryFilter] = useState('');
+  const [judgeSubCategoryFilter, setJudgeSubCategoryFilter] = useState('');
+  const [judgeCountryFilter, setJudgeCountryFilter] = useState('');
+  const [judgeStatusFilter, setJudgeStatusFilter] = useState('');
+  const [judgeSortBy, setJudgeSortBy] = useState('Alphabetical');
+  const [judgePage, setJudgePage] = useState(1);
+  const [judgeTotalPages, setJudgeTotalPages] = useState(1);
+  const [judgeTotal, setJudgeTotal] = useState(0);
+
+  // Modals & Forms
+  const [judgeModalOpen, setJudgeModalOpen] = useState(false);
+  const [editingJudge, setEditingJudge] = useState(null); // null if adding
+  const [judgeForm, setJudgeForm] = useState({
+    fullName: '',
+    designation: '',
+    organization: '',
+    country: '',
+    email: '',
+    linkedin: '',
+    mainCategory: '',
+    subCategories: [],
+    status: 'Active',
+    isGrandJury: false,
+  });
+  const [judgeFormErrors, setJudgeFormErrors] = useState({});
+  const [judgeSaving, setJudgeSaving] = useState(false);
+
+  // Photo uploads
+  const [photoModalOpen, setPhotoModalOpen] = useState(false);
+  const [photoModalJudge, setPhotoModalJudge] = useState(null);
+  const [photoPreview, setPhotoPreview] = useState('');
+  const [photoFile, setPhotoFile] = useState(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+
+  // Detail View
+  const [judgeViewModalOpen, setJudgeViewModalOpen] = useState(false);
+  const [viewingJudge, setViewingJudge] = useState(null);
+
+  // Image compressor helper
+  const compressImage = (file) => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = (event) => {
+        const img = new Image();
+        img.src = event.target.result;
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          const MAX_WIDTH = 400;
+          const MAX_HEIGHT = 400;
+          let width = img.width;
+          let height = img.height;
+
+          if (width > height) {
+            if (width > MAX_WIDTH) {
+              height *= MAX_WIDTH / width;
+              width = MAX_WIDTH;
+            }
+          } else {
+            if (height > MAX_HEIGHT) {
+              width *= MAX_HEIGHT / height;
+              height = MAX_HEIGHT;
+            }
+          }
+
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(img, 0, 0, width, height);
+          canvas.toBlob(
+            (blob) => {
+              const compressedFile = new File([blob], file.name, {
+                type: 'image/jpeg',
+                lastModified: Date.now(),
+              });
+              resolve(compressedFile);
+            },
+            'image/jpeg',
+            0.85
+          );
+        };
+      };
+    });
+  };
+
+  const fetchJudges = async () => {
+    try {
+      setJudgesLoading(true);
+      const { data } = await judgeService.getJudges({ all: 'true' });
+      setJudges(data.data.judges || []);
+      setJudgeTotal(data.data.total || 0);
+    } catch (err) {
+      toast.error('Failed to load judges list.');
+    } finally {
+      setJudgesLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'judge-management') {
+      fetchJudges();
+    }
+  }, [activeTab]);
+
+  const [sendingWelcomes, setSendingWelcomes] = useState(false);
+
+  const handleSendWelcomeEmails = async () => {
+    if (!window.confirm('Are you sure you want to send a welcome email and account setup link to all registered judges?')) return;
+    try {
+      setSendingWelcomes(true);
+      const { data } = await judgeService.sendWelcomeEmails();
+      toast.success(data.message || 'Welcome emails dispatched successfully.');
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to send welcome emails.');
+    } finally {
+      setSendingWelcomes(false);
+    }
+  };
+
+  const handleOpenAddJudge = () => {
+    setEditingJudge(null);
+    setJudgeForm({
+      fullName: '',
+      designation: '',
+      organization: '',
+      country: 'Sri Lanka',
+      email: '',
+      linkedin: '',
+      mainAwardCategory: '',
+      awardSubCategories: [],
+      status: 'Active',
+      isGrandJury: false,
+    });
+    setPhotoFile(null);
+    setPhotoPreview('');
+    setJudgeFormErrors({});
+    setJudgeModalOpen(true);
+  };
+
+  const handleOpenEditJudge = (judgeItem) => {
+    setEditingJudge(judgeItem);
+    setJudgeForm({
+      fullName: judgeItem.fullName || '',
+      designation: judgeItem.designation || '',
+      organization: judgeItem.organization || '',
+      country: judgeItem.country || 'Sri Lanka',
+      email: judgeItem.email || '',
+      linkedin: judgeItem.linkedin || '',
+      mainAwardCategory: judgeItem.mainAwardCategory || judgeItem.mainCategory || '',
+      awardSubCategories: judgeItem.awardSubCategories || judgeItem.subCategories || [],
+      status: judgeItem.status || 'Active',
+      isGrandJury: !!judgeItem.isGrandJury,
+    });
+    setPhotoFile(null);
+    setPhotoPreview(judgeItem.photo ? (judgeImages[judgeItem.photo] ? judgeImages[judgeItem.photo] : buildAssetUrl(judgeItem.photo)) : '');
+    setJudgeFormErrors({});
+    setJudgeModalOpen(true);
+  };
+
+  const handleOpenPhotoModal = (judgeItem) => {
+    setPhotoModalJudge(judgeItem);
+    setPhotoFile(null);
+    setPhotoPreview(judgeItem.photo ? (judgeImages[judgeItem.photo] ? judgeImages[judgeItem.photo] : buildAssetUrl(judgeItem.photo)) : '');
+    setPhotoModalOpen(true);
+  };
+
+  const handleOpenViewModal = (judgeItem) => {
+    setViewingJudge(judgeItem);
+    setJudgeViewModalOpen(true);
+  };
+
+  const validateJudgeForm = () => {
+    const errors = {};
+    if (!judgeForm.fullName.trim()) errors.fullName = 'Full name is required';
+    if (!judgeForm.designation.trim()) errors.designation = 'Designation is required';
+    if (!judgeForm.organization.trim()) errors.organization = 'Organization is required';
+    if (!judgeForm.country.trim()) errors.country = 'Country is required';
+    
+    if (!judgeForm.email.trim()) {
+      errors.email = 'Email is required';
+    } else if (!/^\w+([.-]?\w+)*@\w+([.-]?\w+)*(\.\w{2,3})+$/.test(judgeForm.email)) {
+      errors.email = 'Please provide a valid email address';
+    }
+
+    if (!judgeForm.mainAwardCategory) {
+      errors.mainAwardCategory = 'Main Award Category is required';
+    }
+
+    if (!judgeForm.awardSubCategories || judgeForm.awardSubCategories.length === 0) {
+      errors.awardSubCategories = 'At least one subcategory must be assigned';
+    }
+
+    setJudgeFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSaveJudge = async (e) => {
+    e.preventDefault();
+    if (!validateJudgeForm()) return;
+
+    try {
+      setJudgeSaving(true);
+      let savedJudge;
+      
+      if (editingJudge) {
+        // Edit mode
+        const { data } = await judgeService.updateJudge(editingJudge._id, judgeForm);
+        savedJudge = data.data.judge;
+        
+        // Upload photo if photo file selected
+        if (photoFile) {
+          const formData = new FormData();
+          const optimizedFile = await compressImage(photoFile);
+          formData.append('photo', optimizedFile);
+          await judgeService.uploadJudgePhoto(editingJudge._id, formData);
+        }
+        
+        toast.success('Judge profile updated successfully.');
+      } else {
+        // Add mode
+        const { data } = await judgeService.createJudge(judgeForm);
+        savedJudge = data.data.judge;
+        
+        // Upload photo if photo file selected
+        if (photoFile) {
+          const formData = new FormData();
+          const optimizedFile = await compressImage(photoFile);
+          formData.append('photo', optimizedFile);
+          await judgeService.uploadJudgePhoto(savedJudge._id, formData);
+        }
+        
+        toast.success('Judge profile added successfully.');
+      }
+
+      setJudgeModalOpen(false);
+      fetchJudges();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to save judge profile.');
+    } finally {
+      setJudgeSaving(false);
+    }
+  };
+
+  const handleUploadPhotoOnly = async (e) => {
+    e.preventDefault();
+    if (!photoFile || !photoModalJudge) return;
+
+    try {
+      setPhotoUploading(true);
+      const formData = new FormData();
+      const optimizedFile = await compressImage(photoFile);
+      formData.append('photo', optimizedFile);
+      await judgeService.uploadJudgePhoto(photoModalJudge._id, formData);
+      toast.success('Profile photo updated successfully.');
+      setPhotoModalOpen(false);
+      fetchJudges();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to upload photo.');
+    } finally {
+      setPhotoUploading(false);
+    }
+  };
+
+  const handleDeleteJudge = async (judgeId) => {
+    if (!window.confirm('Are you sure you want to delete this judge profile? (Soft delete will hide them from the registry)')) return;
+    try {
+      await judgeService.deleteJudge(judgeId);
+      toast.success('Judge profile deleted successfully.');
+      fetchJudges();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to delete judge.');
+    }
+  };
 
   const fetchStats = async () => {
     try {
@@ -2193,6 +2525,18 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleAutoAssign = async (app) => {
+    if (!window.confirm(`Are you sure you want to auto-assign judges matching the category for "${app.projectTitle}"?`)) return;
+    try {
+      const { data } = await applicationService.autoAssignJudges(app._id);
+      toast.success(data.message || 'Judges auto-assigned successfully.');
+      fetchApps();
+      fetchMonitoring();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to auto-assign judges.');
+    }
+  };
+
   const handleEligibilityReview = async (e) => {
     e.preventDefault();
     try {
@@ -2304,6 +2648,7 @@ const AdminDashboard = () => {
               { id: 'overview', label: 'Dashboard Overview', icon: RiDashboardLine },
               { id: 'applications', label: 'Manage Nominations', icon: RiFileList3Line },
               { id: 'monitoring', label: 'Application Monitoring', icon: RiFileChartLine },
+              { id: 'judge-management', label: 'Judge Management', icon: RiShieldUserLine },
               { id: 'users', label: 'User Directory', icon: RiTeamLine },
               { id: 'categories', label: 'Categories', icon: RiFolderShield2Line },
               { id: 'criteria', label: 'Evaluation Criteria', icon: RiStarLine },
@@ -2806,16 +3151,24 @@ const AdminDashboard = () => {
                                     )}
                                   </td>
                                   <td className="p-4">
-                                    <div className="space-y-1">
+                                    <div className="space-y-1.5">
                                       {(isF2F ? app.assignedJudgesF2F : app.assignedJudges)?.map(j => (
                                         <div key={j._id} className="text-[10px] bg-white/5 px-1.5 py-0.5 rounded w-fit">{j.firstName}</div>
                                       ))}
-                                      <button
-                                        onClick={() => openAssignModal(app, isF2F ? 'f2f' : 'initial')}
-                                        className="text-accent-400 hover:text-accent-300 font-bold block"
-                                      >
-                                        + Assign Panel
-                                      </button>
+                                      <div className="flex flex-col gap-1 pt-1">
+                                        <button
+                                          onClick={() => openAssignModal(app, isF2F ? 'f2f' : 'initial')}
+                                          className="text-accent-400 hover:text-accent-300 text-left text-[11px] font-bold block"
+                                        >
+                                          + Manual Assign
+                                        </button>
+                                        <button
+                                          onClick={() => handleAutoAssign(app)}
+                                          className="text-emerald-400 hover:text-emerald-300 text-left text-[11px] font-bold block"
+                                        >
+                                          ⚡ Auto Assign
+                                        </button>
+                                      </div>
                                     </div>
                                   </td>
                                   {isF2F ? (
@@ -3116,6 +3469,128 @@ const AdminDashboard = () => {
                         </div>
                       )}
                     </div>
+                  </div>
+                )}
+
+                {/* 3.5 JUDGE MANAGEMENT TAB */}
+                {activeTab === 'judge-management' && (
+                  <div className="space-y-6">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                      <div>
+                        <h3 className="font-display font-bold text-white text-xl">Judge Management</h3>
+                        <p className="text-slate-400 text-xs mt-1">
+                          {judges.length} judges registered. Edit details, change award categories, or manage photos below.
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <button
+                          onClick={handleSendWelcomeEmails}
+                          disabled={sendingWelcomes || judgesLoading || judges.length === 0}
+                          className="bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 transition-all disabled:opacity-50"
+                        >
+                          <RiMailSendLine size={16} />
+                          {sendingWelcomes ? 'Sending...' : 'Send Welcome Emails'}
+                        </button>
+                        <button
+                          onClick={handleOpenAddJudge}
+                          className="bg-accent-500 hover:bg-accent-600 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-glow transition-all"
+                        >
+                          <RiUserLine size={16} />
+                          Add Judge
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Judges List */}
+                    {judgesLoading ? (
+                      <div className="space-y-3">
+                        {Array.from({ length: 6 }).map((_, idx) => (
+                          <div key={idx} className="h-20 bg-white/5 rounded-2xl animate-pulse" />
+                        ))}
+                      </div>
+                    ) : judges.length > 0 ? (
+                      <div className="space-y-3">
+                        {judges.map((judgeItem) => (
+                          <div
+                            key={judgeItem._id}
+                            className="rounded-2xl border border-white/5 bg-white/[0.03] hover:bg-white/[0.06] transition-all p-5"
+                          >
+                            <div className="flex flex-col lg:flex-row lg:items-center gap-4">
+                              {/* Left: Avatar + Name + Role */}
+                              <div className="flex items-center gap-4 min-w-0 lg:w-[280px] shrink-0">
+                                <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0 bg-slate-800 border border-white/10">
+                                  <JudgeAvatar judge={judgeItem} variant="card" className="w-full h-full text-xs border-0 shadow-none hover:scale-100" />
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="font-bold text-white text-sm truncate">{judgeItem.fullName}</div>
+                                  <div className="text-[11px] text-accent-400 font-semibold truncate">{judgeItem.designation}</div>
+                                  <div className="text-[10px] text-slate-500 truncate">{judgeItem.organization} · {judgeItem.country}</div>
+                                </div>
+                              </div>
+
+                              {/* Middle: Category & Status */}
+                              <div className="flex-1 min-w-0 space-y-1.5">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Category:</span>
+                                  <span className="text-xs text-white font-semibold">{judgeItem.mainAwardCategory || judgeItem.mainCategory || '—'}</span>
+                                  {judgeItem.isGrandJury && (
+                                    <span className="bg-gold-500/10 text-gold-400 border border-gold-500/20 text-[9px] font-bold px-1.5 py-0.5 rounded uppercase">
+                                      Grand Jury
+                                    </span>
+                                  )}
+                                  <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${judgeItem.status === 'Active' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-red-500/10 text-red-400 border border-red-500/20'}`}>
+                                    {judgeItem.status}
+                                  </span>
+                                </div>
+                                <div className="flex flex-wrap gap-1">
+                                  {(judgeItem.awardSubCategories || judgeItem.subCategories)?.map((sub, i) => (
+                                    <span key={i} className="bg-white/5 border border-white/10 text-[9px] px-1.5 py-0.5 rounded text-slate-400" title={sub}>
+                                      {getSubCategoryDisplayName(sub)}
+                                    </span>
+                                  ))}
+                                </div>
+                                <div className="text-[10px] text-slate-500 font-mono">{judgeItem.email}</div>
+                              </div>
+
+                              {/* Right: Action buttons */}
+                              <div className="flex items-center gap-1.5 shrink-0">
+                                <button
+                                  onClick={() => handleOpenEditJudge(judgeItem)}
+                                  className="px-3 py-1.5 bg-white/5 hover:bg-accent-500/15 text-slate-300 hover:text-accent-400 rounded-lg text-[11px] font-bold border border-white/10 transition-all flex items-center gap-1.5"
+                                  title="Edit Details & Category"
+                                >
+                                  <RiPencilLine size={14} />
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => handleOpenPhotoModal(judgeItem)}
+                                  className="p-1.5 bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white rounded-lg border border-white/10 transition-all"
+                                  title="Change Photo"
+                                >
+                                  <RiUploadCloud2Line size={16} />
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteJudge(judgeItem._id)}
+                                  className="p-1.5 bg-white/5 hover:bg-red-500/10 text-slate-400 hover:text-red-400 rounded-lg border border-white/10 transition-all"
+                                  title="Delete"
+                                >
+                                  <RiDeleteBin6Line size={16} />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-dashed border-white/10 px-4 py-12 text-center text-slate-400 space-y-3">
+                        <div className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center mx-auto text-slate-500">
+                          <RiShieldUserLine size={24} />
+                        </div>
+                        <h4 className="font-bold text-white">No Judges Found</h4>
+                        <p className="text-xs text-slate-500 max-w-sm mx-auto">No judge profiles have been registered yet.</p>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -4071,6 +4546,457 @@ const AdminDashboard = () => {
                 </div>
               );
             })()}
+          </div>
+        </div>
+      )/* end of evaluations modal */}
+      {/* ─── ADD / EDIT JUDGE MODAL ─── */}
+      {judgeModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/80 backdrop-blur-md">
+          <div className="relative max-w-2xl w-full p-8 bg-surface-200 rounded-[32px] shadow-2xl border border-white/10 max-h-[90vh] overflow-y-auto z-10 text-slate-200">
+            <button
+              onClick={() => setJudgeModalOpen(false)}
+              className="absolute right-6 top-6 w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+
+            <div className="border-b border-white/10 pb-4 mb-6">
+              <h3 className="font-display font-extrabold text-white text-2xl">
+                {editingJudge ? 'Edit Judge Profile' : 'Add New Judge'}
+              </h3>
+              <p className="text-slate-400 text-xs mt-1">
+                {editingJudge ? 'Modify the selected judge details.' : 'Register a new expert panelist for the awards registry.'}
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveJudge} className="space-y-6">
+              {/* Photo Preview & Selection */}
+              <div className="flex flex-col sm:flex-row items-center gap-6 p-4 rounded-2xl bg-white/5 border border-white/5">
+                <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-800 border-2 border-white/15 flex items-center justify-center shrink-0">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-slate-500 font-bold text-2xl">
+                      {judgeForm.fullName ? judgeForm.fullName.charAt(0).toUpperCase() : 'AI'}
+                    </span>
+                  )}
+                </div>
+                <div className="space-y-2 text-center sm:text-left w-full">
+                  <label className="block text-xs font-semibold uppercase tracking-wider text-slate-400">Profile Image</label>
+                  <input
+                    type="file"
+                    accept="image/png, image/jpeg, image/webp"
+                    className="text-xs text-slate-400 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 file:cursor-pointer"
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error('Image file size must be less than 5MB.');
+                          return;
+                        }
+                        setPhotoFile(file);
+                        setPhotoPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                  />
+                  <p className="text-[10px] text-slate-500">Supports JPG, PNG, WEBP. Max 5MB. Auto-optimized on save.</p>
+                </div>
+              </div>
+
+              {/* Basic Information */}
+              <div className="space-y-4">
+                <h4 className="text-xs font-bold text-accent-400 uppercase tracking-wider">Basic Information</h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Name */}
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-400">Full Name</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="e.g. Mr. Indika De Zoysa"
+                      value={judgeForm.fullName}
+                      onChange={(e) => setJudgeForm({ ...judgeForm, fullName: e.target.value })}
+                    />
+                    {judgeFormErrors.fullName && <p className="text-red-400 text-xs mt-1">{judgeFormErrors.fullName}</p>}
+                  </div>
+
+                  {/* Email */}
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-400">Email Address</label>
+                    <input
+                      type="email"
+                      className="input-field font-mono"
+                      placeholder="e.g. indika.dezoysa@huawei.com"
+                      value={judgeForm.email}
+                      onChange={(e) => setJudgeForm({ ...judgeForm, email: e.target.value })}
+                    />
+                    {judgeFormErrors.email && <p className="text-red-400 text-xs mt-1">{judgeFormErrors.email}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Designation */}
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-400">Designation</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="e.g. VP – Public & Government Affairs"
+                      value={judgeForm.designation}
+                      onChange={(e) => setJudgeForm({ ...judgeForm, designation: e.target.value })}
+                    />
+                    {judgeFormErrors.designation && <p className="text-red-400 text-xs mt-1">{judgeFormErrors.designation}</p>}
+                  </div>
+
+                  {/* Organization */}
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-400">Organization</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="e.g. Huawei Technologies"
+                      value={judgeForm.organization}
+                      onChange={(e) => setJudgeForm({ ...judgeForm, organization: e.target.value })}
+                    />
+                    {judgeFormErrors.organization && <p className="text-red-400 text-xs mt-1">{judgeFormErrors.organization}</p>}
+                  </div>
+
+                  {/* Country */}
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-400">Country</label>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="e.g. Sri Lanka"
+                      value={judgeForm.country}
+                      onChange={(e) => setJudgeForm({ ...judgeForm, country: e.target.value })}
+                    />
+                    {judgeFormErrors.country && <p className="text-red-400 text-xs mt-1">{judgeFormErrors.country}</p>}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* LinkedIn */}
+                  <div className="md:col-span-2">
+                    <label className="mb-1 block text-xs font-semibold text-slate-400">LinkedIn Profile URL</label>
+                    <input
+                      type="url"
+                      className="input-field font-mono"
+                      placeholder="e.g. https://www.linkedin.com/in/..."
+                      value={judgeForm.linkedin}
+                      onChange={(e) => setJudgeForm({ ...judgeForm, linkedin: e.target.value })}
+                    />
+                  </div>
+
+                  {/* Status */}
+                  <div>
+                    <label className="mb-1 block text-xs font-semibold text-slate-400">Active Registry Status</label>
+                    <select
+                      className="input-field bg-navy-950 text-slate-300"
+                      value={judgeForm.status}
+                      onChange={(e) => setJudgeForm({ ...judgeForm, status: e.target.value })}
+                    >
+                      <option value="Active">Active</option>
+                      <option value="Inactive">Inactive</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 bg-white/5 p-3.5 rounded-xl border border-white/5">
+                  <input
+                    type="checkbox"
+                    id="judge-grandjury-check"
+                    className="rounded border-white/10 bg-white/5 text-accent-500 focus:ring-accent-500 w-4 h-4 cursor-pointer"
+                    checked={judgeForm.isGrandJury}
+                    onChange={(e) => setJudgeForm({ ...judgeForm, isGrandJury: e.target.checked })}
+                  />
+                  <label htmlFor="judge-grandjury-check" className="text-xs text-slate-300 hover:text-white cursor-pointer select-none font-semibold">
+                    Mark as member of the Grand Jury Panel
+                  </label>
+                </div>
+              </div>
+
+              {/* Award Categories Selection */}
+              <div className="space-y-4 pt-2 border-t border-white/5">
+                <h4 className="text-xs font-bold text-accent-400 uppercase tracking-wider">Award Categories Alignment</h4>
+                
+                <div>
+                  <label className="mb-1.5 block text-xs font-semibold text-slate-400">Main Award Category</label>
+                  <select
+                    className="input-field bg-navy-950 text-slate-300"
+                    value={judgeForm.mainAwardCategory}
+                    onChange={(e) => setJudgeForm({ ...judgeForm, mainAwardCategory: e.target.value, awardSubCategories: [] })}
+                  >
+                    <option value="">Select Main Category</option>
+                    {Object.keys(JUDGE_MAIN_CATEGORIES_MAP).map(cat => (
+                      <option key={cat} value={cat}>{cat}</option>
+                    ))}
+                  </select>
+                  {judgeFormErrors.mainAwardCategory && <p className="text-red-400 text-xs mt-1">{judgeFormErrors.mainAwardCategory}</p>}
+                </div>
+
+                {judgeForm.mainAwardCategory && (
+                  <div className="space-y-2 animate-fadeIn">
+                    <label className="block text-xs font-semibold text-slate-400">Award Subcategories (Primary Category)</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 bg-white/5 p-4 rounded-xl border border-white/5 max-h-[180px] overflow-y-auto">
+                      {JUDGE_MAIN_CATEGORIES_MAP[judgeForm.mainAwardCategory]?.map((sub) => {
+                        const checked = judgeForm.awardSubCategories.includes(sub);
+                        return (
+                          <label key={sub} className="flex items-start gap-2.5 text-xs text-slate-300 hover:text-white cursor-pointer select-none">
+                            <input
+                              type="checkbox"
+                              className="mt-0.5 rounded border-white/10 bg-white/5 text-accent-500 focus:ring-accent-500 w-3.5 h-3.5"
+                              checked={checked}
+                              onChange={() => {
+                                if (checked) {
+                                  setJudgeForm(prev => ({
+                                    ...prev,
+                                    awardSubCategories: prev.awardSubCategories.filter(s => s !== sub)
+                                  }));
+                                } else {
+                                  setJudgeForm(prev => ({
+                                    ...prev,
+                                    awardSubCategories: [...prev.awardSubCategories, sub]
+                                  }));
+                                }
+                              }}
+                            />
+                            <span>{getSubCategoryDisplayName(sub)}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {judgeForm.mainAwardCategory && (
+                  <div className="space-y-2 animate-fadeIn pt-2 border-t border-white/5">
+                    <label className="block text-xs font-semibold text-slate-400">Additional Award Subcategories (Optional)</label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 bg-white/5 p-4 rounded-xl border border-white/5 max-h-[220px] overflow-y-auto">
+                      {Object.entries(JUDGE_MAIN_CATEGORIES_MAP)
+                        .filter(([mainCat]) => mainCat !== judgeForm.mainAwardCategory)
+                        .map(([mainCat, subs]) => (
+                          <div key={mainCat} className="col-span-1 md:col-span-2 space-y-1.5 mb-2">
+                            <div className="text-[10px] uppercase tracking-wider font-bold text-slate-500">{mainCat}</div>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              {subs.map((sub) => {
+                                const checked = judgeForm.awardSubCategories.includes(sub);
+                                return (
+                                  <label key={sub} className="flex items-start gap-2.5 text-xs text-slate-300 hover:text-white cursor-pointer select-none">
+                                    <input
+                                      type="checkbox"
+                                      className="mt-0.5 rounded border-white/10 bg-white/5 text-accent-500 focus:ring-accent-500 w-3.5 h-3.5"
+                                      checked={checked}
+                                      onChange={() => {
+                                        if (checked) {
+                                          setJudgeForm(prev => ({
+                                            ...prev,
+                                            awardSubCategories: prev.awardSubCategories.filter(s => s !== sub)
+                                          }));
+                                        } else {
+                                          setJudgeForm(prev => ({
+                                            ...prev,
+                                            awardSubCategories: [...prev.awardSubCategories, sub]
+                                          }));
+                                        }
+                                      }}
+                                    />
+                                    <span>{getSubCategoryDisplayName(sub)}</span>
+                                  </label>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                    </div>
+                    {judgeFormErrors.awardSubCategories && <p className="text-red-400 text-xs mt-1">{judgeFormErrors.awardSubCategories}</p>}
+                  </div>
+                )}
+              </div>
+
+              {/* Actions Footer */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setJudgeModalOpen(false)}
+                  className="btn-ghost text-xs !py-2 !px-4"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={judgeSaving}
+                  className="btn-primary text-xs !py-2 !px-5 flex items-center gap-2"
+                >
+                  {judgeSaving ? 'Saving...' : (editingJudge ? 'Update Profile' : 'Add Panelist')}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── DEDICATED CHANGE PHOTO MODAL ─── */}
+      {photoModalOpen && photoModalJudge && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/80 backdrop-blur-md">
+          <div className="relative max-w-md w-full p-8 bg-surface-200 rounded-[32px] shadow-2xl border border-white/10 z-10 text-slate-200">
+            <button
+              onClick={() => setPhotoModalOpen(false)}
+              className="absolute right-6 top-6 w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+
+            <div className="border-b border-white/10 pb-4 mb-6">
+              <h3 className="font-display font-extrabold text-white text-xl">Change Profile Photo</h3>
+              <p className="text-slate-400 text-xs mt-1">Upload a new profile photo for {photoModalJudge.fullName}.</p>
+            </div>
+
+            <form onSubmit={handleUploadPhotoOnly} className="space-y-6">
+              <div className="flex flex-col items-center gap-4 text-center">
+                <div className="w-32 h-32 rounded-full overflow-hidden bg-slate-800 border-2 border-white/15 shadow-glow">
+                  {photoPreview ? (
+                    <img src={photoPreview} alt="Preview" className="w-full h-full object-cover" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-slate-500 font-bold text-3xl">
+                      {photoModalJudge.fullName.charAt(0)}
+                    </div>
+                  )}
+                </div>
+
+                <div className="w-full space-y-2">
+                  <input
+                    type="file"
+                    accept="image/png, image/jpeg, image/webp"
+                    className="text-xs text-slate-400 file:mr-4 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-white/10 file:text-white hover:file:bg-white/20 file:cursor-pointer mx-auto block"
+                    required
+                    onChange={(e) => {
+                      const file = e.target.files[0];
+                      if (file) {
+                        if (file.size > 5 * 1024 * 1024) {
+                          toast.error('Image file size must be less than 5MB.');
+                          return;
+                        }
+                        setPhotoFile(file);
+                        setPhotoPreview(URL.createObjectURL(file));
+                      }
+                    }}
+                  />
+                  <p className="text-[10px] text-slate-500">Supports JPG, PNG, WEBP. Max 5MB. Compress on upload.</p>
+                </div>
+              </div>
+
+              {/* Actions Footer */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-white/10">
+                <button
+                  type="button"
+                  onClick={() => setPhotoModalOpen(false)}
+                  className="btn-ghost text-xs !py-2 !px-4"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={photoUploading || !photoFile}
+                  className="btn-primary text-xs !py-2 !px-5"
+                >
+                  {photoUploading ? 'Uploading...' : 'Save New Photo'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ─── VIEW JUDGE DETAILS MODAL ─── */}
+      {judgeViewModalOpen && viewingJudge && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-navy-950/80 backdrop-blur-md">
+          <div className="relative max-w-xl w-full p-8 bg-surface-200 rounded-[32px] shadow-2xl border border-white/10 z-10 text-slate-200 max-h-[85vh] overflow-y-auto">
+            <button
+              onClick={() => setJudgeViewModalOpen(false)}
+              className="absolute right-6 top-6 w-9 h-9 rounded-full bg-white/5 hover:bg-white/10 border border-white/10 flex items-center justify-center text-slate-400 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+
+            <div className="flex flex-col items-center text-center space-y-4 pb-6 border-b border-white/10 mb-6">
+              <div className="w-24 h-24 rounded-full overflow-hidden bg-slate-800 border-2 border-white/15 shadow-glow">
+                <JudgeAvatar judge={viewingJudge} variant="card" className="w-full h-full hover:scale-100 border-0 shadow-none text-2xl" />
+              </div>
+              <div>
+                <h3 className="font-display font-extrabold text-white text-xl flex items-center justify-center gap-2">
+                  {viewingJudge.fullName}
+                </h3>
+                <p className="text-accent-400 text-xs font-semibold mt-1">{viewingJudge.designation}</p>
+                <p className="text-slate-400 text-xs mt-0.5">{viewingJudge.organization} — {viewingJudge.country}</p>
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div className="grid grid-cols-2 gap-4 bg-white/5 p-4 rounded-2xl border border-white/5">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Email Address</span>
+                  <div className="text-white font-mono mt-0.5 select-all">{viewingJudge.email}</div>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">LinkedIn Profile</span>
+                  <div className="mt-0.5 truncate">
+                    {viewingJudge.linkedin ? (
+                      <a href={viewingJudge.linkedin} target="_blank" rel="noreferrer" className="text-accent-400 hover:underline">
+                        {viewingJudge.linkedin}
+                      </a>
+                    ) : (
+                      <span className="text-slate-500">Not provided</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1 p-4 rounded-2xl bg-white/5 border border-white/5">
+                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Award Alignment</span>
+                <div className="text-white font-bold text-sm mt-1">{viewingJudge.mainAwardCategory || viewingJudge.mainCategory}</div>
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {(viewingJudge.awardSubCategories || viewingJudge.subCategories)?.map((sub, idx) => (
+                    <span key={idx} className="bg-white/5 border border-white/10 text-[9px] px-2 py-0.5 rounded-full text-slate-400">
+                      {getSubCategoryDisplayName(sub)}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-center">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Experience</span>
+                  <strong className="text-white font-mono mt-0.5 block">{viewingJudge.experience || 0} Yrs</strong>
+                </div>
+                <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-center">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Jury Type</span>
+                  <strong className="text-gold-400 font-mono mt-0.5 block">{viewingJudge.isGrandJury ? 'Grand Jury' : 'Panelist'}</strong>
+                </div>
+                <div className="bg-white/5 p-3 rounded-xl border border-white/5 text-center">
+                  <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider block">Status</span>
+                  <strong className={`mt-0.5 block font-mono ${viewingJudge.status === 'Active' ? 'text-emerald-400' : 'text-red-400'}`}>
+                    {viewingJudge.status}
+                  </strong>
+                </div>
+              </div>
+
+              {viewingJudge.description && (
+                <div className="space-y-1.5 pt-2">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Biography / Description</span>
+                  <p className="text-slate-300 leading-relaxed text-justify max-h-[150px] overflow-y-auto pr-1 bg-white/5 p-3 rounded-lg border border-white/5">
+                    {viewingJudge.description}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="flex justify-end pt-5 border-t border-white/10 mt-6">
+              <button onClick={() => setJudgeViewModalOpen(false)} className="btn-ghost text-xs !py-2 !px-4">
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

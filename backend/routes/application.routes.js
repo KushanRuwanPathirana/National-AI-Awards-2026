@@ -9,7 +9,7 @@ const { requireRole } = require('../middleware/role.middleware');
 const {
   createApplication, updateApplication, submitApplication,
   getMyApplications, getApplicationById, getAllApplications,
-  changeApplicationStatus, assignJudges, assignJudgesF2F, reviewEligibility,
+  changeApplicationStatus, assignJudges, assignJudgesF2F, autoAssignJudges, reviewEligibility,
   getMonitoringOverview, getJudgeProgress, exportApplications,
   publishFinalists, publishWinners, generateCertificates,
   uploadDocuments, deleteDocument, deleteApplication, deleteApplicationByAdmin,
@@ -88,6 +88,7 @@ router.post('/generate-certificates', authenticate, requireRole('admin'), genera
 router.patch('/:id/status',       authenticate, requireRole('admin'), changeApplicationStatus);
 router.patch('/:id/assign-judges', authenticate, requireRole('admin'), assignJudges);
 router.patch('/:id/assign-judges-f2f', authenticate, requireRole('admin'), assignJudgesF2F);
+router.patch('/:id/auto-assign-judges', authenticate, requireRole('admin'), autoAssignJudges);
 router.patch('/:id/review-eligibility', authenticate, requireRole('admin'), reviewEligibility);
 router.patch('/:id/deadline',     authenticate, requireRole('admin'), updateApplicationDeadline);
 router.patch('/:id/deadline-f2f', authenticate, requireRole('admin'), updateApplicationDeadlineF2F);

@@ -10,6 +10,7 @@ const evaluationCriteriaRoutes = require('./evaluationCriteria.routes');
 const contentRoutes      = require('./content.routes');
 const notificationRoutes = require('./notification.routes');
 const adminRoutes        = require('./admin.routes');
+const judgeRoutes        = require('./judge.routes');
 
 // Mount routes
 router.use('/auth',          authRoutes);
@@ -21,6 +22,7 @@ router.use('/evaluation-criteria', evaluationCriteriaRoutes);
 router.use('/content',       contentRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/admin',         adminRoutes);
+router.use('/judges',        judgeRoutes);
 
 // Health check
 router.get('/health', (req, res) => {

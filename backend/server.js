@@ -11,6 +11,7 @@ const errorHandler = require('./middleware/error.middleware');
 const logger = require('./utils/logger');
 const { seedDefaultAdmin } = require('./scripts/seedAdmin');
 const { seedCriteriaOnStartup } = require('./scripts/seedCriteria');
+const { seedDefaultJudges, migrateExistingJudges } = require('./controllers/judge.controller');
 const EvaluationCriteria = require('./models/EvaluationCriteria.model');
 
 // ─── App Initialization ────────────────────────────────────────────────────────
@@ -25,6 +26,14 @@ connectDB().then(async () => {
   seedCriteriaOnStartup().catch((error) => {
     logger.error(`Criteria seeding skipped due to error: ${error.message}`);
   });
+  seedDefaultJudges()
+    .then(async () => {
+      // Run the judge categories migration after seeding/verifying default judges
+      await migrateExistingJudges();
+    })
+    .catch((error) => {
+      logger.error(`Judges seeding/migration skipped due to error: ${error.message}`);
+    });
 
   // Drop stale unique index that blocks multi-stage evaluations
   try {
