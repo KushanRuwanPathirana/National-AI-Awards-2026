@@ -150,6 +150,7 @@ const AdminDashboard = () => {
   const [monitoring, setMonitoring] = useState(null);
   const [judgeProgress, setJudgeProgress] = useState([]);
   const [pendingJudgeAudience, setPendingJudgeAudience] = useState({ judgeCount: 0, pendingEvaluations: 0, judges: [] });
+  const [pendingJudgeAudienceLoading, setPendingJudgeAudienceLoading] = useState(false);
   const [sendingPendingJudgeReminders, setSendingPendingJudgeReminders] = useState(false);
   const [sentReminderEmails, setSentReminderEmails] = useState([]);
   const [pendingReminderSchedule, setPendingReminderSchedule] = useState(null);
@@ -678,10 +679,13 @@ const AdminDashboard = () => {
 
   const fetchPendingJudgeAudience = async () => {
     try {
+      setPendingJudgeAudienceLoading(true);
       const { data } = await adminService.getPendingJudgeAudience();
       setPendingJudgeAudience(data.data || { judgeCount: 0, pendingEvaluations: 0, judges: [] });
     } catch {
       toast.error('Failed to load pending judge audience.');
+    } finally {
+      setPendingJudgeAudienceLoading(false);
     }
   };
 
@@ -2663,6 +2667,53 @@ const AdminDashboard = () => {
                             <span className="rounded-full bg-amber-500/10 px-2.5 py-1 text-[10px] font-bold text-amber-300">
                               {pendingJudgeEvaluationCount}
                             </span>
+                          </div>
+                          <div className="mt-4 rounded-xl border border-white/10 bg-navy-950/35 p-3">
+                            <div className="flex items-center justify-between gap-3">
+                              <div>
+                                <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Auto-identified judges</div>
+                                <div className="mt-0.5 text-xs text-slate-500">
+                                  {pendingJudgeCount} judge{pendingJudgeCount === 1 ? '' : 's'} with {pendingJudgeEvaluationCount} pending evaluation{pendingJudgeEvaluationCount === 1 ? '' : 's'}
+                                </div>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={fetchPendingJudgeAudience}
+                                disabled={pendingJudgeAudienceLoading}
+                                className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300 transition-colors hover:bg-white/10 hover:text-white disabled:opacity-50"
+                                title="Refresh pending judges"
+                              >
+                                <RiRefreshLine className={pendingJudgeAudienceLoading ? 'animate-spin' : ''} size={14} />
+                              </button>
+                            </div>
+                            <div className="mt-3 max-h-40 space-y-2 overflow-y-auto pr-1">
+                              {pendingJudgeAudienceLoading ? (
+                                <div className="rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-400">Scanning assignments...</div>
+                              ) : pendingJudgeAudience.judges?.length > 0 ? (
+                                pendingJudgeAudience.judges.map((judge) => (
+                                  <div key={judge.judgeId} className="rounded-lg bg-white/5 px-3 py-2">
+                                    <div className="flex items-center justify-between gap-3">
+                                      <div className="min-w-0">
+                                        <div className="truncate text-xs font-bold text-white">{judge.name}</div>
+                                        <div className="truncate font-mono text-[10px] text-amber-200">{judge.email}</div>
+                                      </div>
+                                      <span className="shrink-0 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                                        {judge.pendingCount}
+                                      </span>
+                                    </div>
+                                    {judge.closestProjectTitle && (
+                                      <div className="mt-1 truncate text-[10px] text-slate-500">
+                                        Closest: {judge.closestProjectTitle}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))
+                              ) : (
+                                <div className="rounded-lg bg-white/5 px-3 py-2 text-xs text-slate-400">
+                                  No pending judge evaluations found.
+                                </div>
+                              )}
+                            </div>
                           </div>
                           <button
                             type="button"
