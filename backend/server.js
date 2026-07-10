@@ -42,9 +42,11 @@ const allowedOrigins = [
   'http://localhost:3000',
 ];
 
+const isLocalDevOrigin = (origin) => /^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin);
+
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin || allowedOrigins.includes(origin) || isLocalDevOrigin(origin)) {
       callback(null, true);
     } else {
       callback(new Error(`CORS policy: Origin ${origin} not allowed.`));
