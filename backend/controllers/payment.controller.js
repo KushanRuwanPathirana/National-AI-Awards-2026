@@ -6,6 +6,13 @@ const getPayHereParams = async (req, res, next) => {
   try {
     const { applicationId } = req.body;
 
+    if (!applicationId) {
+      return errorResponse(res, {
+        statusCode: 400,
+        message: "Application ID is required.",
+      });
+    }
+
     const application =
       await Application.findById(applicationId).populate("candidate");
     if (!application) {
@@ -17,9 +24,27 @@ const getPayHereParams = async (req, res, next) => {
 
     const merchantId = process.env.PAYHERE_MERCHANT_ID;
     const merchantSecret = process.env.PAYHERE_MERCHANT_SECRET;
-
     const amount = "25000.00";
     const currency = "LKR";
+
+    if (!merchantId || !merchantSecret) {
+      if (process.env.NODE_ENV === "production") {
+        return errorResponse(res, {
+          statusCode: 503,
+          message: "Payment gateway is not configured. Please contact support.",
+        });
+      }
+
+      return successResponse(res, {
+        message: "PayHere is not configured. Using local mock payment.",
+        data: {
+          mock: true,
+          order_id: `NAIA2026-MOCK-${applicationId.toString().slice(-6)}`,
+          amount,
+          currency,
+        },
+      });
+    }
 
     // Unique Short Order ID
     const orderId = `NAIA2026X${applicationId.toString().slice(-6)}X${Math.floor(1000 + Math.random() * 9000)}`;
@@ -46,9 +71,9 @@ const getPayHereParams = async (req, res, next) => {
     const paymentParams = {
       sandbox: process.env.PAYHERE_SANDBOX === "true",
       merchant_id: merchantId,
-      return_url: `${process.env.CLIENT_URL}/dashboard?payment=success`,
-      cancel_url: `${process.env.CLIENT_URL}/dashboard?payment=cancel`,
-      notify_url: `${process.env.BACKEND_BASE_URL}/api/payment/notify`,
+      return_url: `${process.env.CLIENT_URL || "http://localhost:5173"}/dashboard?payment=success`,
+      cancel_url: `${process.env.CLIENT_URL || "http://localhost:5173"}/dashboard?payment=cancel`,
+      notify_url: `${process.env.BACKEND_BASE_URL || `http://localhost:${process.env.PORT || 5001}`}/api/payment/notify`,
       order_id: orderId,
       items: `National AI Awards Registration`,
       amount: amount,

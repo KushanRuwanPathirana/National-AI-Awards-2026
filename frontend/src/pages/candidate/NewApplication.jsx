@@ -715,8 +715,19 @@ const NewApplication = () => {
       const { data } = await applicationService.getPayHereParams(id);
       const paymentConfig = data.data;
 
+      if (paymentConfig.mock) {
+        setValue("onlinePaymentSimulated", true, { shouldDirty: true });
+        toast.success("Local test payment completed.");
+        return;
+      }
+
+      if (!window.payhere?.startPayment) {
+        toast.error("PayHere checkout script is not loaded. Please refresh and try again.");
+        return;
+      }
+
       // C. PayHere JS Event Handlers ටික සෙට් කරනවා
-      window.payhere.onCompleted = function onCompleted(orderId) {
+      window.payhere.onCompleted = function onCompleted() {
         setValue("onlinePaymentSimulated", true, { shouldDirty: true });
         toast.success("Payment completed successfully via PayHere!");
       };
