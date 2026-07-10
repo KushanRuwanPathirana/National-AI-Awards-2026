@@ -121,6 +121,7 @@ const STATUS_LABELS = {
   finalist: 'Finalist',
   winner: 'Winner',
   runner_up: '1st Runner-up',
+  runner_up_2nd: '2nd Runner-up',
 };
 
 const ADMIN_STATUS_OPTIONS = [
@@ -131,6 +132,7 @@ const ADMIN_STATUS_OPTIONS = [
   { value: 'finalist', label: 'Finalist' },
   { value: 'winner', label: 'Winner' },
   { value: 'runner_up', label: '1st Runner-up' },
+  { value: 'runner_up_2nd', label: '2nd Runner-up' },
 ];
 
 const AdminDashboard = () => {
@@ -1361,6 +1363,7 @@ const AdminDashboard = () => {
                             <option value="finalist">Finalist</option>
                             <option value="winner">Winner</option>
                             <option value="runner_up">1st Runner-up</option>
+                            <option value="runner_up_2nd">2nd Runner-up</option>
                           </select>
                         </div>
                       </div>
@@ -1454,6 +1457,9 @@ const AdminDashboard = () => {
                                           <option value="finalist">Finalist</option>
                                           <option value="winner">Winner</option>
                                           <option value="runner_up">1st Runner-up</option>
+                                          {app.category?.name?.toLowerCase().includes('university') && (
+                                            <option value="runner_up_2nd">2nd Runner-up</option>
+                                          )}
                                         </>
                                       ) : (
                                         <>
@@ -1465,6 +1471,9 @@ const AdminDashboard = () => {
                                           <option value="finalist">Finalist</option>
                                           <option value="winner">Winner</option>
                                           <option value="runner_up">1st Runner-up</option>
+                                          {app.category?.name?.toLowerCase().includes('university') && (
+                                            <option value="runner_up_2nd">2nd Runner-up</option>
+                                          )}
                                         </>
                                       )}
                                     </select>
