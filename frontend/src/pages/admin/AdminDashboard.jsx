@@ -1184,7 +1184,9 @@ const AdminDashboard = () => {
             initial={{ opacity: 0, y: 12 }}
             animate={{ opacity: 1, y: 0 }}
             className={`glass-card p-8 !hover:transform-none ${
-              ['applications', 'users'].includes(activeTab) ? '' : 'min-h-[500px]'
+              activeTab === 'judge-management'
+                ? 'h-[calc(100vh-10rem)] min-h-[500px] min-w-0 overflow-hidden'
+                : ['applications', 'users'].includes(activeTab) ? '' : 'min-h-[500px]'
             }`}
           >
             {loading ? (
@@ -1991,9 +1993,9 @@ const AdminDashboard = () => {
 
                 {/* 3.5 JUDGE MANAGEMENT TAB */}
                 {activeTab === 'judge-management' && (
-                  <div className="space-y-6">
+                  <div className="flex h-full min-h-0 flex-col gap-6">
                     {/* Header */}
-                    <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div className="flex shrink-0 flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                       <div>
                         <h3 className="font-display font-bold text-white text-xl">Judge Management</h3>
                         <p className="text-slate-400 text-xs mt-1">
@@ -2021,13 +2023,13 @@ const AdminDashboard = () => {
 
                     {/* Judges List */}
                     {judgesLoading ? (
-                      <div className="space-y-3">
+                      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-2 custom-scrollbar">
                         {Array.from({ length: 6 }).map((_, idx) => (
                           <div key={idx} className="h-20 bg-white/5 rounded-2xl animate-pulse" />
                         ))}
                       </div>
                     ) : judges.length > 0 ? (
-                      <div className="space-y-3">
+                      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain pr-2 custom-scrollbar">
                         {judges.map((judgeItem) => (
                           <div
                             key={judgeItem._id}
